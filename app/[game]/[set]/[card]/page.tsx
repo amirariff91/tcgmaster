@@ -67,10 +67,6 @@ interface CardData {
   artist: string | null;
   description: string | null;
   image_url: string | null;
-  local_image_url: string | null;
-  tcg_player_id: string | null;
-  lore: string | null;
-  print_run_info: string | null;
   sets: CardDataSet;
   card_variants: { id: string; variant_type: string; name: string; slug: string }[];
   price_cache: CardDataPriceCache | null;
@@ -93,10 +89,6 @@ async function getCardData(gameSlug: string, setSlug: string, cardSlug: string):
       artist,
       description,
       image_url,
-      local_image_url,
-      tcg_player_id,
-      lore,
-      print_run_info,
       sets!inner (
         id,
         name,
@@ -284,9 +276,9 @@ export default async function CardDetailPage({ params }: PageProps) {
     number: cardData.number,
     rarity: cardData.rarity as 'common' | 'uncommon' | 'rare' | 'holo-rare' | 'ultra-rare' | 'secret-rare' | 'promo' | null,
     artist: cardData.artist,
-    image_url: cardData.local_image_url || cardData.image_url,
+    image_url: cardData.image_url,
     description: cardData.description,
-    lore: cardData.lore,
+    lore: null as string | null,
     set: {
       id: setData?.id || '',
       name: setData?.name || '',
