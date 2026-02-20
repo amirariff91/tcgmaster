@@ -241,7 +241,7 @@ async function main() {
       }
 
       // Zebra
-      if (isZebra && !cell.fill?.fgColor) {
+      if (isZebra && !(cell.fill as { fgColor?: unknown })?.fgColor) {
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.altRowBg } };
       }
 
