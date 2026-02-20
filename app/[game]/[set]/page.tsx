@@ -21,8 +21,9 @@ async function getSetFromDB(gameSlug: string, setSlug: string): Promise<MockSet 
   try {
     const supabase = await createClient();
 
-    // Fetch set with game info
-    const { data: setData, error: setError } = await supabase
+    // Fetch set with game info (use any to avoid Supabase join typing issues)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: setData, error: setError } = await (supabase as any)
       .from('sets')
       .select(`
         id, name, slug, release_date, card_count, image_url,
@@ -34,12 +35,13 @@ async function getSetFromDB(gameSlug: string, setSlug: string): Promise<MockSet 
 
     if (setError || !setData) return null;
 
-    const game = setData.games as unknown as {
+    const game = setData.games as {
       id: string; name: string; slug: string; display_name: string;
     };
 
-    // Fetch all cards for this set with price cache
-    const { data: cardsData } = await supabase
+    // Fetch all cards for this set with price cache (any to bypass join typing)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: cardsData } = await (supabase as any)
       .from('cards')
       .select(`
         id, name, slug, number, rarity, artist, image_url, description,
@@ -48,6 +50,7 @@ async function getSetFromDB(gameSlug: string, setSlug: string): Promise<MockSet 
       .eq('set_id', setData.id)
       .order('number');
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const cards: MockCard[] = (cardsData || []).map((c: {
       id: string;
       name: string;
