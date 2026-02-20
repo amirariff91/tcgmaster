@@ -139,7 +139,7 @@ export async function generateMetadata({ params }: SetPageProps): Promise<Metada
   const { game, set: setSlug } = await params;
 
   // Try DB first, fall back to mock
-  const setData = await getSetFromDB(game, setSlug) || getSetBySlug(game, setSlug);
+  const setData = await getSetFromDB(game, setSlug) || getSetBySlug(game, setSlug) || null;
 
   if (!setData) return { title: 'Set Not Found | TCGMaster' };
 
@@ -165,7 +165,7 @@ export default async function SetPage({ params, searchParams }: SetPageProps) {
   const fromDB = !!setData;
 
   if (!setData) {
-    setData = getSetBySlug(game, setSlug);
+    setData = getSetBySlug(game, setSlug) ?? null;
   }
 
   if (!setData) notFound();
