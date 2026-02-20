@@ -43,7 +43,7 @@ export function GradeSelector({
             key={gradeKey}
             href={href}
             className={cn(
-              'inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium transition-all',
+              'inline-flex items-center justify-center rounded-lg px-4 py-2.5 text-sm font-medium transition-all min-h-[44px]',
               isActive
                 ? 'bg-zinc-900 text-white'
                 : item.hasData

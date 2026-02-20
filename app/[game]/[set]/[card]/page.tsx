@@ -368,7 +368,7 @@ export default async function CardDetailPage({ params }: PageProps) {
                         mockPrices.current['psa-10'].price;
 
   return (
-    <div className="min-h-screen pb-16">
+    <div className="min-h-screen pb-16 overflow-x-hidden">
       {/* Stale Data Banner */}
       {isStale && (
         <div className="bg-amber-50 border-b border-amber-200">
@@ -409,13 +409,13 @@ export default async function CardDetailPage({ params }: PageProps) {
         <div className="grid gap-8 lg:grid-cols-3">
           {/* Left Column - Card Image */}
           <div className="lg:col-span-1">
-            <div className="sticky top-24">
+            <div className="lg:sticky lg:top-24">
               <CardImage
                 src={card.image_url || '/cards/placeholder.png'}
                 alt={card.name}
                 size="hero"
                 priority
-                className="mx-auto"
+                className="mx-auto max-w-xs sm:max-w-sm lg:max-w-full"
               />
               <div className="mt-4 flex justify-center gap-2">
                 <Button variant="outline" size="sm">

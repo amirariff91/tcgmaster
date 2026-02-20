@@ -64,37 +64,37 @@ export function PriceMatrix({
         onClick={() => setIsExpanded(!isExpanded)}
         className="w-full flex items-center justify-between p-4 hover:bg-zinc-50 transition-colors"
       >
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-3 sm:gap-6 min-w-0">
           {nmPrice !== null && (
-            <div className="text-left">
+            <div className="text-left min-w-0">
               <p className="text-xs text-zinc-500 uppercase tracking-wider">Raw NM</p>
-              <p className="text-lg font-bold text-zinc-900">
+              <p className="text-base sm:text-lg font-bold text-zinc-900 tabular-nums">
                 {format(nmPrice)}
               </p>
             </div>
           )}
 
           {psa9Price !== null && (
-            <div className="text-left border-l border-zinc-200 pl-6">
+            <div className="text-left border-l border-zinc-200 pl-3 sm:pl-6 min-w-0">
               <p className="text-xs text-zinc-500 uppercase tracking-wider">PSA 9</p>
-              <p className="text-lg font-bold text-zinc-900">
+              <p className="text-base sm:text-lg font-bold text-zinc-900 tabular-nums">
                 {format(psa9Price)}
               </p>
             </div>
           )}
 
           {psa10Price !== null && (
-            <div className="text-left border-l border-zinc-200 pl-6">
+            <div className="text-left border-l border-zinc-200 pl-3 sm:pl-6 min-w-0">
               <p className="text-xs text-zinc-500 uppercase tracking-wider">PSA 10</p>
-              <p className="text-lg font-bold text-emerald-600">
+              <p className="text-base sm:text-lg font-bold text-emerald-600 tabular-nums">
                 {format(psa10Price)}
               </p>
             </div>
           )}
         </div>
 
-        <div className="flex items-center gap-2 text-zinc-500">
-          <span className="text-sm">{isExpanded ? 'Less' : 'More'}</span>
+        <div className="flex items-center gap-1 sm:gap-2 text-zinc-500 flex-shrink-0 ml-2">
+          <span className="text-xs sm:text-sm">{isExpanded ? 'Less' : 'More'}</span>
           {isExpanded ? (
             <ChevronUp className="h-4 w-4" />
           ) : (

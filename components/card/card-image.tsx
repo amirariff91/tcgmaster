@@ -145,7 +145,13 @@ export function CardImage({
           loadingState === 'loaded' && 'opacity-100 scale-100'
         )}
         style={{ aspectRatio: '5/7' }}
-        sizes="(max-width: 640px) 80px, (max-width: 768px) 112px, 128px"
+        sizes={
+          size === 'hero'
+            ? '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 384px'
+            : size === 'xl'
+            ? '(max-width: 640px) 224px, (max-width: 768px) 256px, 288px'
+            : '(max-width: 640px) 80px, (max-width: 768px) 112px, 128px'
+        }
       />
     </div>
   );
