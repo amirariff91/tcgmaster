@@ -1,5 +1,8 @@
 [phases.install]
-cmds = ["rm -f package-lock.json", "npm install"]
+cmds = [
+  "npm install",
+  "npm install --no-save @tailwindcss/oxide-linux-x64-gnu lightningcss-linux-x64-gnu lightningcss-linux-x64-musl 2>/dev/null; true"
+]
 
 [phases.build]
 cmds = ["npm run build"]
