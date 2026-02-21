@@ -14,6 +14,7 @@ import { GradeSelector } from '@/components/card/grade-selector';
 import { PriceChart } from '@/components/charts/price-chart';
 import { formatPrice, formatNumber, getRarityDisplay, formatDate } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/server';
+import { getCardWithPrices } from '@/lib/ppt/service';
 
 // Types for card data
 interface CardDataSet {
@@ -67,6 +68,7 @@ interface CardData {
   artist: string | null;
   description: string | null;
   image_url: string | null;
+  tcg_player_id: string | null;
   sets: CardDataSet;
   card_variants: { id: string; variant_type: string; name: string; slug: string }[];
   price_cache: CardDataPriceCache | CardDataPriceCache[] | null;
@@ -89,6 +91,7 @@ async function getCardData(gameSlug: string, setSlug: string, cardSlug: string):
       artist,
       description,
       image_url,
+      tcg_player_id,
       sets!inner (
         id,
         name,
@@ -239,6 +242,8 @@ interface PageProps {
   }>;
 }
 
+export const revalidate = 300; // 5 min — price updates surface quickly
+
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { game, set, card: cardSlug } = await params;
   const cardData = await getCardData(game, set, cardSlug);
@@ -296,16 +301,33 @@ export default async function CardDetailPage({ params }: PageProps) {
     },
   } : { ...mockCard, lore: null as string | null };
 
-  // Extract price data
-  const priceCache = Array.isArray(cardData?.price_cache)
+  // Extract price data — prefer DB cache, fall back to live PPT fetch
+  const dbPriceCache = Array.isArray(cardData?.price_cache)
     ? cardData?.price_cache[0] || null
     : cardData?.price_cache || null;
 
+  // If no DB cache and card has a TCGPlayer ID, fetch live from PPT
+  let livePrices: { raw: Record<string, number | null>; graded: Record<string, GradedPriceData> } | null = null;
+  const tcgPlayerId = cardData?.tcg_player_id;
+  if (!dbPriceCache && tcgPlayerId) {
+    try {
+      const pptData = await getCardWithPrices(tcgPlayerId, { includeEbay: true });
+      if (pptData) {
+        livePrices = {
+          raw: pptData.prices.raw as Record<string, number | null>,
+          graded: pptData.prices.graded as Record<string, GradedPriceData>,
+        };
+      }
+    } catch {
+      // silently fall through — show empty state
+    }
+  }
+
   const rawPrices = {
-    nearMint: priceCache?.raw_prices?.nearMint ?? (cardData ? null : mockPrices.current.raw.price),
-    lightlyPlayed: priceCache?.raw_prices?.lightlyPlayed ?? null,
-    moderatelyPlayed: priceCache?.raw_prices?.moderatelyPlayed ?? null,
-    heavilyPlayed: priceCache?.raw_prices?.heavilyPlayed ?? null,
+    nearMint: dbPriceCache?.raw_prices?.nearMint ?? livePrices?.raw?.nearMint ?? (cardData ? null : mockPrices.current.raw.price),
+    lightlyPlayed: dbPriceCache?.raw_prices?.lightlyPlayed ?? livePrices?.raw?.lightlyPlayed ?? null,
+    moderatelyPlayed: dbPriceCache?.raw_prices?.moderatelyPlayed ?? livePrices?.raw?.moderatelyPlayed ?? null,
+    heavilyPlayed: dbPriceCache?.raw_prices?.heavilyPlayed ?? livePrices?.raw?.heavilyPlayed ?? null,
   };
 
   const defaultGradedPrices: Record<string, GradedPriceData> = cardData
@@ -317,11 +339,15 @@ export default async function CardDetailPage({ params }: PageProps) {
         psa10: { average: mockPrices.current['psa-10'].price, median: null, low: null, high: null, count: 0 },
       };
 
-  const gradedPrices: Record<string, GradedPriceData> = priceCache?.graded_prices || defaultGradedPrices;
+  const gradedPrices: Record<string, GradedPriceData> =
+    dbPriceCache?.graded_prices ||
+    livePrices?.graded ||
+    defaultGradedPrices;
 
   // Check if data is stale
-  const isStale = priceCache?.expires_at ? new Date(priceCache.expires_at) < new Date() : false;
-  const lastUpdated = priceCache?.fetched_at || null;
+  const isStale = dbPriceCache?.expires_at ? new Date(dbPriceCache.expires_at) < new Date() : false;
+  const lastUpdated = dbPriceCache?.fetched_at || null;
+  const hasPriceData = !!(rawPrices.nearMint || Object.values(gradedPrices).some(g => g?.average));
 
   // Extract population data
   const populationReports = cardData?.population_reports || [];
@@ -435,7 +461,7 @@ export default async function CardDetailPage({ params }: PageProps) {
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     {card.rarity && <Badge variant="secondary">{getRarityDisplay(card.rarity)}</Badge>}
-                    <Badge variant="outline">#{card.number}/{card.set.card_count}</Badge>
+                    <Badge variant="outline">#{card.number.includes('/') ? card.number : `${card.number}/${card.set.card_count}`}</Badge>
                   </div>
                   <h1 className="text-3xl font-bold text-zinc-900 md:text-4xl">
                     {card.name}
@@ -449,10 +475,10 @@ export default async function CardDetailPage({ params }: PageProps) {
               <div className="mt-6">
                 <PriceDisplay
                   price={featuredPrice}
-                  change24h={mockPrices.change24h}
-                  change7d={mockPrices.change7d}
+                  change24h={hasPriceData ? null : mockPrices.change24h}
+                  change7d={hasPriceData ? null : mockPrices.change7d}
                   confidence={gradedPrices.psa10?.average ? 'high' : 'medium'}
-                  lastSaleDate={lastUpdated || mockPrices.current['psa-10'].last_sale}
+                  lastSaleDate={lastUpdated}
                   size="xl"
                 />
                 <p className="mt-2 text-sm text-zinc-500">
@@ -563,25 +589,62 @@ export default async function CardDetailPage({ params }: PageProps) {
                   </TabsList>
 
                   <TabsContent value="sales" className="mt-4">
-                    <div className="space-y-2">
-                      {mockRecentSales.map((sale, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center justify-between rounded-lg bg-zinc-50 p-3"
-                        >
-                          <div>
-                            <p className="font-medium text-zinc-900">
-                              {formatPrice(sale.price)}
-                            </p>
-                            <p className="text-sm text-zinc-500">{sale.grade}</p>
+                    {(() => {
+                      // Pull real eBay sales from price_cache.ebay_sales
+                      const ebaySales = dbPriceCache?.ebay_sales;
+                      const realSales: { grade: string; average: number; count: number }[] = [];
+                      if (ebaySales && typeof ebaySales === 'object') {
+                        for (const [grade, data] of Object.entries(ebaySales)) {
+                          if (data && typeof data === 'object' && 'average' in data) {
+                            const avg = (data as { average?: number }).average;
+                            const cnt = (data as { count?: number }).count;
+                            if (avg) realSales.push({ grade, average: avg, count: cnt || 0 });
+                          }
+                        }
+                        realSales.sort((a, b) => b.average - a.average);
+                      }
+                      if (realSales.length > 0) {
+                        return (
+                          <div className="space-y-2">
+                            {realSales.slice(0, 8).map((sale, index) => (
+                              <div key={index} className="flex items-center justify-between rounded-lg bg-zinc-50 p-3">
+                                <div>
+                                  <p className="font-medium text-zinc-900">{formatPrice(sale.average)}</p>
+                                  <p className="text-sm text-zinc-500">{sale.grade.toUpperCase().replace(/([a-z]+)(\d)/, '$1 $2')}</p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-sm text-zinc-500">{sale.count} sales</p>
+                                  <p className="text-xs text-zinc-400">eBay avg</p>
+                                </div>
+                              </div>
+                            ))}
                           </div>
-                          <div className="text-right">
-                            <p className="text-sm text-zinc-500">{formatDate(sale.date)}</p>
-                            <p className="text-xs text-zinc-400">{sale.source}</p>
+                        );
+                      }
+                      if (!cardData || !tcgPlayerId) {
+                        return (
+                          <div className="space-y-2">
+                            {mockRecentSales.map((sale, index) => (
+                              <div key={index} className="flex items-center justify-between rounded-lg bg-zinc-50 p-3">
+                                <div>
+                                  <p className="font-medium text-zinc-900">{formatPrice(sale.price)}</p>
+                                  <p className="text-sm text-zinc-500">{sale.grade}</p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-sm text-zinc-500">{formatDate(sale.date)}</p>
+                                  <p className="text-xs text-zinc-400">{sale.source}</p>
+                                </div>
+                              </div>
+                            ))}
                           </div>
-                        </div>
-                      ))}
-                    </div>
+                        );
+                      }
+                      return (
+                        <p className="text-sm text-zinc-400 py-4 text-center">
+                          eBay sales data syncing — check back shortly.
+                        </p>
+                      );
+                    })()}
                   </TabsContent>
 
                   <TabsContent value="listings" className="mt-4">
