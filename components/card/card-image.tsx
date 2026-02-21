@@ -137,6 +137,7 @@ export function CardImage({
         priority={priority}
         placeholder={blurDataURL ? 'blur' : 'empty'}
         blurDataURL={blurDataURL || DEFAULT_BLUR_PLACEHOLDER}
+        unoptimized={src.startsWith('http')}
         onLoad={() => setLoadingState('loaded')}
         onError={() => setLoadingState('error')}
         className={cn(
@@ -249,6 +250,7 @@ export function CardThumbnail({ src, alt, className, name }: CardThumbnailProps)
         height={56}
         onError={() => setHasError(true)}
         className="h-full w-full object-cover"
+        unoptimized={src.startsWith('http')}
       />
     </div>
   );

@@ -81,6 +81,7 @@ export function CardGridItem({
               height={112}
               className="w-20 h-28 object-cover rounded"
               loading="lazy"
+              unoptimized={card.image_url.startsWith('http')}
             />
           ) : (
             <div
