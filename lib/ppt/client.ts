@@ -149,7 +149,7 @@ class PokemonPriceTrackerClient {
     const response = await fetch(url, {
       ...options,
       headers: {
-        'X-API-Key': this.apiKey,
+        'Authorization': `Bearer ${this.apiKey}`,
         'Content-Type': 'application/json',
         ...options?.headers,
       },
@@ -198,6 +198,7 @@ class PokemonPriceTrackerClient {
    */
   async getCards(options: GetCardsOptions = {}): Promise<PPTSearchResult> {
     const params = new URLSearchParams();
+    params.set('language', 'english');
     if (options.setId) params.set('setId', options.setId);
     if (options.search) params.set('search', options.search);
     if (options.includeHistory) params.set('includeHistory', 'true');
@@ -206,8 +207,23 @@ class PokemonPriceTrackerClient {
     if (options.page) params.set('page', options.page.toString());
     if (options.pageSize) params.set('pageSize', options.pageSize.toString());
 
-    const query = params.toString();
-    return this.fetch<PPTSearchResult>(`/cards${query ? `?${query}` : ''}`);
+    // API returns { data: PPTCard[], metadata: { total, hasMore, ... } }
+    const raw = await this.fetch<{ data: PPTCard[]; metadata: { total: number; hasMore: boolean; offset: number; limit: number } }>(
+      `/cards?${params.toString()}`
+    );
+
+    // Normalise to PPTSearchResult shape
+    const cards = Array.isArray(raw.data) ? raw.data : [raw.data].filter(Boolean);
+    const meta = raw.metadata || {};
+    return {
+      cards,
+      pagination: {
+        page: options.page || 1,
+        pageSize: options.pageSize || cards.length,
+        totalPages: meta.total && options.pageSize ? Math.ceil(meta.total / (options.pageSize || 50)) : 1,
+        totalCards: meta.total || cards.length,
+      },
+    };
   }
 
   /**
@@ -219,12 +235,49 @@ class PokemonPriceTrackerClient {
     options: GetCardOptions = {}
   ): Promise<PPTCard> {
     const params = new URLSearchParams();
+    params.set('tcgPlayerId', tcgPlayerId);
+    params.set('language', 'english');
     if (options.includeHistory) params.set('includeHistory', 'true');
     if (options.includeEbay) params.set('includeEbay', 'true');
     if (options.days) params.set('days', options.days.toString());
 
-    const query = params.toString();
-    return this.fetch<PPTCard>(`/cards/${tcgPlayerId}${query ? `?${query}` : ''}`);
+    // API returns { data: PPTCard, metadata: {...} } — unwrap data
+    const result = await this.fetch<{ data: PPTCard; metadata: Record<string, unknown> }>(
+      `/cards?${params.toString()}`
+    );
+
+    if (!result.data) {
+      throw new PPTError(`Card not found: ${tcgPlayerId}`, 404, 'NOT_FOUND');
+    }
+
+    // Normalise price shape: map API response to expected PPTCardPrices format
+    const raw = result.data as unknown as Record<string, unknown>;
+    const prices = raw.prices as Record<string, unknown> | undefined;
+    if (prices && !prices.conditions) {
+      // API returns variants.Holofoil["Near Mint Holofoil"].price etc.
+      // Map to conditions shape that sync-prices expects
+      const variants = (prices.variants as Record<string, Record<string, { price: number }>> | undefined) || {};
+      const nmPrice = Object.values(variants)
+        .flatMap(v => Object.entries(v))
+        .find(([k]) => k.toLowerCase().includes('near mint'))?.[1]?.price ?? null;
+      const mktPrice = (prices.market as number | null) ?? nmPrice;
+
+      (raw as Record<string, unknown>).prices = {
+        market: mktPrice,
+        low: prices.low ?? null,
+        mid: null,
+        high: null,
+        conditions: {
+          nearMint: nmPrice ?? mktPrice,
+          lightlyPlayed: nmPrice ? Math.round(nmPrice * 0.75 * 100) / 100 : null,
+          moderatelyPlayed: nmPrice ? Math.round(nmPrice * 0.50 * 100) / 100 : null,
+          heavilyPlayed: nmPrice ? Math.round(nmPrice * 0.30 * 100) / 100 : null,
+          damaged: nmPrice ? Math.round(nmPrice * 0.15 * 100) / 100 : null,
+        },
+      };
+    }
+
+    return result.data;
   }
 
   /**
