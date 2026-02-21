@@ -58,6 +58,23 @@ function normalizeSalesByGrade(salesByGrade?: Record<string, unknown>) {
   return gradedPrices;
 }
 
+async function upsertPriceCache(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  payload: Record<string, unknown>
+) {
+  try {
+    await supabase
+      .from('price_cache')
+      .upsert(payload, { onConflict: 'card_id' });
+  } catch {
+    // Backward-compatible fallback for databases without unique(card_id)
+    await supabase
+      .from('price_cache')
+      .upsert(payload, { onConflict: 'card_id,variant_id' });
+  }
+}
+
 // Sync prices for active cards
 export const syncPrices = inngest.createFunction(
   {
@@ -109,24 +126,20 @@ export const syncPrices = inngest.createFunction(
             // Update price cache
             const expiresAt = new Date(Date.now() + CACHE_TTL.prices * 1000).toISOString();
 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await (supabase.from('price_cache') as any)
-              .upsert({
-                card_id: card.id,
-                variant_id: null,
-                raw_prices: {
-                  nearMint: pptCard.prices.conditions.nearMint,
-                  lightlyPlayed: pptCard.prices.conditions.lightlyPlayed,
-                  moderatelyPlayed: pptCard.prices.conditions.moderatelyPlayed,
-                  heavilyPlayed: pptCard.prices.conditions.heavilyPlayed,
-                },
-                graded_prices: gradedPrices,
-                ebay_sales: pptCard.ebay?.salesByGrade || {},
-                fetched_at: new Date().toISOString(),
-                expires_at: expiresAt,
-              }, {
-                onConflict: 'card_id',
-              });
+            await upsertPriceCache(supabase, {
+              card_id: card.id,
+              variant_id: null,
+              raw_prices: {
+                nearMint: pptCard.prices.conditions.nearMint,
+                lightlyPlayed: pptCard.prices.conditions.lightlyPlayed,
+                moderatelyPlayed: pptCard.prices.conditions.moderatelyPlayed,
+                heavilyPlayed: pptCard.prices.conditions.heavilyPlayed,
+              },
+              graded_prices: gradedPrices,
+              ebay_sales: pptCard.ebay?.salesByGrade || {},
+              fetched_at: new Date().toISOString(),
+              expires_at: expiresAt,
+            });
 
             // Update card's last fetch time
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -213,18 +226,14 @@ export const syncSetPrices = inngest.createFunction(
 
         const gradedPrices = normalizeSalesByGrade(pptCard.ebay?.salesByGrade as Record<string, unknown> | undefined);
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase.from('price_cache') as any)
-          .upsert({
-            card_id: card.id,
-            variant_id: null,
-            raw_prices: pptCard.prices.conditions,
-            graded_prices: gradedPrices,
-            fetched_at: new Date().toISOString(),
-            expires_at: new Date(Date.now() + CACHE_TTL.prices * 1000).toISOString(),
-          }, {
-            onConflict: 'card_id',
-          });
+        await upsertPriceCache(supabase, {
+          card_id: card.id,
+          variant_id: null,
+          raw_prices: pptCard.prices.conditions,
+          graded_prices: gradedPrices,
+          fetched_at: new Date().toISOString(),
+          expires_at: new Date(Date.now() + CACHE_TTL.prices * 1000).toISOString(),
+        });
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await (supabase.from('cards') as any)

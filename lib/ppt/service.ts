@@ -170,18 +170,25 @@ async function fetchAndCacheCard(
   const supabase = createServerClient();
   const ttlHours = determineCacheTTL(result);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase.from('price_cache') as any)
-    .upsert({
-      card_id: result.card.id,
-      variant_id: null,
-      raw_prices: result.prices.raw,
-      graded_prices: result.prices.graded,
-      expires_at: new Date(Date.now() + ttlHours * 60 * 60 * 1000).toISOString(),
-      fetched_at: new Date().toISOString(),
-    }, {
-      onConflict: 'card_id',
-    });
+  const payload = {
+    card_id: result.card.id,
+    variant_id: null,
+    raw_prices: result.prices.raw,
+    graded_prices: result.prices.graded,
+    expires_at: new Date(Date.now() + ttlHours * 60 * 60 * 1000).toISOString(),
+    fetched_at: new Date().toISOString(),
+  };
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from('price_cache') as any)
+      .upsert(payload, { onConflict: 'card_id' });
+  } catch {
+    // Backward-compatible fallback for databases without unique(card_id)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from('price_cache') as any)
+      .upsert(payload, { onConflict: 'card_id,variant_id' });
+  }
 
   return { ...result, fromCache: false };
 }
