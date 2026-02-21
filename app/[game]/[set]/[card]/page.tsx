@@ -69,7 +69,7 @@ interface CardData {
   image_url: string | null;
   sets: CardDataSet;
   card_variants: { id: string; variant_type: string; name: string; slug: string }[];
-  price_cache: CardDataPriceCache | null;
+  price_cache: CardDataPriceCache | CardDataPriceCache[] | null;
   price_history: CardDataPriceHistory[];
   population_reports: CardDataPopulation[];
 }
@@ -245,9 +245,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const cardName = cardData?.name || mockCard.name;
   const setName = cardData?.sets?.name || mockCard.set.name;
-  const priceCache = cardData?.price_cache;
-  const gradedPrices = priceCache?.graded_prices;
-  const psa10Price = gradedPrices?.psa10?.average || mockPrices.current['psa-10'].price;
+  const priceCache = Array.isArray(cardData?.price_cache)
+    ? cardData?.price_cache[0]
+    : cardData?.price_cache;
+  const gradedPrices = priceCache?.graded_prices || {};
+  const psa10Price = gradedPrices?.psa10?.average ?? gradedPrices?.psa9?.average ?? mockPrices.current['psa-10'].price;
 
   return {
     title: `${cardName} - ${setName} Price Guide | TCGMaster`,
@@ -295,21 +297,25 @@ export default async function CardDetailPage({ params }: PageProps) {
   } : { ...mockCard, lore: null as string | null };
 
   // Extract price data
-  const priceCache = cardData?.price_cache || null;
+  const priceCache = Array.isArray(cardData?.price_cache)
+    ? cardData?.price_cache[0] || null
+    : cardData?.price_cache || null;
 
   const rawPrices = {
-    nearMint: priceCache?.raw_prices?.nearMint ?? mockPrices.current.raw.price,
+    nearMint: priceCache?.raw_prices?.nearMint ?? (cardData ? null : mockPrices.current.raw.price),
     lightlyPlayed: priceCache?.raw_prices?.lightlyPlayed ?? null,
     moderatelyPlayed: priceCache?.raw_prices?.moderatelyPlayed ?? null,
     heavilyPlayed: priceCache?.raw_prices?.heavilyPlayed ?? null,
   };
 
-  const defaultGradedPrices: Record<string, GradedPriceData> = {
-    psa7: { average: mockPrices.current['psa-7'].price, median: null, low: null, high: null, count: 0 },
-    psa8: { average: mockPrices.current['psa-8'].price, median: null, low: null, high: null, count: 0 },
-    psa9: { average: mockPrices.current['psa-9'].price, median: null, low: null, high: null, count: 0 },
-    psa10: { average: mockPrices.current['psa-10'].price, median: null, low: null, high: null, count: 0 },
-  };
+  const defaultGradedPrices: Record<string, GradedPriceData> = cardData
+    ? {}
+    : {
+        psa7: { average: mockPrices.current['psa-7'].price, median: null, low: null, high: null, count: 0 },
+        psa8: { average: mockPrices.current['psa-8'].price, median: null, low: null, high: null, count: 0 },
+        psa9: { average: mockPrices.current['psa-9'].price, median: null, low: null, high: null, count: 0 },
+        psa10: { average: mockPrices.current['psa-10'].price, median: null, low: null, high: null, count: 0 },
+      };
 
   const gradedPrices: Record<string, GradedPriceData> = priceCache?.graded_prices || defaultGradedPrices;
 
@@ -323,7 +329,7 @@ export default async function CardDetailPage({ params }: PageProps) {
   for (const pop of populationReports) {
     population[`psa-${pop.grade}`] = pop.count;
   }
-  if (Object.keys(population).length === 0) {
+  if (!cardData && Object.keys(population).length === 0) {
     Object.assign(population, mockPopulation);
   }
 
@@ -334,7 +340,7 @@ export default async function CardDetailPage({ params }: PageProps) {
         .filter(h => h.grade === '10' || h.grade === 'psa10')
         .map(h => ({ date: h.recorded_at.split('T')[0], price: h.price }))
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    : mockPriceHistory;
+    : (cardData ? [] : mockPriceHistory);
 
   // Build price ladder entries
   const priceLadderEntries = [
@@ -357,7 +363,7 @@ export default async function CardDetailPage({ params }: PageProps) {
   const featuredPrice = gradedPrices.psa10?.average ||
                         gradedPrices.psa9?.average ||
                         rawPrices.nearMint ||
-                        mockPrices.current['psa-10'].price;
+                        (cardData ? 0 : mockPrices.current['psa-10'].price);
 
   return (
     <div className="min-h-screen pb-16 overflow-x-hidden">

@@ -37,6 +37,56 @@ export interface CardWithPrices {
   fromCache: boolean;
 }
 
+type RawGradeData = {
+  average?: number | null;
+  median?: number | null;
+  low?: number | null;
+  high?: number | null;
+  averagePrice?: number | null;
+  medianPrice?: number | null;
+  minPrice?: number | null;
+  maxPrice?: number | null;
+  count?: number;
+  smartMarketPrice?: {
+    price?: number;
+  };
+};
+
+function toNumberOrNull(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function normalizeGradeKey(key: string): string {
+  return key.toLowerCase().replace(/[\s_.-]/g, '');
+}
+
+function normalizeSalesByGrade(salesByGrade?: Record<string, unknown>) {
+  const gradedPrices: Record<string, {
+    average: number | null;
+    median: number | null;
+    low: number | null;
+    high: number | null;
+    count: number;
+  }> = {};
+
+  if (!salesByGrade) return gradedPrices;
+
+  for (const [key, raw] of Object.entries(salesByGrade)) {
+    if (!raw || typeof raw !== 'object') continue;
+
+    const data = raw as RawGradeData;
+    gradedPrices[normalizeGradeKey(key)] = {
+      average: toNumberOrNull(data.average ?? data.averagePrice ?? data.smartMarketPrice?.price),
+      median: toNumberOrNull(data.median ?? data.medianPrice),
+      low: toNumberOrNull(data.low ?? data.minPrice),
+      high: toNumberOrNull(data.high ?? data.maxPrice),
+      count: typeof data.count === 'number' ? data.count : 0,
+    };
+  }
+
+  return gradedPrices;
+}
+
 /**
  * Get card with prices, using cache-aside pattern with request coalescing
  */
@@ -124,12 +174,13 @@ async function fetchAndCacheCard(
   await (supabase.from('price_cache') as any)
     .upsert({
       card_id: result.card.id,
+      variant_id: null,
       raw_prices: result.prices.raw,
       graded_prices: result.prices.graded,
       expires_at: new Date(Date.now() + ttlHours * 60 * 60 * 1000).toISOString(),
       fetched_at: new Date().toISOString(),
     }, {
-      onConflict: 'card_id,variant_id',
+      onConflict: 'card_id',
     });
 
   return { ...result, fromCache: false };
@@ -140,27 +191,7 @@ async function fetchAndCacheCard(
  */
 function transformPPTCard(pptCard: PPTCard): CardWithPrices {
   // Transform graded prices
-  const gradedPrices: Record<string, {
-    average: number | null;
-    median: number | null;
-    low: number | null;
-    high: number | null;
-    count: number;
-  }> = {};
-
-  if (pptCard.ebay?.salesByGrade) {
-    for (const [key, data] of Object.entries(pptCard.ebay.salesByGrade)) {
-      if (data) {
-        gradedPrices[key] = {
-          average: data.average,
-          median: data.median,
-          low: data.low,
-          high: data.high,
-          count: data.count,
-        };
-      }
-    }
-  }
+  const gradedPrices = normalizeSalesByGrade(pptCard.ebay?.salesByGrade as Record<string, unknown> | undefined);
 
   return {
     card: {

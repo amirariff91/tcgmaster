@@ -131,7 +131,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
   // Check if price data is stale
   const priceCache: PriceCacheData | null = Array.isArray(card.price_cache)
-    ? card.price_cache[0] || null
+    ? [...card.price_cache]
+        .sort((a, b) => new Date(b.fetched_at).getTime() - new Date(a.fetched_at).getTime())[0] || null
     : card.price_cache;
   const isStale = priceCache ?
     new Date(priceCache.expires_at) < new Date() :

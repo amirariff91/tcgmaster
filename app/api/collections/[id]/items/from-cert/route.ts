@@ -196,7 +196,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .from('price_cache')
       .select('graded_prices')
       .eq('card_id', cardId)
-      .single();
+      .order('fetched_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
     const priceCache = priceCacheData as PriceCacheRow | null;
 
