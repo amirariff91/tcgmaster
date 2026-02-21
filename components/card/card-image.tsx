@@ -124,16 +124,20 @@ export function CardImage({
     <div className={cn('relative overflow-hidden rounded-lg', config.className, className)}>
       {/* Show loading skeleton while image loads */}
       {loadingState === 'loading' && (
-        <div className="absolute inset-0 z-10">
+        <div
+          className="absolute inset-0 z-10"
+          style={{ aspectRatio: '5/7' }}
+        >
           <LoadingSkeleton alt={alt} className={className} sizeClassName={config.className} />
         </div>
       )}
 
-      {/* The actual image with blur-up transition */}
+      {/* The actual image — use width/height (not fill) so parent needs no explicit height */}
       <Image
         src={src}
         alt={alt}
-        fill
+        width={500}
+        height={700}
         priority={priority}
         placeholder={blurDataURL ? 'blur' : 'empty'}
         blurDataURL={blurDataURL || DEFAULT_BLUR_PLACEHOLDER}
@@ -141,11 +145,10 @@ export function CardImage({
         onLoad={() => setLoadingState('loaded')}
         onError={() => setLoadingState('error')}
         className={cn(
-          'h-auto w-full object-contain transition-all duration-300',
+          'w-full h-auto object-contain rounded-lg transition-all duration-300',
           loadingState === 'loading' && 'opacity-0 scale-105',
           loadingState === 'loaded' && 'opacity-100 scale-100'
         )}
-        style={{ aspectRatio: '5/7' }}
         sizes={
           size === 'hero'
             ? '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 384px'

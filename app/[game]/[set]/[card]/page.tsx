@@ -403,7 +403,7 @@ export default async function CardDetailPage({ params }: PageProps) {
           <div className="lg:col-span-1">
             <div className="lg:sticky lg:top-24">
               <CardImage
-                src={card.image_url || '/cards/placeholder.png'}
+                src={card.image_url}
                 alt={card.name}
                 size="hero"
                 priority
