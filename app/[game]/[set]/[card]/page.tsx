@@ -696,7 +696,7 @@ export default async function CardDetailPage({ params }: PageProps) {
                   <div>
                     <dt className="text-sm text-zinc-500">Number</dt>
                     <dd className="font-medium text-zinc-900">
-                      {card.number}/{card.set.card_count}
+                      {card.number.includes('/') ? card.number : `${card.number}/${card.set.card_count}`}
                     </dd>
                   </div>
                   {card.rarity && (
