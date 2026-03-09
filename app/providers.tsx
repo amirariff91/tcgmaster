@@ -2,8 +2,9 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NuqsAdapter } from 'nuqs/adapters/next/app';
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { CurrencyProvider } from '@/lib/currency-context';
+import { PostHogProvider } from '@/components/analytics/posthog-provider';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -21,7 +22,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <NuqsAdapter>
-        <CurrencyProvider>{children}</CurrencyProvider>
+        <CurrencyProvider>
+          <Suspense>
+            <PostHogProvider>{children}</PostHogProvider>
+          </Suspense>
+        </CurrencyProvider>
       </NuqsAdapter>
     </QueryClientProvider>
   );
