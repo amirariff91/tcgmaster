@@ -29,9 +29,10 @@ interface NavItem {
 }
 
 const mainNavItems: NavItem[] = [
-  { label: 'Pokemon', href: '/pokemon' },
-  { label: 'Basketball', href: '/sports-basketball' },
-  { label: 'Baseball', href: '/sports-baseball' },
+  { label: 'Prices', href: '/search' },
+  { label: 'Market Movers', href: '/market' },
+  { label: 'Collection', href: '/collection' },
+  { label: 'Watchlist', href: '/alerts' },
 ];
 
 const userNavItems: NavItem[] = [
@@ -63,14 +64,14 @@ export function Header() {
   }, []);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-zinc-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+    <header className="sticky top-0 z-50 w-full border-b border-stone-200 bg-[var(--surface-paper)]/95 backdrop-blur supports-[backdrop-filter]:bg-[var(--surface-paper)]/80">
       <div className="container flex h-16 items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600">
-            <span className="text-lg font-bold text-white">T</span>
+          <div className="flex h-8 w-8 items-center justify-center rounded-md border border-stone-400 bg-stone-950">
+            <span className="font-mono text-sm font-bold text-amber-200">TCG</span>
           </div>
-          <span className="hidden text-xl font-bold text-zinc-900 sm:block">
+          <span className="hidden text-xl font-semibold tracking-tight text-stone-950 sm:block">
             TCGMaster
           </span>
         </Link>

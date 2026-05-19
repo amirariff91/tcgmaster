@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Inter, Newsreader } from 'next/font/google';
 import Script from 'next/script';
 import './globals.css';
 import { Header } from '@/components/layout/header';
@@ -10,6 +10,11 @@ const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 
 const inter = Inter({
   variable: '--font-inter',
+  subsets: ['latin'],
+});
+
+const newsreader = Newsreader({
+  variable: '--font-newsreader',
   subsets: ['latin'],
 });
 
@@ -81,7 +86,7 @@ export default function RootLayout({
           </>
         )}
       </head>
-      <body className={`${inter.variable} font-sans antialiased bg-white text-zinc-900`}>
+      <body className={`${inter.variable} ${newsreader.variable} font-sans antialiased bg-white text-zinc-900`}>
         <Providers>
           <div className="flex min-h-screen flex-col">
             <Header />

@@ -1,9 +1,8 @@
 'use client';
 
-import * as React from 'react';
+import type * as React from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, BarChart3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface Category {
@@ -11,146 +10,90 @@ export interface Category {
   slug: string;
   description: string;
   cardCount: string;
-  gradient: string;
-  icon: React.ComponentType<{ className?: string }>;
-  // Iconic card images for mosaic background
-  iconicCards?: Array<{
-    name: string;
-    imageUrl: string;
-  }>;
+  gradient?: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  change?: string;
+  topMover?: string;
+  signal?: string;
 }
 
 interface CategoryCardsProps {
   categories: Category[];
 }
 
-// Default iconic cards for each category - empty arrays since images don't exist
-// Components have graceful fallback UI
-const DEFAULT_ICONIC_CARDS: Record<string, string[]> = {
-  pokemon: [],
-  'sports-basketball': [],
-  'sports-baseball': [],
-};
-
 export function CategoryCards({ categories }: CategoryCardsProps) {
   return (
-    <section className="container py-12 lg:py-16">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {categories.map((category) => (
-          <CategoryCard key={category.slug} category={category} />
+    <section className="space-y-4">
+      <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">Markets covered</p>
+          <h2 className="font-serif text-3xl font-semibold tracking-tight text-stone-950 md:text-4xl">
+            Market lanes, not directory tiles.
+          </h2>
+        </div>
+        <p className="max-w-xl text-sm leading-6 text-stone-600">
+          Each lane shows coverage, demand, and movement context so collectors know where the market is active.
+        </p>
+      </div>
+
+      <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-[0_1px_2px_rgba(41,37,36,0.06)]">
+        {categories.map((category, index) => (
+          <CategoryLane key={category.slug} category={category} index={index} />
         ))}
       </div>
     </section>
   );
 }
 
-interface CategoryCardProps {
+interface CategoryLaneProps {
   category: Category;
+  index: number;
 }
 
-function CategoryCard({ category }: CategoryCardProps) {
-  const [isHovered, setIsHovered] = React.useState(false);
-  const iconicCards = category.iconicCards?.map((c) => c.imageUrl) ||
-    DEFAULT_ICONIC_CARDS[category.slug] ||
-    [];
-
-  const Icon = category.icon;
+function CategoryLane({ category, index }: CategoryLaneProps) {
+  const isPositive = !category.change?.startsWith('-');
 
   return (
     <Link
       href={`/${category.slug}`}
-      className="group relative overflow-hidden rounded-2xl p-6 transition-all hover:scale-[1.02] hover:shadow-xl"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      className={cn(
+        'group grid gap-4 px-5 py-5 transition-colors hover:bg-amber-50/50 md:grid-cols-[1.3fr_0.8fr_0.8fr_auto] md:items-center md:px-6',
+        index !== 0 && 'border-t border-stone-200'
+      )}
     >
-      {/* Gradient background */}
-      <div
-        className={cn(
-          'absolute inset-0 bg-gradient-to-br opacity-90 transition-opacity',
-          category.gradient,
-          isHovered && 'opacity-95'
-        )}
+      <div className="flex items-start gap-4">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-stone-300 bg-stone-100 text-stone-800">
+          <BarChart3 className="h-5 w-5" />
+        </div>
+        <div>
+          <h3 className="text-lg font-semibold text-stone-950">{category.name}</h3>
+          <p className="text-sm text-stone-600">{category.description}</p>
+        </div>
+      </div>
+
+      <Metric label="Indexed" value={`${category.cardCount} cards`} />
+      <Metric
+        label="7d signal"
+        value={category.change || 'Active'}
+        className={isPositive ? 'text-emerald-700' : 'text-red-700'}
       />
 
-      {/* Card mosaic background */}
-      {iconicCards.length > 0 && (
-        <CardMosaic images={iconicCards} isHovered={isHovered} />
-      )}
-
-      {/* Content */}
-      <div className="relative text-white">
-        <Icon className="mb-4 h-8 w-8" />
-        <h2 className="text-2xl font-bold">{category.name}</h2>
-        <p className="mt-1 text-white/80">{category.description}</p>
-        <p className="mt-4 text-sm font-medium">{category.cardCount} cards</p>
-        <ArrowRight className="mt-4 h-5 w-5 transition-transform group-hover:translate-x-1" />
+      <div className="flex items-center justify-between gap-4 md:justify-end">
+        <div className="text-left md:text-right">
+          <p className="text-xs uppercase tracking-[0.16em] text-stone-500">Top mover</p>
+          <p className="text-sm font-medium text-stone-900">{category.topMover || category.signal || 'Live comps'}</p>
+        </div>
+        <ArrowRight className="h-4 w-4 text-stone-400 transition-transform group-hover:translate-x-1 group-hover:text-stone-900" />
       </div>
     </Link>
   );
 }
 
-interface CardMosaicProps {
-  images: string[];
-  isHovered: boolean;
-}
-
-function CardMosaic({ images, isHovered }: CardMosaicProps) {
-  // Fill to 6 images for consistent grid
-  const displayImages = [...images.slice(0, 6)];
-  while (displayImages.length < 6) {
-    displayImages.push(images[displayImages.length % images.length] || '');
-  }
-
+function Metric({ label, value, className }: { label: string; value: string; className?: string }) {
   return (
-    <div
-      className={cn(
-        'absolute inset-0 grid grid-cols-3 grid-rows-2 gap-1 opacity-20 transition-opacity duration-300',
-        isHovered && 'opacity-30'
-      )}
-    >
-      {displayImages.map((imageUrl, index) => (
-        <MosaicImage key={`${imageUrl}-${index}`} src={imageUrl} index={index} />
-      ))}
-    </div>
-  );
-}
-
-interface MosaicImageProps {
-  src: string;
-  index: number;
-}
-
-function MosaicImage({ src, index }: MosaicImageProps) {
-  const [hasError, setHasError] = React.useState(false);
-  const [isLoaded, setIsLoaded] = React.useState(false);
-
-  // Stagger animation based on index
-  const animationDelay = `${index * 100}ms`;
-
-  if (!src || hasError) {
-    return (
-      <div className="h-full w-full bg-white/10" />
-    );
-  }
-
-  return (
-    <div
-      className={cn(
-        'relative h-full w-full overflow-hidden transition-opacity duration-500',
-        isLoaded ? 'opacity-100' : 'opacity-0'
-      )}
-      style={{ animationDelay }}
-    >
-      <Image
-        src={src}
-        alt=""
-        fill
-        sizes="(max-width: 640px) 33vw, 20vw"
-        className="object-cover"
-        onLoad={() => setIsLoaded(true)}
-        onError={() => setHasError(true)}
-        loading="lazy"
-      />
+    <div>
+      <p className="text-xs uppercase tracking-[0.16em] text-stone-500">{label}</p>
+      <p className={cn('mt-1 font-mono text-sm font-semibold tabular-nums text-stone-950', className)}>{value}</p>
     </div>
   );
 }

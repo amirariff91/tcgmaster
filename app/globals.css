@@ -41,6 +41,16 @@
 /* Tailwind v4: Theme customization */
 @theme {
   --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
+  --font-serif: var(--font-newsreader), Georgia, serif;
+
+  --surface-warm: oklch(96% 0.012 85);
+  --surface-paper: oklch(99% 0.006 85);
+  --ink: oklch(20% 0.025 75);
+  --muted: oklch(48% 0.025 75);
+  --line: oklch(86% 0.018 80);
+  --accent: oklch(66% 0.13 72);
+  --accent-dark: oklch(44% 0.10 72);
+  --accent-soft: oklch(91% 0.045 72);
 
   /* Animation keyframes */
   --animate-shimmer: shimmer 2s linear infinite;

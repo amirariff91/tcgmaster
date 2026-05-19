@@ -1,13 +1,10 @@
 'use client';
 
-import * as React from 'react';
 import Link from 'next/link';
-import { TrendingUp, TrendingDown, ArrowRight } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { CardThumbnail } from '@/components/card/card-image';
+import { ArrowRight, TrendingDown, TrendingUp } from 'lucide-react';
 import { formatPriceChange } from '@/lib/utils';
 import { useCurrencyContext } from '@/lib/currency-context';
+import { cn } from '@/lib/utils';
 
 export interface MarketMover {
   id: string;
@@ -18,6 +15,10 @@ export interface MarketMover {
   change: number;
   image: string | null;
   slug: string;
+  volume?: number;
+  confidence?: 'High' | 'Medium' | 'Thin';
+  source?: string;
+  lastSale?: string;
 }
 
 interface MarketMoversProps {
@@ -26,145 +27,83 @@ interface MarketMoversProps {
 }
 
 export function MarketMovers({ gainers, losers }: MarketMoversProps) {
+  const rows = [...gainers, ...losers].sort((a, b) => Math.abs(b.change) - Math.abs(a.change));
+  const { format } = useCurrencyContext();
+
   return (
-    <section className="container py-12 lg:py-16">
-      <div className="mb-8 flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-zinc-900">
-          Market Movers
-        </h2>
-        <Link href="/market">
-          <Button variant="ghost" size="sm">
-            View All <ArrowRight className="ml-1 h-4 w-4" />
-          </Button>
+    <section className="space-y-5">
+      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">Today&apos;s movement</p>
+          <h2 className="font-serif text-3xl font-semibold tracking-tight text-stone-950 md:text-4xl">
+            Prices with volume and confidence.
+          </h2>
+        </div>
+        <Link
+          href="/market"
+          className="inline-flex items-center gap-2 text-sm font-medium text-stone-700 transition-colors hover:text-stone-950"
+        >
+          View full market desk <ArrowRight className="h-4 w-4" />
         </Link>
       </div>
 
-      {/* Mobile: horizontal scroll, Desktop: grid */}
-      <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 sm:overflow-visible">
-        <div className="flex gap-4 sm:grid sm:grid-cols-2 sm:gap-8 min-w-max sm:min-w-0">
-          <MoversList
-            title="Top Gainers (24h)"
-            icon={<TrendingUp className="h-5 w-5 text-emerald-500" />}
-            items={gainers}
-            isPositive
-          />
-          <MoversList
-            title="Top Losers (24h)"
-            icon={<TrendingDown className="h-5 w-5 text-red-500" />}
-            items={losers}
-            isPositive={false}
-          />
+      <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-[0_1px_2px_rgba(41,37,36,0.06)]">
+        <div className="hidden grid-cols-[3rem_1.6fr_0.8fr_0.8fr_0.7fr_0.8fr_0.8fr] gap-4 border-b border-stone-200 bg-stone-100/80 px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-stone-500 md:grid">
+          <span>#</span>
+          <span>Card</span>
+          <span>Grade</span>
+          <span className="text-right">Last comp</span>
+          <span className="text-right">24h</span>
+          <span className="text-right">Volume</span>
+          <span className="text-right">Confidence</span>
+        </div>
+
+        <div className="divide-y divide-stone-200">
+          {rows.map((card, index) => {
+            const isPositive = card.change >= 0;
+            return (
+              <Link
+                key={card.id}
+                href={`/${card.slug}`}
+                className="grid gap-3 px-5 py-4 transition-colors hover:bg-amber-50/50 md:grid-cols-[3rem_1.6fr_0.8fr_0.8fr_0.7fr_0.8fr_0.8fr] md:items-center md:gap-4"
+              >
+                <span className="font-mono text-sm text-stone-400">{String(index + 1).padStart(2, '0')}</span>
+                <div>
+                  <p className="font-semibold text-stone-950">{card.name}</p>
+                  <p className="text-sm text-stone-600">{card.set}</p>
+                  <p className="mt-1 text-xs text-stone-500 md:hidden">
+                    {card.grade} · {card.source || 'Tracked comps'} · {card.confidence || 'High'} confidence
+                  </p>
+                </div>
+                <span className="hidden text-sm font-medium text-stone-700 md:block">{card.grade}</span>
+                <span className="font-mono text-sm font-semibold tabular-nums text-stone-950 md:text-right">
+                  {format(card.price)}
+                </span>
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-1 font-mono text-sm font-semibold tabular-nums md:justify-end',
+                    isPositive ? 'text-emerald-700' : 'text-red-700'
+                  )}
+                >
+                  {isPositive ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
+                  {formatPriceChange(card.change)}
+                </span>
+                <span className="hidden font-mono text-sm tabular-nums text-stone-700 md:block md:text-right">
+                  {card.volume || 0} comps
+                </span>
+                <span className="hidden text-sm text-stone-700 md:block md:text-right">
+                  {card.confidence || 'High'}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+
+        <div className="border-t border-stone-200 bg-stone-50 px-5 py-3 text-xs leading-5 text-stone-600">
+          Movement combines completed-sale comps with active listing pressure. Thin-volume items are marked before they distort the market view.
         </div>
       </div>
     </section>
-  );
-}
-
-interface MoversListProps {
-  title: string;
-  icon: React.ReactNode;
-  items: MarketMover[];
-  isPositive: boolean;
-}
-
-function MoversList({ title, icon, items, isPositive }: MoversListProps) {
-  return (
-    <Card className="w-80 sm:w-auto shrink-0 sm:shrink">
-      <CardHeader className="flex flex-row items-center gap-2 pb-2">
-        {icon}
-        <CardTitle className="text-lg">{title}</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-2">
-        {items.map((card, index) => (
-          <MoverItem
-            key={card.id}
-            card={card}
-            index={index}
-            isPositive={isPositive}
-          />
-        ))}
-      </CardContent>
-    </Card>
-  );
-}
-
-interface MoverItemProps {
-  card: MarketMover;
-  index: number;
-  isPositive: boolean;
-}
-
-function MoverItem({ card, index, isPositive }: MoverItemProps) {
-  const { format } = useCurrencyContext();
-  const [isVisible, setIsVisible] = React.useState(false);
-  const [hasLoadedImage, setHasLoadedImage] = React.useState(false);
-  const itemRef = React.useRef<HTMLAnchorElement>(null);
-
-  // Intersection Observer for lazy loading
-  React.useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.disconnect();
-        }
-      },
-      { rootMargin: '100px', threshold: 0.1 }
-    );
-
-    const el = itemRef.current;
-    if (el) observer.observe(el);
-
-    return () => observer.disconnect();
-  }, []);
-
-  // Simulate image loading delay for demo
-  React.useEffect(() => {
-    if (isVisible && card.image) {
-      const timer = setTimeout(() => setHasLoadedImage(true), 100 + index * 50);
-      return () => clearTimeout(timer);
-    }
-  }, [isVisible, card.image, index]);
-
-  return (
-    <Link
-      ref={itemRef}
-      href={`/${card.slug}`}
-      className="flex items-center gap-4 rounded-lg p-3 transition-colors hover:bg-zinc-50"
-    >
-      <span className="w-6 text-center text-sm font-medium text-zinc-400">
-        {index + 1}
-      </span>
-
-      {/* Lazy-loaded thumbnail */}
-      <CardThumbnail
-        src={isVisible && hasLoadedImage ? card.image : null}
-        alt={card.name}
-        name={card.name}
-      />
-
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-medium text-zinc-900">
-          {card.name}
-        </p>
-        <p className="truncate text-sm text-zinc-500">
-          {card.set} - {card.grade}
-        </p>
-      </div>
-
-      <div className="text-right">
-        <p className="font-bold text-zinc-900">
-          {format(card.price)}
-        </p>
-        <p
-          className={`text-sm font-medium ${
-            isPositive ? 'text-emerald-500' : 'text-red-500'
-          }`}
-        >
-          {formatPriceChange(card.change)}
-        </p>
-      </div>
-    </Link>
   );
 }
 
