@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   Plus,
@@ -12,120 +13,389 @@ import {
   Search,
   Grid,
   List,
-  TrendingUp,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CardPreview } from '@/components/card/card-preview';
 import { formatPrice, formatPriceChange } from '@/lib/utils';
+import { useCollections, useCollection } from '@/hooks/use-collections';
+import { createClient } from '@/lib/supabase/browser';
 
-// Mock collections
-const mockCollections = [
-  {
-    id: '1',
-    name: 'Personal Collection',
-    type: 'personal',
-    icon: FolderOpen,
-    item_count: 47,
-    total_value: 125000,
-    change_30d: 8.5,
-  },
-  {
-    id: '2',
-    name: 'Investment Holdings',
-    type: 'investment',
-    icon: Briefcase,
-    item_count: 12,
-    total_value: 85000,
-    change_30d: 12.3,
-  },
-  {
-    id: '3',
-    name: 'For Sale',
-    type: 'for-sale',
-    icon: Tag,
-    item_count: 8,
-    total_value: 15000,
-    change_30d: -2.1,
-  },
-  {
-    id: '4',
-    name: 'Wishlist',
-    type: 'wishlist',
-    icon: Heart,
-    item_count: 23,
-    total_value: 250000,
-    change_30d: 5.2,
-  },
-];
+// Map collection type to icon
+function getCollectionIcon(type: string) {
+  switch (type) {
+    case 'investment':
+      return Briefcase;
+    case 'for-sale':
+      return Tag;
+    case 'wishlist':
+      return Heart;
+    default:
+      return FolderOpen;
+  }
+}
 
-// Mock collection items
-const mockItems = [
-  {
-    id: '1',
-    card: {
-      id: '1',
-      name: 'Charizard',
-      slug: 'charizard-holo',
-      number: '4',
-      rarity: 'holo-rare' as const,
-      image_url: '/cards/charizard.png',
-      set: { id: '1', name: 'Base Set', slug: 'base-set' },
-    },
-    grade: 'PSA 10',
-    cert_number: '12345678',
-    cost_basis: 35000,
-    current_value: 42000,
-    acquisition_date: '2023-06-15',
-  },
-  {
-    id: '2',
-    card: {
-      id: '2',
-      name: 'Blastoise',
-      slug: 'blastoise-holo',
-      number: '2',
-      rarity: 'holo-rare' as const,
-      image_url: '/cards/blastoise.png',
-      set: { id: '1', name: 'Base Set', slug: 'base-set' },
-    },
-    grade: 'PSA 9',
-    cert_number: '87654321',
-    cost_basis: 2500,
-    current_value: 2800,
-    acquisition_date: '2023-08-20',
-  },
-  {
-    id: '3',
-    card: {
-      id: '3',
-      name: 'Venusaur',
-      slug: 'venusaur-holo',
-      number: '15',
-      rarity: 'holo-rare' as const,
-      image_url: '/cards/venusaur.png',
-      set: { id: '1', name: 'Base Set', slug: 'base-set' },
-    },
-    grade: 'Raw',
-    cert_number: null,
-    cost_basis: 300,
-    current_value: 450,
-    acquisition_date: '2024-01-10',
-  },
-];
+// ─── New Collection Modal ────────────────────────────────────────────────────
+
+interface NewCollectionModalProps {
+  onClose: () => void;
+  createCollection: (data: {
+    name: string;
+    type?: string;
+    description?: string;
+  }) => Promise<unknown>;
+}
+
+function NewCollectionModal({
+  onClose,
+  createCollection,
+}: NewCollectionModalProps) {
+  const [name, setName] = React.useState('');
+  const [type, setType] = React.useState('personal');
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      await createCollection({ name: name.trim(), type });
+      onClose();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Failed to create collection',
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+        <h2 className="text-xl font-bold text-zinc-900">New Collection</h2>
+        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+          <div>
+            <label className="text-sm font-medium text-zinc-700">Name</label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="My Collection"
+              className="mt-1"
+              autoFocus
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-zinc-700">Type</label>
+            <select
+              value={type}
+              onChange={(e) => setType(e.target.value)}
+              className="mt-1 block w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-400"
+            >
+              <option value="personal">Personal</option>
+              <option value="investment">Investment</option>
+              <option value="for-sale">For Sale</option>
+              <option value="wishlist">Wishlist</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+          {error && <p className="text-sm text-red-600">{error}</p>}
+          <div className="flex gap-3 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={isSubmitting || !name.trim()}
+              className="flex-1"
+            >
+              {isSubmitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                'Create'
+              )}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ─── Collection Items View ───────────────────────────────────────────────────
+
+function CollectionItemsView({
+  collectionId,
+  viewMode,
+  searchQuery,
+}: {
+  collectionId: string;
+  viewMode: 'grid' | 'list';
+  searchQuery: string;
+}) {
+  const { items, isLoading, error, removeItem } = useCollection(collectionId);
+
+  const filteredItems = items.filter((item) => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    const name = item.cards?.name?.toLowerCase() ?? '';
+    const setName = item.cards?.sets?.name?.toLowerCase() ?? '';
+    const grade = (item.grade ?? '').toLowerCase();
+    return name.includes(q) || setName.includes(q) || grade.includes(q);
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <p className="text-red-600">Failed to load collection items.</p>
+      </div>
+    );
+  }
+
+  if (filteredItems.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <FolderOpen className="h-12 w-12 text-zinc-300" />
+        <h2 className="mt-4 text-xl font-semibold text-zinc-900">
+          {searchQuery ? 'No cards match your search' : 'No cards yet'}
+        </h2>
+        <p className="mt-2 text-zinc-500">
+          {searchQuery
+            ? 'Try adjusting your search query.'
+            : 'Start building your collection by adding your first card.'}
+        </p>
+        {!searchQuery && (
+          <Button className="mt-4">
+            <Plus className="h-4 w-4" />
+            Add Your First Card
+          </Button>
+        )}
+      </div>
+    );
+  }
+
+  if (viewMode === 'grid') {
+    return (
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {filteredItems.map((item) => (
+          <Card key={item.id} className="overflow-hidden">
+            <div className="relative p-4">
+              <div className="mx-auto w-fit">
+                {item.cards?.image_url || item.cards?.local_image_url ? (
+                  <img
+                    src={
+                      item.cards.local_image_url ??
+                      item.cards.image_url ??
+                      undefined
+                    }
+                    alt={item.cards.name}
+                    className="h-40 w-28 rounded-lg object-cover"
+                  />
+                ) : (
+                  <div className="h-40 w-28 rounded-lg bg-zinc-100" />
+                )}
+              </div>
+              {item.grade && (
+                <Badge variant="grade" className="absolute top-2 right-2">
+                  {item.grade}
+                </Badge>
+              )}
+            </div>
+            <CardContent className="border-t border-zinc-100">
+              {item.cards ? (
+                <Link
+                  href={`/pokemon/${item.cards.sets?.slug ?? ''}/${item.cards.slug}`}
+                >
+                  <h3 className="font-semibold text-zinc-900 hover:text-blue-600">
+                    {item.cards.name}
+                  </h3>
+                </Link>
+              ) : (
+                <h3 className="font-semibold text-zinc-900">Unknown Card</h3>
+              )}
+              <p className="text-sm text-zinc-500">
+                {item.cards?.sets?.name} - #{item.cards?.number}
+              </p>
+              <div className="mt-3 flex items-end justify-between">
+                <div>
+                  <p className="text-xs text-zinc-500">Value</p>
+                  <p className="font-bold text-zinc-900">
+                    {item.current_value != null
+                      ? formatPrice(item.current_value)
+                      : '—'}
+                  </p>
+                </div>
+                {item.current_value != null &&
+                  item.cost_basis != null &&
+                  item.cost_basis > 0 && (
+                    <div className="text-right">
+                      <p className="text-xs text-zinc-500">Gain/Loss</p>
+                      <p
+                        className={`font-medium ${
+                          item.current_value >= item.cost_basis
+                            ? 'text-emerald-600'
+                            : 'text-red-600'
+                        }`}
+                      >
+                        {formatPriceChange(
+                          ((item.current_value - item.cost_basis) /
+                            item.cost_basis) *
+                            100,
+                        )}
+                      </p>
+                    </div>
+                  )}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {filteredItems.map((item) => (
+        <div
+          key={item.id}
+          className="flex items-center gap-4 rounded-lg border border-zinc-200 bg-white p-4"
+        >
+          <div className="h-16 w-12 flex-shrink-0 overflow-hidden rounded bg-zinc-100">
+            {(item.cards?.local_image_url || item.cards?.image_url) && (
+              <img
+                src={
+                  item.cards.local_image_url ??
+                  item.cards.image_url ??
+                  undefined
+                }
+                alt={item.cards?.name}
+                className="h-full w-full object-cover"
+              />
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            {item.cards ? (
+              <Link
+                href={`/pokemon/${item.cards.sets?.slug ?? ''}/${item.cards.slug}`}
+              >
+                <h3 className="font-semibold text-zinc-900 hover:text-blue-600">
+                  {item.cards.name}
+                </h3>
+              </Link>
+            ) : (
+              <h3 className="font-semibold text-zinc-900">Unknown Card</h3>
+            )}
+            <p className="text-sm text-zinc-500">
+              {item.cards?.sets?.name} - {item.grade}
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="font-bold text-zinc-900">
+              {item.current_value != null
+                ? formatPrice(item.current_value)
+                : '—'}
+            </p>
+            {item.current_value != null &&
+              item.cost_basis != null &&
+              item.cost_basis > 0 && (
+                <p
+                  className={`text-sm font-medium ${
+                    item.current_value >= item.cost_basis
+                      ? 'text-emerald-600'
+                      : 'text-red-600'
+                  }`}
+                >
+                  {formatPriceChange(
+                    ((item.current_value - item.cost_basis) / item.cost_basis) *
+                      100,
+                  )}
+                </p>
+              )}
+          </div>
+          <button
+            className="text-zinc-400 hover:text-red-600"
+            onClick={() => removeItem(item.id)}
+            aria-label="Remove item"
+          >
+            <MoreHorizontal className="h-5 w-5" />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Main Page ───────────────────────────────────────────────────────────────
 
 export default function CollectionPage() {
-  const [activeCollection, setActiveCollection] = React.useState<string | null>(null);
+  const router = useRouter();
+  const [activeCollection, setActiveCollection] = React.useState<string | null>(
+    null,
+  );
   const [viewMode, setViewMode] = React.useState<'grid' | 'list'>('grid');
   const [searchQuery, setSearchQuery] = React.useState('');
+  const [showNewCollectionModal, setShowNewCollectionModal] =
+    React.useState(false);
+  const [isAuthChecked, setIsAuthChecked] = React.useState(false);
 
-  const totalValue = mockCollections.reduce((sum, c) => sum + c.total_value, 0);
-  const totalItems = mockCollections.reduce((sum, c) => sum + c.item_count, 0);
+  const { collections, isLoading: collectionsLoading, createCollection } =
+    useCollections();
+
+  // Auth check — redirect to /login if not signed in
+  React.useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) {
+        router.replace('/login');
+      } else {
+        setIsAuthChecked(true);
+      }
+    });
+  }, [router]);
+
+  const totalValue = collections.reduce(
+    (sum, c) => sum + (c.total_value ?? 0),
+    0,
+  );
+  const totalItems = collections.reduce(
+    (sum, c) => sum + (c.items_count ?? 0),
+    0,
+  );
+
+  if (!isAuthChecked) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pb-16">
+      {showNewCollectionModal && (
+        <NewCollectionModal
+          onClose={() => setShowNewCollectionModal(false)}
+          createCollection={createCollection}
+        />
+      )}
+
       {/* Header */}
       <div className="border-b border-zinc-200 bg-zinc-50">
         <div className="container mx-auto px-4 py-8">
@@ -135,10 +405,10 @@ export default function CollectionPage() {
                 My Collection
               </h1>
               <p className="mt-1 text-zinc-500">
-                {totalItems} cards across {mockCollections.length} collections
+                {totalItems} cards across {collections.length} collections
               </p>
             </div>
-            <Button>
+            <Button onClick={() => setShowNewCollectionModal(true)}>
               <Plus className="h-4 w-4" />
               New Collection
             </Button>
@@ -157,16 +427,14 @@ export default function CollectionPage() {
             <Card>
               <CardContent className="pt-6">
                 <p className="text-sm text-zinc-500">Total Cards</p>
-                <p className="text-2xl font-bold text-zinc-900">
-                  {totalItems}
-                </p>
+                <p className="text-2xl font-bold text-zinc-900">{totalItems}</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-6">
-                <p className="text-sm text-zinc-500">30 Day Change</p>
-                <p className="text-2xl font-bold text-emerald-600">
-                  {formatPriceChange(8.5)}
+                <p className="text-sm text-zinc-500">Collections</p>
+                <p className="text-2xl font-bold text-zinc-900">
+                  {collections.length}
                 </p>
               </CardContent>
             </Card>
@@ -176,15 +444,13 @@ export default function CollectionPage() {
 
       <div className="container mx-auto px-4 py-8">
         <div className="grid gap-8 lg:grid-cols-4">
-          {/* Sidebar - Collections List */}
+          {/* Sidebar — Collections List */}
           <div className="lg:col-span-1">
             <div className="sticky top-24 space-y-2">
               <button
                 onClick={() => setActiveCollection(null)}
                 className={`flex w-full items-center gap-3 rounded-lg p-3 text-left transition-colors ${
-                  activeCollection === null
-                    ? 'bg-zinc-100'
-                    : 'hover:bg-zinc-50'
+                  activeCollection === null ? 'bg-zinc-100' : 'hover:bg-zinc-50'
                 }`}
               >
                 <FolderOpen className="h-5 w-5 text-zinc-500" />
@@ -194,34 +460,59 @@ export default function CollectionPage() {
                 </div>
               </button>
 
-              {mockCollections.map((collection) => (
-                <button
-                  key={collection.id}
-                  onClick={() => setActiveCollection(collection.id)}
-                  className={`flex w-full items-center gap-3 rounded-lg p-3 text-left transition-colors ${
-                    activeCollection === collection.id
-                      ? 'bg-zinc-100'
-                      : 'hover:bg-zinc-50'
-                  }`}
-                >
-                  <collection.icon className="h-5 w-5 text-zinc-500" />
-                  <div className="flex-1 min-w-0">
-                    <p className="truncate font-medium text-zinc-900">
-                      {collection.name}
-                    </p>
-                    <p className="text-sm text-zinc-500">{collection.item_count} items</p>
-                  </div>
-                  <span
-                    className={`text-sm font-medium ${
-                      collection.change_30d >= 0 ? 'text-emerald-600' : 'text-red-600'
-                    }`}
-                  >
-                    {formatPriceChange(collection.change_30d)}
-                  </span>
-                </button>
-              ))}
+              {collectionsLoading ? (
+                <div className="flex justify-center py-4">
+                  <Loader2 className="h-5 w-5 animate-spin text-zinc-400" />
+                </div>
+              ) : (
+                collections.map((collection) => {
+                  const Icon = getCollectionIcon(collection.type);
+                  const pctChange =
+                    collection.total_cost_basis > 0
+                      ? ((collection.total_value - collection.total_cost_basis) /
+                          collection.total_cost_basis) *
+                        100
+                      : 0;
+                  return (
+                    <button
+                      key={collection.id}
+                      onClick={() => setActiveCollection(collection.id)}
+                      className={`flex w-full items-center gap-3 rounded-lg p-3 text-left transition-colors ${
+                        activeCollection === collection.id
+                          ? 'bg-zinc-100'
+                          : 'hover:bg-zinc-50'
+                      }`}
+                    >
+                      <Icon className="h-5 w-5 text-zinc-500" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium text-zinc-900">
+                          {collection.name}
+                        </p>
+                        <p className="text-sm text-zinc-500">
+                          {collection.items_count} items
+                        </p>
+                      </div>
+                      {collection.total_cost_basis > 0 && (
+                        <span
+                          className={`text-sm font-medium ${
+                            pctChange >= 0
+                              ? 'text-emerald-600'
+                              : 'text-red-600'
+                          }`}
+                        >
+                          {formatPriceChange(pctChange)}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })
+              )}
 
-              <Button variant="outline" className="w-full mt-4">
+              <Button
+                variant="outline"
+                className="mt-4 w-full"
+                onClick={() => setShowNewCollectionModal(true)}
+              >
                 <Plus className="h-4 w-4" />
                 New Collection
               </Button>
@@ -232,7 +523,7 @@ export default function CollectionPage() {
           <div className="lg:col-span-3">
             {/* Toolbar */}
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="relative flex-1 max-w-md">
+              <div className="relative max-w-md flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
                 <Input
                   placeholder="Search your collection..."
@@ -247,9 +538,7 @@ export default function CollectionPage() {
                   <button
                     onClick={() => setViewMode('grid')}
                     className={`p-2 ${
-                      viewMode === 'grid'
-                        ? 'bg-zinc-100'
-                        : 'hover:bg-zinc-50'
+                      viewMode === 'grid' ? 'bg-zinc-100' : 'hover:bg-zinc-50'
                     }`}
                   >
                     <Grid className="h-4 w-4" />
@@ -257,9 +546,7 @@ export default function CollectionPage() {
                   <button
                     onClick={() => setViewMode('list')}
                     className={`p-2 ${
-                      viewMode === 'list'
-                        ? 'bg-zinc-100'
-                        : 'hover:bg-zinc-50'
+                      viewMode === 'list' ? 'bg-zinc-100' : 'hover:bg-zinc-50'
                     }`}
                   >
                     <List className="h-4 w-4" />
@@ -272,111 +559,44 @@ export default function CollectionPage() {
               </div>
             </div>
 
-            {/* Collection Items */}
-            {viewMode === 'grid' ? (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {mockItems.map((item) => (
-                  <Card key={item.id} className="overflow-hidden">
-                    <div className="relative p-4">
-                      <div className="mx-auto w-fit">
-                        <div className="h-40 w-28 rounded-lg bg-zinc-100" />
-                      </div>
-                      <Badge variant="grade" className="absolute top-2 right-2">
-                        {item.grade}
-                      </Badge>
-                    </div>
-                    <CardContent className="border-t border-zinc-100">
-                      <Link href={`/pokemon/${item.card.set.slug}/${item.card.slug}`}>
-                        <h3 className="font-semibold text-zinc-900 hover:text-blue-600">
-                          {item.card.name}
-                        </h3>
-                      </Link>
-                      <p className="text-sm text-zinc-500">
-                        {item.card.set.name} - #{item.card.number}
-                      </p>
-                      <div className="mt-3 flex items-end justify-between">
-                        <div>
-                          <p className="text-xs text-zinc-500">Value</p>
-                          <p className="font-bold text-zinc-900">
-                            {formatPrice(item.current_value)}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xs text-zinc-500">Gain/Loss</p>
-                          <p
-                            className={`font-medium ${
-                              item.current_value >= item.cost_basis
-                                ? 'text-emerald-600'
-                                : 'text-red-600'
-                            }`}
-                          >
-                            {formatPriceChange(
-                              ((item.current_value - item.cost_basis) / item.cost_basis) * 100
-                            )}
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {mockItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center gap-4 rounded-lg border border-zinc-200 bg-white p-4"
+            {/* Content area */}
+            {activeCollection === null ? (
+              collections.length === 0 && !collectionsLoading ? (
+                /* No collections at all */
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <FolderOpen className="h-12 w-12 text-zinc-300" />
+                  <h2 className="mt-4 text-xl font-semibold text-zinc-900">
+                    No collections yet
+                  </h2>
+                  <p className="mt-2 text-zinc-500">
+                    Create your first collection to start tracking your cards.
+                  </p>
+                  <Button
+                    className="mt-4"
+                    onClick={() => setShowNewCollectionModal(true)}
                   >
-                    <div className="h-16 w-12 rounded bg-zinc-100" />
-                    <div className="flex-1 min-w-0">
-                      <Link href={`/pokemon/${item.card.set.slug}/${item.card.slug}`}>
-                        <h3 className="font-semibold text-zinc-900 hover:text-blue-600">
-                          {item.card.name}
-                        </h3>
-                      </Link>
-                      <p className="text-sm text-zinc-500">
-                        {item.card.set.name} - {item.grade}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-zinc-900">
-                        {formatPrice(item.current_value)}
-                      </p>
-                      <p
-                        className={`text-sm font-medium ${
-                          item.current_value >= item.cost_basis
-                            ? 'text-emerald-600'
-                            : 'text-red-600'
-                        }`}
-                      >
-                        {formatPriceChange(
-                          ((item.current_value - item.cost_basis) / item.cost_basis) * 100
-                        )}
-                      </p>
-                    </div>
-                    <button className="text-zinc-400 hover:text-zinc-600">
-                      <MoreHorizontal className="h-5 w-5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Empty State */}
-            {mockItems.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-16 text-center">
-                <FolderOpen className="h-12 w-12 text-zinc-300" />
-                <h2 className="mt-4 text-xl font-semibold text-zinc-900">
-                  No cards yet
-                </h2>
-                <p className="mt-2 text-zinc-500">
-                  Start building your collection by adding your first card.
-                </p>
-                <Button className="mt-4">
-                  <Plus className="h-4 w-4" />
-                  Add Your First Card
-                </Button>
-              </div>
+                    <Plus className="h-4 w-4" />
+                    Create Collection
+                  </Button>
+                </div>
+              ) : (
+                /* Prompt user to pick a collection */
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <FolderOpen className="h-12 w-12 text-zinc-300" />
+                  <h2 className="mt-4 text-xl font-semibold text-zinc-900">
+                    Select a collection
+                  </h2>
+                  <p className="mt-2 text-zinc-500">
+                    Choose a collection from the sidebar to view its cards.
+                  </p>
+                </div>
+              )
+            ) : (
+              <CollectionItemsView
+                collectionId={activeCollection}
+                viewMode={viewMode}
+                searchQuery={searchQuery}
+              />
             )}
           </div>
         </div>
