@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     template: '%s | TCGMaster',
   },
   description:
-    'The ultimate TCG price intelligence and collection management platform. Track Pokemon, sports cards, and more with real-time pricing, graded card data, and portfolio tools.',
+    'Search card prices, compare graded comps where source-backed data exists, and manage Pokemon and sports-card collection values.',
   keywords: [
     'TCG',
     'trading cards',
@@ -51,7 +51,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'TCGMaster - TCG Price Intelligence',
-    description: 'The ultimate TCG price intelligence and collection management platform.',
+    description: 'Search card prices and compare graded comps where source-backed data exists.',
   },
   robots: {
     index: true,

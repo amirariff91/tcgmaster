@@ -57,8 +57,8 @@ export function Footer({ className }: { className?: string }) {
               </span>
             </Link>
             <p className="mt-4 max-w-xs text-sm text-zinc-500">
-              The ultimate TCG price intelligence and collection management platform for serious
-              collectors and investors.
+              Search card prices, compare graded comps, and track collection value where
+              source-backed data is available.
             </p>
           </div>
 
