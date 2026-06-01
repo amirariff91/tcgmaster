@@ -177,7 +177,7 @@ export function Header() {
               )}
             </div>
           ) : (
-            <Link href="/auth/login">
+            <Link href="/login">
               <Button size="sm">
                 <User className="h-4 w-4" />
                 Sign In

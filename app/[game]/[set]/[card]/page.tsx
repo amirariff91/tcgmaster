@@ -248,13 +248,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { game, set, card: cardSlug } = await params;
   const cardData = await getCardData(game, set, cardSlug);
 
-  const cardName = cardData?.name || mockCard.name;
-  const setName = cardData?.sets?.name || mockCard.set.name;
+  const cardName = cardData?.name || cardSlug;
+  const setName = cardData?.sets?.name || set;
   const priceCache = Array.isArray(cardData?.price_cache)
     ? cardData?.price_cache[0]
     : cardData?.price_cache;
   const gradedPrices = priceCache?.graded_prices || {};
-  const psa10Price = gradedPrices?.psa10?.average ?? gradedPrices?.psa9?.average ?? mockPrices.current['psa-10'].price;
+  const psa10Price = gradedPrices?.psa10?.average ?? gradedPrices?.psa9?.average ?? 0;
 
   return {
     title: `${cardName} - ${setName} Price Guide | TCGMaster`,
@@ -272,11 +272,26 @@ export default async function CardDetailPage({ params }: PageProps) {
   // Fetch real card data from database
   const cardData = await getCardData(game, set, cardSlug);
 
-  // Use database data or fallback to mock
-  const setData = cardData?.sets || null;
-  const gameData = setData?.games || null;
+  // If no card found, show not-found state
+  if (!cardData) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center py-24 text-center">
+        <h1 className="text-3xl font-bold text-zinc-900 mb-3">Card Not Found</h1>
+        <p className="text-zinc-500 mb-6">
+          No card matching <span className="font-mono text-zinc-700">{cardSlug}</span> was found in{' '}
+          <span className="font-mono text-zinc-700">{set}</span>.
+        </p>
+        <Link href={`/${game}`} className="text-blue-600 hover:underline">
+          ← Back to {game}
+        </Link>
+      </div>
+    );
+  }
 
-  const card = cardData ? {
+  const setData = cardData.sets;
+  const gameData = setData.games;
+
+  const card = {
     id: cardData.id,
     name: cardData.name,
     slug: cardData.slug,
@@ -299,7 +314,7 @@ export default async function CardDetailPage({ params }: PageProps) {
       slug: gameData?.slug || '',
       display_name: gameData?.display_name || '',
     },
-  } : { ...mockCard, lore: null as string | null };
+  };
 
   // Extract price data — prefer DB cache, fall back to live PPT fetch
   const dbPriceCache = Array.isArray(cardData?.price_cache)
@@ -324,20 +339,13 @@ export default async function CardDetailPage({ params }: PageProps) {
   }
 
   const rawPrices = {
-    nearMint: dbPriceCache?.raw_prices?.nearMint ?? livePrices?.raw?.nearMint ?? (cardData ? null : mockPrices.current.raw.price),
+    nearMint: dbPriceCache?.raw_prices?.nearMint ?? livePrices?.raw?.nearMint ?? null,
     lightlyPlayed: dbPriceCache?.raw_prices?.lightlyPlayed ?? livePrices?.raw?.lightlyPlayed ?? null,
     moderatelyPlayed: dbPriceCache?.raw_prices?.moderatelyPlayed ?? livePrices?.raw?.moderatelyPlayed ?? null,
     heavilyPlayed: dbPriceCache?.raw_prices?.heavilyPlayed ?? livePrices?.raw?.heavilyPlayed ?? null,
   };
 
-  const defaultGradedPrices: Record<string, GradedPriceData> = cardData
-    ? {}
-    : {
-        psa7: { average: mockPrices.current['psa-7'].price, median: null, low: null, high: null, count: 0 },
-        psa8: { average: mockPrices.current['psa-8'].price, median: null, low: null, high: null, count: 0 },
-        psa9: { average: mockPrices.current['psa-9'].price, median: null, low: null, high: null, count: 0 },
-        psa10: { average: mockPrices.current['psa-10'].price, median: null, low: null, high: null, count: 0 },
-      };
+  const defaultGradedPrices: Record<string, GradedPriceData> = {};
 
   const gradedPrices: Record<string, GradedPriceData> =
     dbPriceCache?.graded_prices ||
@@ -355,8 +363,8 @@ export default async function CardDetailPage({ params }: PageProps) {
   for (const pop of populationReports) {
     population[`psa-${pop.grade}`] = pop.count;
   }
-  if (!cardData && Object.keys(population).length === 0) {
-    Object.assign(population, mockPopulation);
+  if (Object.keys(population).length === 0) {
+    // no population data available
   }
 
   // Extract price history
@@ -366,7 +374,7 @@ export default async function CardDetailPage({ params }: PageProps) {
         .filter(h => h.grade === '10' || h.grade === 'psa10')
         .map(h => ({ date: h.recorded_at.split('T')[0], price: h.price }))
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    : (cardData ? [] : mockPriceHistory);
+    : [];
 
   // Build price ladder entries
   const priceLadderEntries = [
@@ -389,7 +397,7 @@ export default async function CardDetailPage({ params }: PageProps) {
   const featuredPrice = gradedPrices.psa10?.average ||
                         gradedPrices.psa9?.average ||
                         rawPrices.nearMint ||
-                        (cardData ? 0 : mockPrices.current['psa-10'].price);
+                        0;
 
   return (
     <div className="min-h-screen pb-16 overflow-x-hidden">
@@ -475,8 +483,8 @@ export default async function CardDetailPage({ params }: PageProps) {
               <div className="mt-6">
                 <PriceDisplay
                   price={featuredPrice}
-                  change24h={hasPriceData ? null : mockPrices.change24h}
-                  change7d={hasPriceData ? null : mockPrices.change7d}
+                  change24h={null}
+                  change7d={null}
                   confidence={gradedPrices.psa10?.average ? 'high' : 'medium'}
                   lastSaleDate={lastUpdated}
                   size="xl"

@@ -78,11 +78,50 @@ function SearchResults() {
   const query = searchParams.get('q') || '';
 
   const [isLoading, setIsLoading] = React.useState(false);
-  const [results, setResults] = React.useState(mockResults);
+  const [results, setResults] = React.useState<typeof mockResults>([]);
   const [sort, setSort] = React.useState('relevance');
   const [game, setGame] = React.useState('all');
   const [grade, setGrade] = React.useState('all');
   const [showFilters, setShowFilters] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!query || query.length < 2) {
+      setResults([]);
+      return;
+    }
+    setIsLoading(true);
+    fetch(`/api/search?q=${encodeURIComponent(query)}`)
+      .then((res) => res.json())
+      .then((json) => {
+        const cards = json?.data?.results ?? [];
+        setResults(
+          cards.map((c: {
+            id: string;
+            name: string;
+            slug: string;
+            image_url: string | null;
+            rarity?: string;
+            subtitle?: string;
+            price?: number | null;
+          }) => {
+            const [, setSlugPart] = (c.slug || '').split('/');
+            return {
+              id: c.id,
+              name: c.name,
+              slug: c.slug,
+              number: '',
+              rarity: (c.rarity as 'holo-rare' | 'ultra-rare' | 'common' | 'uncommon' | 'rare' | 'secret-rare' | 'promo') || 'common',
+              image_url: c.image_url,
+              set: { id: setSlugPart || '', name: c.subtitle?.split(' - ')[0] || '', slug: setSlugPart || '' },
+              current_price: c.price ?? 0,
+              price_change_24h: 0,
+            };
+          })
+        );
+      })
+      .catch(() => setResults([]))
+      .finally(() => setIsLoading(false));
+  }, [query]);
 
   const activeFilters = React.useMemo(() => {
     const filters: string[] = [];

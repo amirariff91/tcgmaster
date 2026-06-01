@@ -336,9 +336,7 @@ function MarketDeskPreview() {
           </div>
         ))}
       </div>
-      <p className="mt-4 text-xs leading-5 text-stone-400">
-        Example market view. Production rows should link to source records and expose volume thresholds.
-      </p>
+
     </div>
   );
 }

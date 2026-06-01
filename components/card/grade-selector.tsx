@@ -36,7 +36,7 @@ export function GradeSelector({
         const isActive = activeGrade === gradeKey;
         const href = item.grade === 'raw'
           ? `/${gameSlug}/${setSlug}/${cardSlug}`
-          : `/${gameSlug}/${setSlug}/${cardSlug}/${item.grading_company}-${item.grade}`;
+          : `/${gameSlug}/${setSlug}/${cardSlug}?grade=${item.grading_company}-${item.grade}`;
 
         return (
           <Link
