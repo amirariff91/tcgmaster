@@ -239,7 +239,7 @@ export async function getSearchSuggestions(
   sets: Array<{ name: string; slug: string; cardCount: number }>;
   suggestions: string[];
 }> {
-  const supabase = createServerClient();
+  const supabase = createPublicClient();
 
   if (query.length < 2) {
     return { cards: [], sets: [], suggestions: [] };
@@ -313,7 +313,7 @@ export async function getSearchSuggestions(
 export async function getPopularSearches(
   limit: number = 10
 ): Promise<string[]> {
-  const supabase = createServerClient();
+  const supabase = createPublicClient();
 
   const { data } = await supabase
     .from('search_analytics')
