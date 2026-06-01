@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Bell,
   BellOff,
@@ -10,7 +11,7 @@ import {
   TrendingDown,
   Settings,
   Check,
-  ChevronDown,
+  Loader2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,99 +21,42 @@ import { Select } from '@/components/ui/select';
 import { Modal, ModalHeader, ModalTitle } from '@/components/ui/modal';
 import { formatPrice, formatDate } from '@/lib/utils';
 
-// Mock alerts data
-const mockAlerts = [
-  {
-    id: '1',
-    card: {
-      id: 'c1',
-      name: 'Charizard',
-      set: 'Base Set',
-      grade: 'PSA 10',
-      current_price: 42000,
-      image_url: null,
-    },
-    threshold_percent: 5,
-    direction: 'both' as const,
-    baseline_price: 40000,
-    is_active: true,
-    created_at: '2024-01-10',
-    last_triggered: '2024-01-18',
-    triggered_count: 3,
-  },
-  {
-    id: '2',
-    card: {
-      id: 'c2',
-      name: 'Lugia',
-      set: 'Neo Genesis',
-      grade: 'PSA 9',
-      current_price: 12500,
-      image_url: null,
-    },
-    threshold_percent: 10,
-    direction: 'down' as const,
-    baseline_price: 13000,
-    is_active: true,
-    created_at: '2024-01-05',
-    last_triggered: null,
-    triggered_count: 0,
-  },
-  {
-    id: '3',
-    card: {
-      id: 'c3',
-      name: 'Michael Jordan Rookie',
-      set: '1986-87 Fleer',
-      grade: 'PSA 10',
-      current_price: 450000,
-      image_url: null,
-    },
-    threshold_percent: 3,
-    direction: 'up' as const,
-    baseline_price: 420000,
-    is_active: false,
-    created_at: '2023-12-01',
-    last_triggered: '2024-01-02',
-    triggered_count: 5,
-  },
-];
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
-const mockTriggeredAlerts = [
-  {
-    id: 't1',
-    alert_id: '1',
-    card_name: 'Charizard',
-    card_set: 'Base Set',
-    previous_price: 40000,
-    new_price: 42000,
-    change_percent: 5,
-    triggered_at: '2024-01-18T14:30:00Z',
-    read: false,
-  },
-  {
-    id: 't2',
-    alert_id: '1',
-    card_name: 'Charizard',
-    card_set: 'Base Set',
-    previous_price: 38500,
-    new_price: 40000,
-    change_percent: 3.9,
-    triggered_at: '2024-01-15T09:15:00Z',
-    read: true,
-  },
-  {
-    id: 't3',
-    alert_id: '3',
-    card_name: 'Michael Jordan Rookie',
-    card_set: '1986-87 Fleer',
-    previous_price: 400000,
-    new_price: 420000,
-    change_percent: 5,
-    triggered_at: '2024-01-02T11:00:00Z',
-    read: true,
-  },
-];
+interface AlertCardData {
+  name: string;
+  setName: string;
+  imageUrl: string | null;
+  currentPrice: number | null;
+}
+
+interface AlertData {
+  id: string;
+  user_id: string;
+  card_id: string;
+  variant_id: string | null;
+  grade: string;
+  grading_company_id: string | null;
+  threshold_percent: number;
+  direction: 'up' | 'down' | 'both';
+  baseline_price: number | null;
+  is_active: boolean;
+  last_triggered: string | null;
+  trigger_count: number;
+  delivery_method: 'email' | 'push' | 'both';
+  created_at: string;
+}
+
+interface AlertEntry {
+  alert: AlertData;
+  card: AlertCardData;
+}
+
+// ---------------------------------------------------------------------------
+// Options
+// ---------------------------------------------------------------------------
 
 const directionOptions = [
   { value: 'both', label: 'Price moves ±%' },
@@ -135,6 +79,10 @@ const frequencyOptions = [
   { value: 'weekly', label: 'Weekly Digest' },
 ];
 
+// ---------------------------------------------------------------------------
+// AlertSettingsModal
+// ---------------------------------------------------------------------------
+
 interface AlertSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -151,14 +99,10 @@ function AlertSettingsModal({ isOpen, onClose }: AlertSettingsModalProps) {
       </ModalHeader>
       <div className="space-y-6">
         <div>
-          <h3 className="mb-3 font-medium text-zinc-900">
-            Email Notifications
-          </h3>
+          <h3 className="mb-3 font-medium text-zinc-900">Email Notifications</h3>
           <div className="space-y-3">
             <label className="flex items-center justify-between">
-              <span className="text-sm text-zinc-600">
-                Enable email alerts
-              </span>
+              <span className="text-sm text-zinc-600">Enable email alerts</span>
               <button
                 onClick={() => setEmailEnabled(!emailEnabled)}
                 className={`relative h-6 w-11 rounded-full transition-colors ${
@@ -174,43 +118,27 @@ function AlertSettingsModal({ isOpen, onClose }: AlertSettingsModalProps) {
             </label>
             {emailEnabled && (
               <div>
-                <label className="mb-2 block text-sm text-zinc-600">
-                  Notification frequency
-                </label>
-                <Select
-                  options={frequencyOptions}
-                  value={emailFrequency}
-                  onChange={setEmailFrequency}
-                />
+                <label className="mb-2 block text-sm text-zinc-600">Notification frequency</label>
+                <Select options={frequencyOptions} value={emailFrequency} onChange={setEmailFrequency} />
               </div>
             )}
           </div>
         </div>
 
         <div>
-          <h3 className="mb-3 font-medium text-zinc-900">
-            Default Settings
-          </h3>
+          <h3 className="mb-3 font-medium text-zinc-900">Default Settings</h3>
           <div className="space-y-3">
             <div>
-              <label className="mb-2 block text-sm text-zinc-600">
-                Default threshold
-              </label>
+              <label className="mb-2 block text-sm text-zinc-600">Default threshold</label>
               <Select
-                options={thresholdOptions.filter(o => o.value !== 'custom')}
+                options={thresholdOptions.filter((o) => o.value !== 'custom')}
                 value="5"
                 onChange={() => {}}
               />
             </div>
             <div>
-              <label className="mb-2 block text-sm text-zinc-600">
-                Default direction
-              </label>
-              <Select
-                options={directionOptions}
-                value="both"
-                onChange={() => {}}
-              />
+              <label className="mb-2 block text-sm text-zinc-600">Default direction</label>
+              <Select options={directionOptions} value="both" onChange={() => {}} />
             </div>
           </div>
         </div>
@@ -226,16 +154,129 @@ function AlertSettingsModal({ isOpen, onClose }: AlertSettingsModalProps) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Search result type for CreateAlertModal
+// ---------------------------------------------------------------------------
+
+interface SearchResult {
+  id: string;
+  name: string;
+  subtitle: string;
+  price: number | null;
+  image_url: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// CreateAlertModal
+// ---------------------------------------------------------------------------
+
 interface CreateAlertModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onCreated: (entry: AlertEntry) => void;
 }
 
-function CreateAlertModal({ isOpen, onClose }: CreateAlertModalProps) {
+function CreateAlertModal({ isOpen, onClose, onCreated }: CreateAlertModalProps) {
   const [searchQuery, setSearchQuery] = React.useState('');
+  const [searchResults, setSearchResults] = React.useState<SearchResult[]>([]);
+  const [selectedCard, setSelectedCard] = React.useState<SearchResult | null>(null);
   const [threshold, setThreshold] = React.useState('5');
   const [customThreshold, setCustomThreshold] = React.useState('');
   const [direction, setDirection] = React.useState('both');
+  const [submitting, setSubmitting] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const searchTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Debounced search
+  React.useEffect(() => {
+    if (!searchQuery || searchQuery.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    searchTimeout.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}&autocomplete=true&limit=6`);
+        if (res.ok) {
+          const json = await res.json();
+          const cards: SearchResult[] = (json.results ?? [])
+            .filter((r: { type: string }) => r.type === 'card')
+            .map((r: { id: string; name: string; subtitle: string; price: number | null; image_url: string | null }) => ({
+              id: r.id,
+              name: r.name,
+              subtitle: r.subtitle,
+              price: r.price,
+              image_url: r.image_url,
+            }));
+          setSearchResults(cards);
+        }
+      } catch {
+        // ignore search errors
+      }
+    }, 300);
+  }, [searchQuery]);
+
+  const handleSelectCard = (card: SearchResult) => {
+    setSelectedCard(card);
+    setSearchQuery(card.name);
+    setSearchResults([]);
+  };
+
+  const handleCreate = async () => {
+    if (!selectedCard) {
+      setError('Please select a card');
+      return;
+    }
+    const thresholdVal = threshold === 'custom' ? parseFloat(customThreshold) : parseFloat(threshold);
+    if (!thresholdVal || thresholdVal <= 0) {
+      setError('Please enter a valid threshold');
+      return;
+    }
+
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      const res = await fetch('/api/alerts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cardId: selectedCard.id,
+          thresholdPercent: thresholdVal,
+          direction,
+          deliveryMethod: 'email',
+        }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        setError(json.error ?? 'Failed to create alert');
+        return;
+      }
+
+      onCreated({
+        alert: json.data,
+        card: {
+          name: selectedCard.name,
+          setName: selectedCard.subtitle,
+          imageUrl: selectedCard.image_url,
+          currentPrice: selectedCard.price,
+        },
+      });
+      onClose();
+      // Reset state
+      setSearchQuery('');
+      setSelectedCard(null);
+      setThreshold('5');
+      setCustomThreshold('');
+      setDirection('both');
+    } catch {
+      setError('Network error. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
@@ -243,42 +284,55 @@ function CreateAlertModal({ isOpen, onClose }: CreateAlertModalProps) {
         <ModalTitle>Create Price Alert</ModalTitle>
       </ModalHeader>
       <div className="space-y-6">
+        {error && (
+          <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+        )}
+
         <div>
-          <label className="mb-2 block text-sm font-medium text-zinc-700">
-            Search for a card
-          </label>
+          <label className="mb-2 block text-sm font-medium text-zinc-700">Search for a card</label>
           <Input
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setSelectedCard(null);
+            }}
             placeholder="Search cards..."
           />
-          {searchQuery && (
+          {searchResults.length > 0 && (
             <div className="mt-2 rounded-lg border border-zinc-200 bg-white">
-              {/* Mock search results */}
-              <button className="flex w-full items-center gap-3 p-3 text-left hover:bg-zinc-50">
-                <div className="h-12 w-9 rounded bg-zinc-200" />
-                <div>
-                  <p className="font-medium text-zinc-900">Charizard</p>
-                  <p className="text-sm text-zinc-500">Base Set - PSA 10</p>
-                </div>
-                <span className="ml-auto text-sm font-semibold text-zinc-900">
-                  $42,000
-                </span>
-              </button>
+              {searchResults.map((card) => (
+                <button
+                  key={card.id}
+                  onClick={() => handleSelectCard(card)}
+                  className="flex w-full items-center gap-3 p-3 text-left hover:bg-zinc-50"
+                >
+                  <div className="h-12 w-9 flex-shrink-0 rounded bg-zinc-100 overflow-hidden">
+                    {card.image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={card.image_url} alt={card.name} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="h-full w-full bg-zinc-200" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-zinc-900 truncate">{card.name}</p>
+                    <p className="text-sm text-zinc-500 truncate">{card.subtitle}</p>
+                  </div>
+                  {card.price != null && (
+                    <span className="ml-auto text-sm font-semibold text-zinc-900 flex-shrink-0">
+                      {formatPrice(card.price)}
+                    </span>
+                  )}
+                </button>
+              ))}
             </div>
           )}
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="mb-2 block text-sm font-medium text-zinc-700">
-              Threshold
-            </label>
-            <Select
-              options={thresholdOptions}
-              value={threshold}
-              onChange={setThreshold}
-            />
+            <label className="mb-2 block text-sm font-medium text-zinc-700">Threshold</label>
+            <Select options={thresholdOptions} value={threshold} onChange={setThreshold} />
             {threshold === 'custom' && (
               <div className="mt-2 flex items-center gap-2">
                 <Input
@@ -294,31 +348,29 @@ function CreateAlertModal({ isOpen, onClose }: CreateAlertModalProps) {
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-zinc-700">
-              Direction
-            </label>
-            <Select
-              options={directionOptions}
-              value={direction}
-              onChange={setDirection}
-            />
+            <label className="mb-2 block text-sm font-medium text-zinc-700">Direction</label>
+            <Select options={directionOptions} value={direction} onChange={setDirection} />
           </div>
         </div>
 
         <div className="rounded-lg bg-zinc-50 p-4">
           <p className="text-sm text-zinc-600">
             You will be notified when the price{' '}
-            {direction === 'both' ? 'moves' : direction === 'up' ? 'increases' : 'decreases'}{' '}
-            by {threshold === 'custom' ? customThreshold || '?' : threshold}% from the current price.
+            {direction === 'both' ? 'moves' : direction === 'up' ? 'increases' : 'decreases'} by{' '}
+            {threshold === 'custom' ? customThreshold || '?' : threshold}% from the current price.
           </p>
         </div>
 
         <div className="flex justify-end gap-3">
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={onClose} disabled={submitting}>
             Cancel
           </Button>
-          <Button onClick={onClose}>
-            <Bell className="h-4 w-4" />
+          <Button onClick={handleCreate} disabled={submitting || !selectedCard}>
+            {submitting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Bell className="h-4 w-4" />
+            )}
             Create Alert
           </Button>
         </div>
@@ -327,34 +379,106 @@ function CreateAlertModal({ isOpen, onClose }: CreateAlertModalProps) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// AlertsPage
+// ---------------------------------------------------------------------------
+
 export default function AlertsPage() {
-  const [alerts, setAlerts] = React.useState(mockAlerts);
-  const [triggeredAlerts, setTriggeredAlerts] = React.useState(mockTriggeredAlerts);
+  const router = useRouter();
+  const [alerts, setAlerts] = React.useState<AlertEntry[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
   const [showSettings, setShowSettings] = React.useState(false);
   const [showCreateAlert, setShowCreateAlert] = React.useState(false);
   const [filter, setFilter] = React.useState<'all' | 'active' | 'inactive'>('all');
 
-  const filteredAlerts = alerts.filter((alert) => {
-    if (filter === 'active') return alert.is_active;
-    if (filter === 'inactive') return !alert.is_active;
+  // Load alerts on mount
+  React.useEffect(() => {
+    const loadAlerts = async () => {
+      try {
+        const res = await fetch('/api/alerts');
+        if (res.status === 401) {
+          router.push('/login');
+          return;
+        }
+        if (!res.ok) {
+          const json = await res.json();
+          setError(json.error ?? 'Failed to load alerts');
+          return;
+        }
+        const json = await res.json();
+        setAlerts(json.data ?? []);
+      } catch {
+        setError('Network error. Please refresh.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadAlerts();
+  }, [router]);
+
+  const filteredAlerts = alerts.filter((entry) => {
+    if (filter === 'active') return entry.alert.is_active;
+    if (filter === 'inactive') return !entry.alert.is_active;
     return true;
   });
 
-  const unreadCount = triggeredAlerts.filter((t) => !t.read).length;
-
-  const toggleAlert = (id: string) => {
-    setAlerts(
-      alerts.map((a) => (a.id === id ? { ...a, is_active: !a.is_active } : a))
+  const toggleAlert = async (id: string) => {
+    // Optimistic update
+    setAlerts((prev) =>
+      prev.map((e) =>
+        e.alert.id === id ? { ...e, alert: { ...e.alert, is_active: !e.alert.is_active } } : e
+      )
     );
+
+    const res = await fetch(`/api/alerts/${id}`, { method: 'PATCH' });
+    if (!res.ok) {
+      // Revert on failure
+      setAlerts((prev) =>
+        prev.map((e) =>
+          e.alert.id === id ? { ...e, alert: { ...e.alert, is_active: !e.alert.is_active } } : e
+        )
+      );
+    }
   };
 
-  const deleteAlert = (id: string) => {
-    setAlerts(alerts.filter((a) => a.id !== id));
+  const deleteAlert = async (id: string) => {
+    // Optimistic update
+    const previous = alerts;
+    setAlerts((prev) => prev.filter((e) => e.alert.id !== id));
+
+    const res = await fetch(`/api/alerts/${id}`, { method: 'DELETE' });
+    if (!res.ok) {
+      setAlerts(previous);
+    }
   };
 
-  const markAllRead = () => {
-    setTriggeredAlerts(triggeredAlerts.map((t) => ({ ...t, read: true })));
+  const handleAlertCreated = (entry: AlertEntry) => {
+    setAlerts((prev) => [entry, ...prev]);
   };
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <p className="text-lg font-semibold text-zinc-900">Something went wrong</p>
+          <p className="mt-1 text-sm text-zinc-500">{error}</p>
+          <Button className="mt-4" onClick={() => window.location.reload()}>
+            Try again
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pb-16">
@@ -393,21 +517,7 @@ export default function AlertsPage() {
                     <Bell className="h-4 w-4 text-blue-500" />
                   </div>
                   <p className="mt-2 text-2xl font-bold text-zinc-900">
-                    {alerts.filter((a) => a.is_active).length}
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm text-zinc-500">Triggered Today</p>
-                    <TrendingUp className="h-4 w-4 text-emerald-500" />
-                  </div>
-                  <p className="mt-2 text-2xl font-bold text-zinc-900">
-                    {triggeredAlerts.filter((t) => {
-                      const today = new Date().toDateString();
-                      return new Date(t.triggered_at).toDateString() === today;
-                    }).length}
+                    {alerts.filter((e) => e.alert.is_active).length}
                   </p>
                 </CardContent>
               </Card>
@@ -415,11 +525,20 @@ export default function AlertsPage() {
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <p className="text-sm text-zinc-500">Total Triggers</p>
-                    <TrendingDown className="h-4 w-4 text-zinc-400" />
+                    <TrendingUp className="h-4 w-4 text-emerald-500" />
                   </div>
                   <p className="mt-2 text-2xl font-bold text-zinc-900">
-                    {alerts.reduce((sum, a) => sum + a.triggered_count, 0)}
+                    {alerts.reduce((sum, e) => sum + (e.alert.trigger_count ?? 0), 0)}
                   </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-zinc-500">Total Alerts</p>
+                    <TrendingDown className="h-4 w-4 text-zinc-400" />
+                  </div>
+                  <p className="mt-2 text-2xl font-bold text-zinc-900">{alerts.length}</p>
                 </CardContent>
               </Card>
             </div>
@@ -438,8 +557,8 @@ export default function AlertsPage() {
                 >
                   {f.charAt(0).toUpperCase() + f.slice(1)}
                   {f === 'all' && ` (${alerts.length})`}
-                  {f === 'active' && ` (${alerts.filter((a) => a.is_active).length})`}
-                  {f === 'inactive' && ` (${alerts.filter((a) => !a.is_active).length})`}
+                  {f === 'active' && ` (${alerts.filter((e) => e.alert.is_active).length})`}
+                  {f === 'inactive' && ` (${alerts.filter((e) => !e.alert.is_active).length})`}
                 </button>
               ))}
             </div>
@@ -450,9 +569,7 @@ export default function AlertsPage() {
                 <Card>
                   <CardContent className="flex flex-col items-center justify-center py-12">
                     <BellOff className="h-12 w-12 text-zinc-300" />
-                    <h3 className="mt-4 text-lg font-semibold text-zinc-900">
-                      No alerts found
-                    </h3>
+                    <h3 className="mt-4 text-lg font-semibold text-zinc-900">No alerts found</h3>
                     <p className="mt-1 text-sm text-zinc-500">
                       Create an alert to get notified of price changes
                     </p>
@@ -463,29 +580,31 @@ export default function AlertsPage() {
                   </CardContent>
                 </Card>
               ) : (
-                filteredAlerts.map((alert) => {
+                filteredAlerts.map((entry) => {
+                  const { alert, card } = entry;
                   const priceChange =
-                    ((alert.card.current_price - alert.baseline_price) /
-                      alert.baseline_price) *
-                    100;
-                  const isTriggered = Math.abs(priceChange) >= alert.threshold_percent;
+                    card.currentPrice != null && alert.baseline_price != null
+                      ? ((card.currentPrice - alert.baseline_price) / alert.baseline_price) * 100
+                      : null;
+                  const isTriggered =
+                    priceChange != null && Math.abs(priceChange) >= alert.threshold_percent;
 
                   return (
-                    <Card
-                      key={alert.id}
-                      className={!alert.is_active ? 'opacity-60' : ''}
-                    >
+                    <Card key={alert.id} className={!alert.is_active ? 'opacity-60' : ''}>
                       <CardContent className="p-4">
                         <div className="flex items-start gap-4">
-                          <div className="flex h-14 w-10 items-center justify-center rounded bg-zinc-100">
-                            <span className="text-lg font-bold text-zinc-400">?</span>
+                          <div className="flex h-14 w-10 items-center justify-center rounded bg-zinc-100 overflow-hidden flex-shrink-0">
+                            {card.imageUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={card.imageUrl} alt={card.name} className="h-full w-full object-cover" />
+                            ) : (
+                              <span className="text-lg font-bold text-zinc-400">?</span>
+                            )}
                           </div>
 
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <h3 className="font-semibold text-zinc-900 truncate">
-                                {alert.card.name}
-                              </h3>
+                              <h3 className="font-semibold text-zinc-900 truncate">{card.name}</h3>
                               {isTriggered && alert.is_active && (
                                 <Badge variant="warning" className="gap-1">
                                   <Bell className="h-3 w-3" />
@@ -494,44 +613,62 @@ export default function AlertsPage() {
                               )}
                             </div>
                             <p className="text-sm text-zinc-500">
-                              {alert.card.set} - {alert.card.grade}
+                              {card.setName} · {alert.grade}
                             </p>
                             <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
                               <span className="text-zinc-600">
                                 Alert at{' '}
                                 <span className="font-medium text-zinc-900">
-                                  ±{alert.threshold_percent}%
+                                  {alert.direction === 'both' ? '±' : alert.direction === 'up' ? '+' : '-'}
+                                  {alert.threshold_percent}%
                                 </span>
                               </span>
-                              <span className="text-zinc-300">|</span>
-                              <span className="text-zinc-600">
-                                Baseline:{' '}
-                                <span className="font-medium text-zinc-900">
-                                  {formatPrice(alert.baseline_price)}
-                                </span>
-                              </span>
-                              <span className="text-zinc-300">|</span>
-                              <span
-                                className={
-                                  priceChange >= 0 ? 'text-emerald-600' : 'text-red-600'
-                                }
-                              >
-                                {priceChange >= 0 ? '+' : ''}
-                                {priceChange.toFixed(1)}% since set
-                              </span>
+                              {alert.baseline_price != null && (
+                                <>
+                                  <span className="text-zinc-300">|</span>
+                                  <span className="text-zinc-600">
+                                    Baseline:{' '}
+                                    <span className="font-medium text-zinc-900">
+                                      {formatPrice(alert.baseline_price)}
+                                    </span>
+                                  </span>
+                                </>
+                              )}
+                              {priceChange != null && (
+                                <>
+                                  <span className="text-zinc-300">|</span>
+                                  <span className={priceChange >= 0 ? 'text-emerald-600' : 'text-red-600'}>
+                                    {priceChange >= 0 ? '+' : ''}
+                                    {priceChange.toFixed(1)}% since set
+                                  </span>
+                                </>
+                              )}
+                              {alert.trigger_count > 0 && (
+                                <>
+                                  <span className="text-zinc-300">|</span>
+                                  <span className="text-zinc-500">
+                                    {alert.trigger_count}× triggered
+                                  </span>
+                                </>
+                              )}
                             </div>
+                            {alert.last_triggered && (
+                              <p className="mt-1 text-xs text-zinc-400">
+                                Last triggered: {formatDate(alert.last_triggered)}
+                              </p>
+                            )}
                           </div>
 
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg font-bold text-zinc-900">
-                              {formatPrice(alert.card.current_price)}
-                            </span>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {card.currentPrice != null && (
+                              <span className="text-lg font-bold text-zinc-900">
+                                {formatPrice(card.currentPrice)}
+                              </span>
+                            )}
                             <button
                               onClick={() => toggleAlert(alert.id)}
                               className={`relative h-6 w-11 rounded-full transition-colors ${
-                                alert.is_active
-                                  ? 'bg-blue-600'
-                                  : 'bg-zinc-200'
+                                alert.is_active ? 'bg-blue-600' : 'bg-zinc-200'
                               }`}
                             >
                               <span
@@ -556,97 +693,8 @@ export default function AlertsPage() {
             </div>
           </div>
 
-          {/* Notification Feed */}
+          {/* Sidebar */}
           <div className="space-y-4">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2">
-                    <Bell className="h-5 w-5" />
-                    Recent Notifications
-                    {unreadCount > 0 && (
-                      <Badge variant="default">{unreadCount}</Badge>
-                    )}
-                  </CardTitle>
-                  {unreadCount > 0 && (
-                    <button
-                      onClick={markAllRead}
-                      className="text-sm text-blue-600 hover:underline"
-                    >
-                      Mark all read
-                    </button>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {triggeredAlerts.length === 0 ? (
-                  <p className="py-8 text-center text-sm text-zinc-500">
-                    No notifications yet
-                  </p>
-                ) : (
-                  triggeredAlerts.map((notification) => (
-                    <div
-                      key={notification.id}
-                      className={`rounded-lg p-3 ${
-                        notification.read
-                          ? 'bg-zinc-50'
-                          : 'bg-blue-50'
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div
-                          className={`mt-0.5 rounded-full p-1 ${
-                            notification.change_percent >= 0
-                              ? 'bg-emerald-100'
-                              : 'bg-red-100'
-                          }`}
-                        >
-                          {notification.change_percent >= 0 ? (
-                            <TrendingUp className="h-3 w-3 text-emerald-600" />
-                          ) : (
-                            <TrendingDown className="h-3 w-3 text-red-600" />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-zinc-900">
-                            {notification.card_name}
-                          </p>
-                          <p className="text-xs text-zinc-500">
-                            {notification.card_set}
-                          </p>
-                          <p className="mt-1 text-sm">
-                            <span className="text-zinc-500">
-                              {formatPrice(notification.previous_price)}
-                            </span>
-                            <span className="mx-1 text-zinc-400">→</span>
-                            <span className="font-medium text-zinc-900">
-                              {formatPrice(notification.new_price)}
-                            </span>
-                            <span
-                              className={`ml-2 ${
-                                notification.change_percent >= 0
-                                  ? 'text-emerald-600'
-                                  : 'text-red-600'
-                              }`}
-                            >
-                              ({notification.change_percent >= 0 ? '+' : ''}
-                              {notification.change_percent.toFixed(1)}%)
-                            </span>
-                          </p>
-                          <p className="mt-1 text-xs text-zinc-400">
-                            {formatDate(notification.triggered_at)}
-                          </p>
-                        </div>
-                        {!notification.read && (
-                          <div className="h-2 w-2 rounded-full bg-blue-500" />
-                        )}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </CardContent>
-            </Card>
-
             {/* Quick Tips */}
             <Card>
               <CardHeader>
@@ -655,15 +703,19 @@ export default function AlertsPage() {
               <CardContent className="space-y-3 text-sm text-zinc-600">
                 <div className="flex items-start gap-2">
                   <Check className="mt-0.5 h-4 w-4 text-emerald-500" />
-                  <p>Set wider thresholds (10-15%) for volatile cards</p>
+                  <p>Set wider thresholds (10–15%) for volatile cards</p>
                 </div>
                 <div className="flex items-start gap-2">
                   <Check className="mt-0.5 h-4 w-4 text-emerald-500" />
-                  <p>Use tighter thresholds (3-5%) for stable vintage cards</p>
+                  <p>Use tighter thresholds (3–5%) for stable vintage cards</p>
                 </div>
                 <div className="flex items-start gap-2">
                   <Check className="mt-0.5 h-4 w-4 text-emerald-500" />
-                  <p>Enable daily digests to avoid notification overload</p>
+                  <p>Alerts are checked every 4–6 hours automatically</p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Check className="mt-0.5 h-4 w-4 text-emerald-500" />
+                  <p>Enable email digests to avoid notification overload</p>
                 </div>
               </CardContent>
             </Card>
@@ -672,7 +724,11 @@ export default function AlertsPage() {
       </div>
 
       <AlertSettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
-      <CreateAlertModal isOpen={showCreateAlert} onClose={() => setShowCreateAlert(false)} />
+      <CreateAlertModal
+        isOpen={showCreateAlert}
+        onClose={() => setShowCreateAlert(false)}
+        onCreated={handleAlertCreated}
+      />
     </div>
   );
 }
