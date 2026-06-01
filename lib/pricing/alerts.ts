@@ -281,7 +281,7 @@ export async function createPriceAlert(params: {
 
   if (error) {
     console.error('Failed to create alert:', error);
-    return null;
+    throw error;
   }
 
   return data;
@@ -301,7 +301,7 @@ export async function getUserAlerts(userId: string): Promise<Array<{
 }>> {
   const supabase = createServerClient();
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('price_alerts')
     .select(`
       *,
@@ -314,6 +314,8 @@ export async function getUserAlerts(userId: string): Promise<Array<{
     `)
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
+
+  if (error) throw error;
 
   const typedData = data as UserAlertRow[] | null;
 
@@ -362,7 +364,8 @@ export async function deletePriceAlert(alertId: string, userId: string): Promise
     .eq('id', alertId)
     .eq('user_id', userId);
 
-  return !error;
+  if (error) throw error;
+  return true;
 }
 
 /**

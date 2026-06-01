@@ -9,7 +9,7 @@ import {
   Briefcase,
   Tag,
   Heart,
-  MoreHorizontal,
+  Trash2,
   Search,
   Grid,
   List,
@@ -56,6 +56,11 @@ function NewCollectionModal({
   const [type, setType] = React.useState('personal');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const firstInputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    firstInputRef.current?.focus();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,26 +80,38 @@ function NewCollectionModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-        <h2 className="text-xl font-bold text-zinc-900">New Collection</h2>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      role="presentation"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+      onKeyDown={(e) => e.key === 'Escape' && onClose()}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="new-collection-title"
+        className="w-full max-w-md rounded-xl bg-white dark:bg-zinc-900 dark:text-zinc-100 p-6 shadow-xl"
+      >
+        <h2 id="new-collection-title" className="text-xl font-bold text-zinc-900 dark:text-zinc-100">New Collection</h2>
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           <div>
-            <label className="text-sm font-medium text-zinc-700">Name</label>
+            <label htmlFor="collection-name" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Name</label>
             <Input
+              id="collection-name"
+              ref={firstInputRef}
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="My Collection"
               className="mt-1"
-              autoFocus
             />
           </div>
           <div>
-            <label className="text-sm font-medium text-zinc-700">Type</label>
+            <label htmlFor="collection-type" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Type</label>
             <select
+              id="collection-type"
               value={type}
               onChange={(e) => setType(e.target.value)}
-              className="mt-1 block w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-400"
+              className="mt-1 block w-full rounded-md border border-zinc-200 bg-white dark:bg-zinc-800 dark:text-zinc-100 dark:border-zinc-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-400"
             >
               <option value="personal">Personal</option>
               <option value="investment">Investment</option>
@@ -119,7 +136,7 @@ function NewCollectionModal({
               className="flex-1"
             >
               {isSubmitting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <><Loader2 className="h-4 w-4 animate-spin mr-2" />Creating...</>
               ) : (
                 'Create'
               )}
@@ -163,8 +180,12 @@ function CollectionItemsView({
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
-        <p className="text-red-600">Failed to load collection items.</p>
+      <div className="text-center py-12">
+        <p className="font-medium text-red-600">Your collection didn't load</p>
+        <p className="text-sm text-zinc-500 mt-1">We couldn't reach the server. Try refreshing the page.</p>
+        <button onClick={() => window.location.reload()} className="mt-4 text-sm text-zinc-600 underline">
+          Refresh
+        </button>
       </div>
     );
   }
@@ -275,7 +296,7 @@ function CollectionItemsView({
       {filteredItems.map((item) => (
         <div
           key={item.id}
-          className="flex items-center gap-4 rounded-lg border border-zinc-200 bg-white p-4"
+          className="flex items-center gap-4 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-4"
         >
           <div className="h-16 w-12 flex-shrink-0 overflow-hidden rounded bg-zinc-100">
             {(item.cards?.local_image_url || item.cards?.image_url) && (
@@ -300,14 +321,14 @@ function CollectionItemsView({
                 </h3>
               </Link>
             ) : (
-              <h3 className="font-semibold text-zinc-900">Unknown Card</h3>
+              <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Unknown Card</h3>
             )}
             <p className="text-sm text-zinc-500">
               {item.cards?.sets?.name} - {item.grade}
             </p>
           </div>
           <div className="text-right">
-            <p className="font-bold text-zinc-900">
+            <p className="font-bold text-zinc-900 dark:text-zinc-100">
               {item.current_value != null
                 ? formatPrice(item.current_value)
                 : '—'}
@@ -331,10 +352,14 @@ function CollectionItemsView({
           </div>
           <button
             className="text-zinc-400 hover:text-red-600"
-            onClick={() => removeItem(item.id)}
+            onClick={() => {
+              if (window.confirm('Remove this card from your collection?')) {
+                removeItem(item.id);
+              }
+            }}
             aria-label="Remove item"
           >
-            <MoreHorizontal className="h-5 w-5" />
+            <Trash2 className="h-4 w-4" />
           </button>
         </div>
       ))}
@@ -397,11 +422,11 @@ export default function CollectionPage() {
       )}
 
       {/* Header */}
-      <div className="border-b border-zinc-200 bg-zinc-50">
+      <div className="border-b border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900">
         <div className="container mx-auto px-4 py-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-zinc-900">
+              <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">
                 My Collection
               </h1>
               <p className="mt-1 text-zinc-500">
@@ -537,7 +562,7 @@ export default function CollectionPage() {
                 <div className="flex rounded-lg border border-zinc-200">
                   <button
                     onClick={() => setViewMode('grid')}
-                    className={`p-2 ${
+                    className={`p-2 rounded transition-colors focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-zinc-400 ${
                       viewMode === 'grid' ? 'bg-zinc-100' : 'hover:bg-zinc-50'
                     }`}
                   >
@@ -545,7 +570,7 @@ export default function CollectionPage() {
                   </button>
                   <button
                     onClick={() => setViewMode('list')}
-                    className={`p-2 ${
+                    className={`p-2 rounded transition-colors focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-zinc-400 ${
                       viewMode === 'list' ? 'bg-zinc-100' : 'hover:bg-zinc-50'
                     }`}
                   >

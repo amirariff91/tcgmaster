@@ -40,23 +40,32 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { cardId, variantId, grade, gradingCompanyId, thresholdPercent, direction, deliveryMethod } = body as {
-    cardId?: string;
-    variantId?: string;
-    grade?: string;
-    gradingCompanyId?: string;
-    thresholdPercent?: number;
-    direction?: 'up' | 'down' | 'both';
-    deliveryMethod?: 'email' | 'push' | 'both';
-  };
+  const cardId = typeof body.cardId === 'string' ? body.cardId : undefined;
+  const variantId = typeof body.variantId === 'string' ? body.variantId : undefined;
+  const grade = typeof body.grade === 'string' ? body.grade : undefined;
+  const gradingCompanyId = typeof body.gradingCompanyId === 'string' ? body.gradingCompanyId : undefined;
 
   if (!cardId) {
     return NextResponse.json({ error: 'cardId is required' }, { status: 400 });
   }
 
-  if (!thresholdPercent || thresholdPercent <= 0) {
-    return NextResponse.json({ error: 'thresholdPercent must be a positive number' }, { status: 400 });
+  const val = Number(body.thresholdPercent);
+  if (!Number.isFinite(val) || val <= 0 || val > 100) {
+    return NextResponse.json({ error: 'thresholdPercent must be a number between 0 and 100' }, { status: 400 });
   }
+  const thresholdPercent = val;
+
+  const VALID_DIRECTIONS = ['up', 'down', 'both'];
+  if (body.direction && !VALID_DIRECTIONS.includes(body.direction as string)) {
+    return NextResponse.json({ error: 'direction must be one of: up, down, both' }, { status: 400 });
+  }
+  const direction = body.direction as 'up' | 'down' | 'both' | undefined;
+
+  const VALID_DELIVERY = ['email', 'push', 'both'];
+  if (body.deliveryMethod && !VALID_DELIVERY.includes(body.deliveryMethod as string)) {
+    return NextResponse.json({ error: 'deliveryMethod must be one of: email, push, both' }, { status: 400 });
+  }
+  const deliveryMethod = body.deliveryMethod as 'email' | 'push' | 'both' | undefined;
 
   const alert = await createPriceAlert({
     userId: user.id,

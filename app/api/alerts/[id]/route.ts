@@ -44,9 +44,21 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const success = await deletePriceAlert(id, user.id);
+  // Check if the alert exists and belongs to this user before deleting
+  const { data: existing } = await supabase
+    .from('price_alerts')
+    .select('id')
+    .eq('id', id)
+    .eq('user_id', user.id)
+    .maybeSingle();
 
-  if (!success) {
+  if (existing === null) {
+    return NextResponse.json({ error: 'Alert not found' }, { status: 404 });
+  }
+
+  try {
+    await deletePriceAlert(id, user.id);
+  } catch {
     return NextResponse.json({ error: 'Failed to delete alert' }, { status: 500 });
   }
 
