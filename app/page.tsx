@@ -22,7 +22,7 @@ const marketMovers: { gainers: MarketMover[]; losers: MarketMover[] } = {
       slug: 'pokemon/base-set/charizard',
       volume: 14,
       confidence: 'High',
-      source: 'Tracked sale comps',
+      source: 'Sample sale comps',
     },
     {
       id: '2',
@@ -35,7 +35,7 @@ const marketMovers: { gainers: MarketMover[]; losers: MarketMover[] } = {
       slug: 'sports-basketball/1986-fleer/michael-jordan-rookie',
       volume: 7,
       confidence: 'Medium',
-      source: 'Auction comps',
+      source: 'Sample auction comps',
     },
     {
       id: '3',
@@ -48,7 +48,7 @@ const marketMovers: { gainers: MarketMover[]; losers: MarketMover[] } = {
       slug: 'pokemon/promo/pikachu-illustrator',
       volume: 3,
       confidence: 'Thin',
-      source: 'Low-volume comps',
+      source: 'Sample low-volume comps',
     },
   ],
   losers: [
@@ -63,7 +63,7 @@ const marketMovers: { gainers: MarketMover[]; losers: MarketMover[] } = {
       slug: 'pokemon/base-set/blastoise',
       volume: 11,
       confidence: 'High',
-      source: 'Tracked sale comps',
+      source: 'Sample sale comps',
     },
     {
       id: '5',
@@ -76,7 +76,7 @@ const marketMovers: { gainers: MarketMover[]; losers: MarketMover[] } = {
       slug: 'pokemon/base-set/mewtwo',
       volume: 18,
       confidence: 'High',
-      source: 'Tracked sale comps',
+      source: 'Sample sale comps',
     },
   ],
 };
@@ -100,7 +100,7 @@ const generateNotableSales = () => {
       price: 420000,
       daysAgo: 2,
       source: 'PWCC',
-      confidence: 'Verified auction comp',
+      confidence: 'Sample auction comp',
       slug: 'pokemon/base-set/charizard',
     },
     {
@@ -111,7 +111,7 @@ const generateNotableSales = () => {
       price: 2880000,
       daysAgo: 5,
       source: 'Heritage',
-      confidence: 'Auction archive',
+      confidence: 'Sample auction archive',
       slug: 'sports-baseball/1952-topps/mickey-mantle',
     },
     {
@@ -122,7 +122,7 @@ const generateNotableSales = () => {
       price: 738000,
       daysAgo: 7,
       source: 'Goldin',
-      confidence: 'Verified auction comp',
+      confidence: 'Sample auction comp',
       slug: 'sports-basketball/1986-fleer/michael-jordan-rookie',
     },
   ].map((sale) => {
@@ -212,9 +212,9 @@ export default function HomePage() {
             </div>
 
             <div className="mt-8 grid max-w-2xl gap-3 sm:grid-cols-3">
-              <HeroProof label="Cards tracked" value="100,000+" />
-              <HeroProof label="Grade lookup" value="PSA / BGS" />
-              <HeroProof label="Last sync" value="14 min ago" />
+              <HeroProof label="Data status" value="Source-backed where available" />
+              <HeroProof label="Cert lookup" value="PSA unavailable" />
+              <HeroProof label="Homepage rows" value="Sample data" />
             </div>
           </div>
 
@@ -223,11 +223,12 @@ export default function HomePage() {
       </section>
 
       <section className="container py-10 md:py-14">
+        <p className="mb-3 text-xs font-medium uppercase tracking-[0.18em] text-stone-500">Homepage market rows are illustrative until live source feeds are fully indexed.</p>
         <div className="grid gap-4 rounded-2xl border border-stone-200 bg-white p-5 shadow-[0_1px_2px_rgba(41,37,36,0.06)] md:grid-cols-4 md:p-6">
-          <SnapshotMetric label="Sales indexed / 30d" value="418K" />
-          <SnapshotMetric label="Fastest market" value="Pokemon +8.4%" />
-          <SnapshotMetric label="Coverage" value="Raw · PSA · BGS" />
-          <SnapshotMetric label="Method" value="Volume weighted" />
+          <SnapshotMetric label="Snapshot" value="Sample market data" />
+          <SnapshotMetric label="Movement" value="Example signals" />
+          <SnapshotMetric label="Coverage" value="Varies by source" />
+          <SnapshotMetric label="Method" value="Shown after indexing" />
         </div>
       </section>
 
@@ -236,6 +237,7 @@ export default function HomePage() {
       </section>
 
       <section className="container py-8 md:py-12">
+        <p className="mb-3 text-xs font-medium uppercase tracking-[0.18em] text-stone-500">Sample market movers — not live trading advice.</p>
         <MarketMovers gainers={marketMovers.gainers} losers={marketMovers.losers} />
       </section>
 
@@ -311,7 +313,7 @@ function MarketDeskPreview() {
     <div className="rounded-2xl border border-stone-300 bg-stone-950 p-4 text-white shadow-2xl shadow-stone-950/10 md:p-5">
       <div className="flex items-center justify-between border-b border-white/10 pb-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-amber-300">Live comp card</p>
+          <p className="text-xs uppercase tracking-[0.2em] text-amber-300">Sample comp card</p>
           <h2 className="mt-1 font-serif text-2xl font-semibold">Charizard Base Set</h2>
         </div>
         <BadgeCheck className="h-5 w-5 text-emerald-300" />
@@ -320,13 +322,13 @@ function MarketDeskPreview() {
         <TerminalMetric label="Grade" value="PSA 10" />
         <TerminalMetric label="Market price" value="$42,000" />
         <TerminalMetric label="30d move" value="+15.2%" tone="up" />
-        <TerminalMetric label="Confidence" value="High" />
+        <TerminalMetric label="Status" value="Example" />
       </div>
       <div className="rounded-xl border border-white/10 bg-white/5">
         {[
-          ['PWCC', 'PSA 10', '$41,800', '2h ago'],
-          ['Tracked sale', 'PSA 10', '$42,300', '1d ago'],
-          ['Auction archive', 'PSA 9', '$12,900', '3d ago'],
+          ['Example source', 'PSA 10', '$41,800', 'sample'],
+          ['Example source', 'PSA 10', '$42,300', 'sample'],
+          ['Example source', 'PSA 9', '$12,900', 'sample'],
         ].map(([source, grade, price, time]) => (
           <div key={`${source}-${time}`} className="grid grid-cols-[1fr_0.7fr_0.8fr_0.8fr] gap-3 border-b border-white/10 px-4 py-3 text-xs last:border-b-0">
             <span className="text-stone-300">{source}</span>
@@ -382,7 +384,7 @@ function LatestComps({ sales }: { sales: Array<{ id: string; name: string; set: 
   return (
     <div className="rounded-2xl border border-stone-200 bg-white shadow-[0_1px_2px_rgba(41,37,36,0.06)]">
       <div className="border-b border-stone-200 p-6">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">Latest confirmed comps</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">Sample comps</p>
         <h2 className="mt-2 font-serif text-3xl font-semibold text-stone-950">Recent sales should earn trust.</h2>
       </div>
       <ul className="divide-y divide-stone-200">

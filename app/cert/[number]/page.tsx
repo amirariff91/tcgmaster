@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { number } = await params;
   return {
     title: `Cert #${number} Lookup`,
-    description: `Verify PSA/BGS certification #${number}. View card details, grade, and current market value.`,
+    description: `PSA certificate #${number} cannot currently be verified inside TCGMaster because PSA API access is not configured.` ,
   };
 }
 

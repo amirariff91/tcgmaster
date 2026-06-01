@@ -11,43 +11,19 @@ import { Badge } from '@/components/ui/badge';
 import { Select } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 
-// Mock search results - image_url set to null since images don't exist
-// CardPreview component has graceful fallback UI
-const mockResults = [
-  {
-    id: '1',
-    name: 'Charizard',
-    slug: 'charizard-holo',
-    number: '4',
-    rarity: 'holo-rare' as const,
-    image_url: null as string | null,
-    set: { id: '1', name: 'Base Set', slug: 'base-set' },
-    current_price: 42000,
-    price_change_24h: 2.5,
-  },
-  {
-    id: '2',
-    name: 'Charizard',
-    slug: 'charizard-holo',
-    number: '4',
-    rarity: 'holo-rare' as const,
-    image_url: null as string | null,
-    set: { id: '2', name: 'Base Set 2', slug: 'base-set-2' },
-    current_price: 1200,
-    price_change_24h: -1.2,
-  },
-  {
-    id: '3',
-    name: 'Charizard GX',
-    slug: 'charizard-gx',
-    number: '9',
-    rarity: 'ultra-rare' as const,
-    image_url: null as string | null,
-    set: { id: '3', name: 'Burning Shadows', slug: 'burning-shadows' },
-    current_price: 85,
-    price_change_24h: 0,
-  },
-];
+type SearchCardResult = {
+  id: string;
+  name: string;
+  slug: string;
+  gameSlug: string;
+  number: string;
+  rarity?: 'holo-rare' | 'ultra-rare' | 'common' | 'uncommon' | 'rare' | 'secret-rare' | 'promo';
+  image_url: string | null;
+  set: { id: string; name: string; slug: string };
+  current_price?: number;
+  price_change_24h: number;
+};
+
 
 const sortOptions = [
   { value: 'relevance', label: 'Most Relevant' },
@@ -78,7 +54,7 @@ function SearchResults() {
   const query = searchParams.get('q') || '';
 
   const [isLoading, setIsLoading] = React.useState(false);
-  const [results, setResults] = React.useState<typeof mockResults>([]);
+  const [results, setResults] = React.useState<SearchCardResult[]>([]);
   const [sort, setSort] = React.useState('relevance');
   const [game, setGame] = React.useState('all');
   const [grade, setGrade] = React.useState('all');
@@ -103,17 +79,22 @@ function SearchResults() {
             rarity?: string;
             subtitle?: string;
             price?: number | null;
+            game?: string;
           }) => {
-            const [, setSlugPart] = (c.slug || '').split('/');
+            const [gameSlugPart, setSlugPart, cardSlugPart] = (c.slug || '').split('/');
+            const gameSlug = c.game || gameSlugPart || 'pokemon';
+            const setSlug = setSlugPart || '';
+            const cardSlug = cardSlugPart || c.slug;
             return {
               id: c.id,
               name: c.name,
-              slug: c.slug,
+              slug: cardSlug,
+              gameSlug,
               number: '',
               rarity: (c.rarity as 'holo-rare' | 'ultra-rare' | 'common' | 'uncommon' | 'rare' | 'secret-rare' | 'promo') || 'common',
               image_url: c.image_url,
-              set: { id: setSlugPart || '', name: c.subtitle?.split(' - ')[0] || '', slug: setSlugPart || '' },
-              current_price: c.price ?? 0,
+              set: { id: setSlug, name: c.subtitle?.split(' - ')[0] || '', slug: setSlug },
+              current_price: c.price ?? undefined,
               price_change_24h: 0,
             };
           })
@@ -246,7 +227,7 @@ function SearchResults() {
             <CardPreview
               key={card.id}
               card={card}
-              gameSlug="pokemon"
+              gameSlug={card.gameSlug}
             />
           ))}
         </div>

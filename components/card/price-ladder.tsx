@@ -50,7 +50,7 @@ export function PriceLadder({
 
           const href = entry.grade === 'raw'
             ? `/${gameSlug}/${setSlug}/${cardSlug}`
-            : `/${gameSlug}/${setSlug}/${cardSlug}/${entry.grading_company}-${entry.grade}`;
+            : `/${gameSlug}/${setSlug}/${cardSlug}?grade=${entry.grading_company}-${entry.grade}`;
 
           return (
             <Link

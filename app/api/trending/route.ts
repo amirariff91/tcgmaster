@@ -11,9 +11,21 @@ export async function GET(request: NextRequest) {
 
   switch (type) {
     case 'trending': {
-      // Try cache first
-      const cached = await redis.get<object>('trending:cards');
+      // Try the shared cache only for the default unfiltered request.
+      // Filtered/limited requests must query directly or they can receive
+      // stale data for the wrong game/limit.
+      const canUseSharedCache = !game && limit === 10;
+      const cached = canUseSharedCache ? await redis.get<object>('trending:cards') : null;
       if (cached) {
+        if (Array.isArray(cached) && cached.length === 0) {
+          return NextResponse.json({
+            data: [],
+            fromCache: true,
+            message:
+              'No trending data available yet. Cached trending result is empty — run the updateAllTrendingScores job to populate it.',
+            hint: 'Clear the trending:cards cache after the Inngest sync-trending-scores function has populated trending_scores.',
+          });
+        }
         return NextResponse.json({
           data: cached,
           fromCache: true,

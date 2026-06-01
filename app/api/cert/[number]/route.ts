@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { lookupPSACert, getCertFromDb } from '@/lib/scrapers/psa';
 import { lookupBGSCert } from '@/lib/scrapers/bgs';
 
 interface RouteParams {
@@ -11,8 +10,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   const { searchParams } = new URL(request.url);
 
   const company = searchParams.get('company') || 'psa';
-  const forceRefresh = searchParams.get('refresh') === 'true';
-
   // Clean cert number
   const cleanCertNumber = certNumber.replace(/\D/g, '');
 
@@ -22,26 +19,20 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }, { status: 400 });
   }
 
-  // Try database first (unless force refresh)
-  if (!forceRefresh) {
-    const cached = await getCertFromDb(cleanCertNumber);
-    if (cached) {
-      return NextResponse.json({
-        data: {
-          ...cached,
-          source: 'database',
-        },
-      });
-    }
+  // PSA access is currently unavailable. Do not return cached or scraped
+  // heuristic data as verified certificate data.
+  if (company.toLowerCase() === 'psa') {
+    return NextResponse.json({
+      error: 'Cert lookup unavailable — PSA API access required',
+      message: 'TCGMaster cannot verify PSA certificates until official PSA API access is configured. Use PSA directly for now.',
+      psaUrl: `https://www.psacard.com/cert/${cleanCertNumber}`,
+    }, { status: 503 });
   }
 
-  // Scrape from grading company
+  // Scrape from non-PSA grading company integrations only.
   let certData;
 
   switch (company.toLowerCase()) {
-    case 'psa':
-      certData = await lookupPSACert(cleanCertNumber);
-      break;
     case 'bgs':
     case 'beckett':
       certData = await lookupBGSCert(cleanCertNumber);

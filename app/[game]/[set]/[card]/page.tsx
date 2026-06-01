@@ -1,7 +1,6 @@
-import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { Metadata } from 'next';
-import { Bell, Plus, Share2, ExternalLink, Info, Clock } from 'lucide-react';
+import { Bell, Plus, Share2, Info, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -142,98 +141,6 @@ async function getCardData(gameSlug: string, setSlug: string, cardSlug: string):
   return card as unknown as CardData;
 }
 
-// Fallback mock data when database is empty
-const mockCard = {
-  id: '1',
-  name: 'Charizard',
-  slug: 'charizard-holo',
-  number: '4',
-  rarity: 'holo-rare' as const,
-  artist: 'Mitsuhiro Arita',
-  image_url: null as string | null,
-  description: 'Spits fire that is hot enough to melt boulders. Known to cause forest fires unintentionally.',
-  set: {
-    id: '1',
-    name: 'Base Set',
-    slug: 'base-set',
-    release_date: '1999-01-09',
-    card_count: 102,
-  },
-  game: {
-    id: '1',
-    name: 'Pokemon',
-    slug: 'pokemon',
-    display_name: 'Pokemon',
-  },
-};
-
-const mockPrices = {
-  current: {
-    raw: { price: 450, confidence: 'high' as const, last_sale: '2024-01-10' },
-    'psa-7': { price: 800, confidence: 'high' as const, last_sale: '2024-01-12' },
-    'psa-8': { price: 1500, confidence: 'high' as const, last_sale: '2024-01-15' },
-    'psa-9': { price: 4200, confidence: 'high' as const, last_sale: '2024-01-14' },
-    'psa-10': { price: 42000, confidence: 'medium' as const, last_sale: '2023-12-20' },
-  },
-  change24h: 2.5,
-  change7d: 5.2,
-  change30d: -3.1,
-};
-
-const mockPopulation = {
-  'psa-7': 2500,
-  'psa-8': 1800,
-  'psa-9': 950,
-  'psa-10': 47,
-};
-
-// Generate mock price history relative to today
-const generateMockPriceHistory = () => {
-  const today = new Date();
-  return Array.from({ length: 30 }, (_, i) => {
-    const date = new Date(today);
-    date.setDate(date.getDate() - (29 - i));
-    // Generate price with some realistic variation
-    const basePrice = 40000;
-    const trend = i * 50; // Slight upward trend
-    const noise = Math.random() * 4000 - 2000; // Random noise
-    return {
-      date: date.toISOString().split('T')[0],
-      price: Math.round(basePrice + trend + noise),
-    };
-  });
-};
-
-const mockPriceHistory = generateMockPriceHistory();
-
-// Generate mock recent sales relative to today
-const generateMockRecentSales = () => {
-  const today = new Date();
-  return [
-    { daysAgo: 1, price: 42500, grade: 'PSA 10', source: 'eBay' },
-    { daysAgo: 2, price: 4150, grade: 'PSA 9', source: 'PWCC' },
-    { daysAgo: 4, price: 825, grade: 'PSA 7', source: 'eBay' },
-    { daysAgo: 6, price: 1480, grade: 'PSA 8', source: 'Goldin' },
-  ].map(sale => {
-    const date = new Date(today);
-    date.setDate(date.getDate() - sale.daysAgo);
-    return {
-      date: date.toISOString().split('T')[0],
-      price: sale.price,
-      grade: sale.grade,
-      source: sale.source,
-    };
-  });
-};
-
-const mockRecentSales = generateMockRecentSales();
-
-const mockListings = [
-  { price: 44999, grade: 'PSA 10', seller: 'CardKing', platform: 'eBay' },
-  { price: 4399, grade: 'PSA 9', seller: 'VintageCards', platform: 'eBay' },
-  { price: 1599, grade: 'PSA 8', seller: 'TCGPro', platform: 'TCGPlayer' },
-];
-
 interface PageProps {
   params: Promise<{
     game: string;
@@ -254,14 +161,17 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     ? cardData?.price_cache[0]
     : cardData?.price_cache;
   const gradedPrices = priceCache?.graded_prices || {};
-  const psa10Price = gradedPrices?.psa10?.average ?? gradedPrices?.psa9?.average ?? 0;
+  const psa10Price = gradedPrices?.psa10?.average ?? gradedPrices?.psa9?.average ?? null;
+  const priceDescription = psa10Price
+    ? `Current PSA comp reference: ${formatPrice(psa10Price)}.`
+    : 'No verified market price is available yet.';
 
   return {
     title: `${cardName} - ${setName} Price Guide | TCGMaster`,
     description: `Check current ${cardName} prices from ${setName}. View PSA, BGS graded prices, population reports, and price history.`,
     openGraph: {
       title: `${cardName} - ${setName} | TCGMaster`,
-      description: `Current price: ${formatPrice(psa10Price)} (PSA 10)`,
+      description: priceDescription,
     },
   };
 }
@@ -355,8 +265,6 @@ export default async function CardDetailPage({ params }: PageProps) {
   // Check if data is stale
   const isStale = dbPriceCache?.expires_at ? new Date(dbPriceCache.expires_at) < new Date() : false;
   const lastUpdated = dbPriceCache?.fetched_at || null;
-  const hasPriceData = !!(rawPrices.nearMint || Object.values(gradedPrices).some(g => g?.average));
-
   // Extract population data
   const populationReports = cardData?.population_reports || [];
   const population: Record<string, number> = {};
@@ -397,7 +305,7 @@ export default async function CardDetailPage({ params }: PageProps) {
   const featuredPrice = gradedPrices.psa10?.average ||
                         gradedPrices.psa9?.average ||
                         rawPrices.nearMint ||
-                        0;
+                        null;
 
   return (
     <div className="min-h-screen pb-16 overflow-x-hidden">
@@ -481,17 +389,28 @@ export default async function CardDetailPage({ params }: PageProps) {
               </div>
 
               <div className="mt-6">
-                <PriceDisplay
-                  price={featuredPrice}
-                  change24h={null}
-                  change7d={null}
-                  confidence={gradedPrices.psa10?.average ? 'high' : 'medium'}
-                  lastSaleDate={lastUpdated}
-                  size="xl"
-                />
-                <p className="mt-2 text-sm text-zinc-500">
-                  {gradedPrices.psa10?.average ? 'PSA 10' : 'Best Available'} Market Price
-                </p>
+                {featuredPrice ? (
+                  <>
+                    <PriceDisplay
+                      price={featuredPrice}
+                      change24h={null}
+                      change7d={null}
+                      confidence={gradedPrices.psa10?.average ? 'high' : 'medium'}
+                      lastSaleDate={lastUpdated}
+                      size="xl"
+                    />
+                    <p className="mt-2 text-sm text-zinc-500">
+                      {gradedPrices.psa10?.average ? 'PSA 10' : 'Best Available'} Market Price
+                    </p>
+                  </>
+                ) : (
+                  <div className="rounded-lg border border-dashed border-zinc-200 bg-zinc-50 p-4">
+                    <p className="text-sm font-medium text-zinc-700">No verified market price available yet.</p>
+                    <p className="mt-1 text-xs text-zinc-500">
+                      Prices appear after source-backed comps are indexed for this card.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -539,28 +458,35 @@ export default async function CardDetailPage({ params }: PageProps) {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="rounded-lg bg-zinc-50 p-4">
-                    <p className="text-sm text-zinc-500">PSA 10 Population</p>
-                    <p className="text-2xl font-bold text-zinc-900">
-                      {formatNumber(population['psa-10'] || 0)}
-                    </p>
-                    {population['psa-10'] && Object.values(population).reduce((a, b) => a + b, 0) > 0 && (
-                      <p className="mt-1 text-sm text-emerald-600">
-                        Top {((population['psa-10'] / Object.values(population).reduce((a, b) => a + b, 0)) * 100).toFixed(1)}% of all graded copies
+                {Object.keys(population).length > 0 ? (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="rounded-lg bg-zinc-50 p-4">
+                      <p className="text-sm text-zinc-500">PSA 10 Population</p>
+                      <p className="text-2xl font-bold text-zinc-900">
+                        {formatNumber(population['psa-10'] || 0)}
                       </p>
-                    )}
+                      {population['psa-10'] && Object.values(population).reduce((a, b) => a + b, 0) > 0 && (
+                        <p className="mt-1 text-sm text-emerald-600">
+                          Top {((population['psa-10'] / Object.values(population).reduce((a, b) => a + b, 0)) * 100).toFixed(1)}% of all graded copies
+                        </p>
+                      )}
+                    </div>
+                    <div className="rounded-lg bg-zinc-50 p-4">
+                      <p className="text-sm text-zinc-500">Total Graded (PSA)</p>
+                      <p className="text-2xl font-bold text-zinc-900">
+                        {formatNumber(Object.values(population).reduce((a, b) => a + b, 0))}
+                      </p>
+                      <p className="mt-1 text-sm text-zinc-500">
+                        Across all grades
+                      </p>
+                    </div>
                   </div>
-                  <div className="rounded-lg bg-zinc-50 p-4">
-                    <p className="text-sm text-zinc-500">Total Graded (PSA)</p>
-                    <p className="text-2xl font-bold text-zinc-900">
-                      {formatNumber(Object.values(population).reduce((a, b) => a + b, 0))}
-                    </p>
-                    <p className="mt-1 text-sm text-zinc-500">
-                      Across all grades
-                    </p>
+                ) : (
+                  <div className="rounded-lg border border-dashed border-zinc-200 bg-zinc-50 p-4 text-center">
+                    <p className="text-sm font-medium text-zinc-700">No verified population report available yet.</p>
+                    <p className="mt-1 text-xs text-zinc-500">Population values appear after source-backed grading data is indexed.</p>
                   </div>
-                </div>
+                )}
                 {population['psa-10'] && (
                   <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3">
                     <p className="text-sm text-amber-800">
@@ -629,57 +555,23 @@ export default async function CardDetailPage({ params }: PageProps) {
                           </div>
                         );
                       }
-                      if (!cardData || !tcgPlayerId) {
-                        return (
-                          <div className="space-y-2">
-                            {mockRecentSales.map((sale, index) => (
-                              <div key={index} className="flex items-center justify-between rounded-lg bg-zinc-50 p-3">
-                                <div>
-                                  <p className="font-medium text-zinc-900">{formatPrice(sale.price)}</p>
-                                  <p className="text-sm text-zinc-500">{sale.grade}</p>
-                                </div>
-                                <div className="text-right">
-                                  <p className="text-sm text-zinc-500">{formatDate(sale.date)}</p>
-                                  <p className="text-xs text-zinc-400">{sale.source}</p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        );
-                      }
                       return (
-                        <p className="text-sm text-zinc-400 py-4 text-center">
-                          eBay sales data syncing — check back shortly.
-                        </p>
+                        <div className="rounded-lg border border-dashed border-zinc-200 bg-zinc-50 p-4 text-center">
+                          <p className="text-sm font-medium text-zinc-700">No verified recent sales available yet.</p>
+                          <p className="mt-1 text-xs text-zinc-500">
+                            TCGMaster only shows sales here after source-backed data is indexed.
+                          </p>
+                        </div>
                       );
                     })()}
                   </TabsContent>
 
                   <TabsContent value="listings" className="mt-4">
-                    <div className="space-y-2">
-                      {mockListings.map((listing, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center justify-between rounded-lg bg-zinc-50 p-3"
-                        >
-                          <div>
-                            <p className="font-medium text-zinc-900">
-                              {formatPrice(listing.price)}
-                            </p>
-                            <p className="text-sm text-zinc-500">{listing.grade}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm text-zinc-500">{listing.seller}</p>
-                            <Link
-                              href="#"
-                              className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
-                            >
-                              {listing.platform}
-                              <ExternalLink className="h-3 w-3" />
-                            </Link>
-                          </div>
-                        </div>
-                      ))}
+                    <div className="rounded-lg border border-dashed border-zinc-200 bg-zinc-50 p-4 text-center">
+                      <p className="text-sm font-medium text-zinc-700">No verified active listings available yet.</p>
+                      <p className="mt-1 text-xs text-zinc-500">
+                        Active listings will appear here once source links, seller data, and timestamps are indexed.
+                      </p>
                     </div>
                   </TabsContent>
                 </Tabs>
