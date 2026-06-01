@@ -25,8 +25,8 @@ interface CurrencyContextValue {
   isLoading: boolean;
   setCurrency: (currency: SupportedCurrency) => void;
   convert: (usdAmount: number | null) => ConvertedPrice;
-  format: (usdAmount: number | null) => string;
-  formatCompact: (usdAmount: number | null) => string;
+  format: (usdAmount: number | null | undefined) => string;
+  formatCompact: (usdAmount: number | null | undefined) => string;
 }
 
 const CurrencyContext = createContext<CurrencyContextValue | null>(null);
@@ -91,15 +91,15 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
   }, []);
 
   const convert = useCallback(
-    (usdAmount: number | null): ConvertedPrice => {
+    (usdAmount: number | null | undefined): ConvertedPrice => {
       return convertPrice(usdAmount, currency, rates);
     },
     [currency, rates]
   );
 
   const format = useCallback(
-    (usdAmount: number | null): string => {
-      if (usdAmount === null) return 'N/A';
+    (usdAmount: number | null | undefined): string => {
+      if (usdAmount === null || usdAmount === undefined || !Number.isFinite(usdAmount)) return 'N/A';
       const converted = convertPrice(usdAmount, currency, rates);
       return converted.formatted;
     },
@@ -107,8 +107,8 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
   );
 
   const formatCompact = useCallback(
-    (usdAmount: number | null): string => {
-      if (usdAmount === null) return 'N/A';
+    (usdAmount: number | null | undefined): string => {
+      if (usdAmount === null || usdAmount === undefined || !Number.isFinite(usdAmount)) return 'N/A';
       const converted = convertPrice(usdAmount, currency, rates);
       return formatCompactCurrency(converted.amount, currency);
     },

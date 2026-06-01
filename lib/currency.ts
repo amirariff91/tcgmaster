@@ -132,12 +132,12 @@ export function getStaticFallbackRate(currency: SupportedCurrency): number {
 
 // Convert price from USD to another currency
 export function convertPrice(
-  usdAmount: number | null,
+  usdAmount: number | null | undefined,
   toCurrency: SupportedCurrency,
   rates: ExchangeRates | null
 ): ConvertedPrice {
-  // Handle null amounts
-  if (usdAmount === null) {
+  // Handle null, undefined, and non-finite amounts
+  if (usdAmount === null || usdAmount === undefined || !Number.isFinite(usdAmount)) {
     return {
       amount: 0,
       formatted: 'N/A',

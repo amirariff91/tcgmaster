@@ -57,6 +57,8 @@ export function PriceMatrix({
   const nmPrice = rawPrices.nearMint;
   const psa9Price = gradedPrices.psa9?.average;
   const psa10Price = gradedPrices.psa10?.average;
+  const hasPsa9 = psa9Price !== null && psa9Price !== undefined && Number.isFinite(psa9Price);
+  const hasPsa10 = psa10Price !== null && psa10Price !== undefined && Number.isFinite(psa10Price);
 
   const availableGrades = GRADE_ORDER.filter((grade) => gradedPrices[grade]?.average);
   const hasRawPrices = Object.values(rawPrices).some(p => p !== null);
@@ -78,7 +80,7 @@ export function PriceMatrix({
               </p>
             </div>
           )}
-          {psa9Price !== null && (
+          {hasPsa9 && (
             <div className="text-left border-l border-zinc-200 pl-3 sm:pl-6 min-w-0">
               <p className="text-xs text-zinc-500 uppercase tracking-wider">PSA 9</p>
               <p className="text-base sm:text-lg font-bold text-zinc-900 tabular-nums">
@@ -86,7 +88,7 @@ export function PriceMatrix({
               </p>
             </div>
           )}
-          {psa10Price !== null && (
+          {hasPsa10 && (
             <div className="text-left border-l border-zinc-200 pl-3 sm:pl-6 min-w-0">
               <p className="text-xs text-zinc-500 uppercase tracking-wider">PSA 10</p>
               <p className="text-base sm:text-lg font-bold text-emerald-600 tabular-nums">

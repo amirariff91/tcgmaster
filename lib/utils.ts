@@ -5,7 +5,8 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatPrice(price: number, currency: string = 'USD'): string {
+export function formatPrice(price: number | null | undefined, currency: string = 'USD'): string {
+  if (price === null || price === undefined || !Number.isFinite(price)) return 'N/A';
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency,
@@ -14,12 +15,14 @@ export function formatPrice(price: number, currency: string = 'USD'): string {
   }).format(price);
 }
 
-export function formatPriceChange(change: number): string {
+export function formatPriceChange(change: number | null | undefined): string {
+  if (change === null || change === undefined || !Number.isFinite(change)) return 'N/A';
   const sign = change >= 0 ? '+' : '';
   return `${sign}${change.toFixed(1)}%`;
 }
 
-export function formatNumber(num: number): string {
+export function formatNumber(num: number | null | undefined): string {
+  if (num === null || num === undefined || !Number.isFinite(num)) return 'N/A';
   if (num >= 1_000_000) {
     return `${(num / 1_000_000).toFixed(1)}M`;
   }
