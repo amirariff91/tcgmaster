@@ -79,6 +79,13 @@ const frequencyOptions = [
   { value: 'weekly', label: 'Weekly Digest' },
 ];
 
+// FIX 5 — Explicit filter label map
+const FILTER_LABELS: Record<string, string> = {
+  all: 'All',
+  active: 'Active',
+  inactive: 'Paused',
+};
+
 // ---------------------------------------------------------------------------
 // AlertSettingsModal
 // ---------------------------------------------------------------------------
@@ -91,6 +98,44 @@ interface AlertSettingsModalProps {
 function AlertSettingsModal({ isOpen, onClose }: AlertSettingsModalProps) {
   const [emailFrequency, setEmailFrequency] = React.useState('daily');
   const [emailEnabled, setEmailEnabled] = React.useState(true);
+  // FIX 2 — hook fake selects to real state
+  const [defaultDirection, setDefaultDirection] = React.useState('both');
+  const [defaultThreshold, setDefaultThreshold] = React.useState('5');
+  // FIX 1 — saved state for success indicator
+  const [saved, setSaved] = React.useState(false);
+
+  // FIX 1 — load from localStorage on mount
+  React.useEffect(() => {
+    const stored = localStorage.getItem('alertSettings');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (parsed.emailEnabled !== undefined) setEmailEnabled(parsed.emailEnabled);
+        if (parsed.emailFrequency) setEmailFrequency(parsed.emailFrequency);
+        if (parsed.defaultDirection) setDefaultDirection(parsed.defaultDirection);
+        if (parsed.defaultThreshold) setDefaultThreshold(parsed.defaultThreshold);
+      } catch {
+        // ignore
+      }
+    }
+  }, []);
+
+  // FIX 1 — real save handler
+  const handleSave = async () => {
+    try {
+      localStorage.setItem(
+        'alertSettings',
+        JSON.stringify({ emailEnabled, emailFrequency, defaultDirection, defaultThreshold }),
+      );
+      setSaved(true);
+      setTimeout(() => {
+        onClose();
+        setSaved(false);
+      }, 800);
+    } catch {
+      // ignore
+    }
+  };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
@@ -99,11 +144,15 @@ function AlertSettingsModal({ isOpen, onClose }: AlertSettingsModalProps) {
       </ModalHeader>
       <div className="space-y-6">
         <div>
-          <h3 className="mb-3 font-medium text-zinc-900">Email Notifications</h3>
+          <h3 className="mb-3 font-medium text-zinc-900 dark:text-zinc-100">Email Notifications</h3>
           <div className="space-y-3">
             <label className="flex items-center justify-between">
               <span className="text-sm text-zinc-600">Enable email alerts</span>
+              {/* FIX 3 — ARIA for email toggle */}
               <button
+                role="switch"
+                aria-checked={emailEnabled}
+                aria-label="Toggle email alerts"
                 onClick={() => setEmailEnabled(!emailEnabled)}
                 className={`relative h-6 w-11 rounded-full transition-colors ${
                   emailEnabled ? 'bg-blue-600' : 'bg-zinc-200'
@@ -126,19 +175,25 @@ function AlertSettingsModal({ isOpen, onClose }: AlertSettingsModalProps) {
         </div>
 
         <div>
-          <h3 className="mb-3 font-medium text-zinc-900">Default Settings</h3>
+          <h3 className="mb-3 font-medium text-zinc-900 dark:text-zinc-100">Default Settings</h3>
           <div className="space-y-3">
             <div>
               <label className="mb-2 block text-sm text-zinc-600">Default threshold</label>
+              {/* FIX 2 — hooked to real state */}
               <Select
                 options={thresholdOptions.filter((o) => o.value !== 'custom')}
-                value="5"
-                onChange={() => {}}
+                value={defaultThreshold}
+                onChange={(e) => setDefaultThreshold(e)}
               />
             </div>
             <div>
               <label className="mb-2 block text-sm text-zinc-600">Default direction</label>
-              <Select options={directionOptions} value="both" onChange={() => {}} />
+              {/* FIX 2 — hooked to real state */}
+              <Select
+                options={directionOptions}
+                value={defaultDirection}
+                onChange={(e) => setDefaultDirection(e)}
+              />
             </div>
           </div>
         </div>
@@ -147,7 +202,17 @@ function AlertSettingsModal({ isOpen, onClose }: AlertSettingsModalProps) {
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={onClose}>Save Settings</Button>
+          {/* FIX 1 — real save with success state */}
+          <Button onClick={handleSave}>
+            {saved ? (
+              <>
+                <Check className="h-4 w-4 mr-2" />
+                Saved
+              </>
+            ) : (
+              'Save Settings'
+            )}
+          </Button>
         </div>
       </div>
     </Modal>
@@ -299,12 +364,12 @@ function CreateAlertModal({ isOpen, onClose, onCreated }: CreateAlertModalProps)
             placeholder="Search cards..."
           />
           {searchResults.length > 0 && (
-            <div className="mt-2 rounded-lg border border-zinc-200 bg-white">
+            <div className="mt-2 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
               {searchResults.map((card) => (
                 <button
                   key={card.id}
                   onClick={() => handleSelectCard(card)}
-                  className="flex w-full items-center gap-3 p-3 text-left hover:bg-zinc-50"
+                  className="flex w-full items-center gap-3 p-3 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800"
                 >
                   <div className="h-12 w-9 flex-shrink-0 rounded bg-zinc-100 overflow-hidden">
                     {card.image_url ? (
@@ -315,11 +380,11 @@ function CreateAlertModal({ isOpen, onClose, onCreated }: CreateAlertModalProps)
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-zinc-900 truncate">{card.name}</p>
+                    <p className="font-medium text-zinc-900 dark:text-zinc-100 truncate">{card.name}</p>
                     <p className="text-sm text-zinc-500 truncate">{card.subtitle}</p>
                   </div>
                   {card.price != null && (
-                    <span className="ml-auto text-sm font-semibold text-zinc-900 flex-shrink-0">
+                    <span className="ml-auto text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex-shrink-0">
                       {formatPrice(card.price)}
                     </span>
                   )}
@@ -353,7 +418,7 @@ function CreateAlertModal({ isOpen, onClose, onCreated }: CreateAlertModalProps)
           </div>
         </div>
 
-        <div className="rounded-lg bg-zinc-50 p-4">
+        <div className="rounded-lg bg-zinc-50 dark:bg-zinc-800 p-4">
           <p className="text-sm text-zinc-600">
             You will be notified when the price{' '}
             {direction === 'both' ? 'moves' : direction === 'up' ? 'increases' : 'decreases'} by{' '}
@@ -466,13 +531,16 @@ export default function AlertsPage() {
     );
   }
 
+  // FIX 6 — Improved error state
   if (error) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">
-          <p className="text-lg font-semibold text-zinc-900">Something went wrong</p>
-          <p className="mt-1 text-sm text-zinc-500">{error}</p>
-          <Button className="mt-4" onClick={() => window.location.reload()}>
+        <div className="text-center py-16">
+          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Alerts failed to load</h2>
+          <p className="text-sm text-zinc-500 mt-2 max-w-sm mx-auto">
+            We couldn&apos;t reach the server. Check your connection and try again.
+          </p>
+          <Button onClick={() => window.location.reload()} className="mt-6">
             Try again
           </Button>
         </div>
@@ -481,13 +549,14 @@ export default function AlertsPage() {
   }
 
   return (
-    <div className="min-h-screen pb-16">
-      {/* Header */}
-      <div className="border-b border-zinc-200 bg-zinc-50">
+    // FIX 7 — dark mode for top-level container
+    <div className="min-h-screen pb-16 bg-white dark:bg-zinc-900">
+      {/* Header — FIX 7 dark mode */}
+      <div className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900">
         <div className="container mx-auto px-4 py-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-zinc-900">Price Alerts</h1>
+              <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">Price Alerts</h1>
               <p className="mt-1 text-zinc-500">Get notified when card prices change</p>
             </div>
             <div className="flex items-center gap-2">
@@ -516,7 +585,7 @@ export default function AlertsPage() {
                     <p className="text-sm text-zinc-500">Active Alerts</p>
                     <Bell className="h-4 w-4 text-blue-500" />
                   </div>
-                  <p className="mt-2 text-2xl font-bold text-zinc-900">
+                  <p className="mt-2 text-2xl font-bold text-zinc-900 dark:text-zinc-100">
                     {alerts.filter((e) => e.alert.is_active).length}
                   </p>
                 </CardContent>
@@ -527,7 +596,7 @@ export default function AlertsPage() {
                     <p className="text-sm text-zinc-500">Total Triggers</p>
                     <TrendingUp className="h-4 w-4 text-emerald-500" />
                   </div>
-                  <p className="mt-2 text-2xl font-bold text-zinc-900">
+                  <p className="mt-2 text-2xl font-bold text-zinc-900 dark:text-zinc-100">
                     {alerts.reduce((sum, e) => sum + (e.alert.trigger_count ?? 0), 0)}
                   </p>
                 </CardContent>
@@ -538,12 +607,12 @@ export default function AlertsPage() {
                     <p className="text-sm text-zinc-500">Total Alerts</p>
                     <TrendingDown className="h-4 w-4 text-zinc-400" />
                   </div>
-                  <p className="mt-2 text-2xl font-bold text-zinc-900">{alerts.length}</p>
+                  <p className="mt-2 text-2xl font-bold text-zinc-900 dark:text-zinc-100">{alerts.length}</p>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Filter Tabs */}
+            {/* Filter Tabs — FIX 5 explicit label map */}
             <div className="flex items-center gap-2">
               {(['all', 'active', 'inactive'] as const).map((f) => (
                 <button
@@ -551,11 +620,11 @@ export default function AlertsPage() {
                   onClick={() => setFilter(f)}
                   className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
                     filter === f
-                      ? 'bg-zinc-900 text-white'
-                      : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
+                      ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
+                      : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700'
                   }`}
                 >
-                  {f.charAt(0).toUpperCase() + f.slice(1)}
+                  {FILTER_LABELS[f] ?? f}
                   {f === 'all' && ` (${alerts.length})`}
                   {f === 'active' && ` (${alerts.filter((e) => e.alert.is_active).length})`}
                   {f === 'inactive' && ` (${alerts.filter((e) => !e.alert.is_active).length})`}
@@ -569,7 +638,7 @@ export default function AlertsPage() {
                 <Card>
                   <CardContent className="flex flex-col items-center justify-center py-12">
                     <BellOff className="h-12 w-12 text-zinc-300" />
-                    <h3 className="mt-4 text-lg font-semibold text-zinc-900">No alerts found</h3>
+                    <h3 className="mt-4 text-lg font-semibold text-zinc-900 dark:text-zinc-100">No alerts found</h3>
                     <p className="mt-1 text-sm text-zinc-500">
                       Create an alert to get notified of price changes
                     </p>
@@ -604,7 +673,7 @@ export default function AlertsPage() {
 
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <h3 className="font-semibold text-zinc-900 truncate">{card.name}</h3>
+                              <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 truncate">{card.name}</h3>
                               {isTriggered && alert.is_active && (
                                 <Badge variant="warning" className="gap-1">
                                   <Bell className="h-3 w-3" />
@@ -618,7 +687,7 @@ export default function AlertsPage() {
                             <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
                               <span className="text-zinc-600">
                                 Alert at{' '}
-                                <span className="font-medium text-zinc-900">
+                                <span className="font-medium text-zinc-900 dark:text-zinc-100">
                                   {alert.direction === 'both' ? '±' : alert.direction === 'up' ? '+' : '-'}
                                   {alert.threshold_percent}%
                                 </span>
@@ -628,7 +697,7 @@ export default function AlertsPage() {
                                   <span className="text-zinc-300">|</span>
                                   <span className="text-zinc-600">
                                     Baseline:{' '}
-                                    <span className="font-medium text-zinc-900">
+                                    <span className="font-medium text-zinc-900 dark:text-zinc-100">
                                       {formatPrice(alert.baseline_price)}
                                     </span>
                                   </span>
@@ -661,11 +730,15 @@ export default function AlertsPage() {
 
                           <div className="flex items-center gap-2 flex-shrink-0">
                             {card.currentPrice != null && (
-                              <span className="text-lg font-bold text-zinc-900">
+                              <span className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
                                 {formatPrice(card.currentPrice)}
                               </span>
                             )}
+                            {/* FIX 3 — ARIA for alert row toggle */}
                             <button
+                              role="switch"
+                              aria-checked={alert.is_active}
+                              aria-label={`Toggle alert for ${card.name}`}
                               onClick={() => toggleAlert(alert.id)}
                               className={`relative h-6 w-11 rounded-full transition-colors ${
                                 alert.is_active ? 'bg-blue-600' : 'bg-zinc-200'
@@ -677,9 +750,11 @@ export default function AlertsPage() {
                                 }`}
                               />
                             </button>
+                            {/* FIX 4 — aria-label on delete button */}
                             <button
                               onClick={() => deleteAlert(alert.id)}
-                              className="rounded p-2 text-zinc-400 hover:bg-zinc-100 hover:text-red-500"
+                              aria-label={`Delete alert for ${card.name}`}
+                              className="rounded p-2 text-zinc-400 hover:bg-zinc-100 hover:text-red-500 dark:hover:bg-zinc-800"
                             >
                               <Trash2 className="h-4 w-4" />
                             </button>
