@@ -3,7 +3,7 @@
  * Combines NLP parsing with database queries
  */
 
-import { createServerClient } from '@/lib/supabase/client';
+import { createPublicClient, createServerClient } from '@/lib/supabase/client';
 import { redis, CACHE_KEYS, CACHE_TTL } from '@/lib/redis/client';
 import { parseSearchQuery, scoreCardMatch, ParsedQuery } from './nlp-parser';
 
@@ -96,7 +96,7 @@ export async function searchCards(
   query: string,
   options: SearchOptions = {}
 ): Promise<SearchResponse> {
-  const supabase = createServerClient();
+  const supabase = createPublicClient();
   const page = options.page ?? 1;
   const pageSize = options.pageSize ?? 20;
   const offset = (page - 1) * pageSize;

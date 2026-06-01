@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase/client';
+import { createPublicClient } from '@/lib/supabase/client';
 import { getCardWithPrices, getStaleCardPrices } from '@/lib/ppt/service';
 import { getPopulationFromDb } from '@/lib/scrapers/gemrate';
 
@@ -59,7 +59,7 @@ interface PriceCacheData {
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   const { id } = await params;
-  const supabase = createServerClient();
+  const supabase = createPublicClient();
 
   // Determine if id is a UUID or a tcg_player_id
   const isUUID = id.includes('-') && id.length === 36;

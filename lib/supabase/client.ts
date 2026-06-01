@@ -6,6 +6,11 @@ const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
 
 export const supabase = createClient<Database>(supabaseUrl, supabasePublishableKey);
 
+// Public (anon) client for read-only unauthenticated operations — respects RLS
+export function createPublicClient() {
+  return createClient<Database>(supabaseUrl, supabasePublishableKey);
+}
+
 // Server-side client with service role for admin operations
 export function createServerClient() {
   const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY!;
