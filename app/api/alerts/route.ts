@@ -67,16 +67,21 @@ export async function POST(request: NextRequest) {
   }
   const deliveryMethod = body.deliveryMethod as 'email' | 'push' | 'both' | undefined;
 
-  const alert = await createPriceAlert({
-    userId: user.id,
-    cardId,
-    variantId,
-    grade,
-    gradingCompanyId,
-    thresholdPercent,
-    direction,
-    deliveryMethod,
-  });
+  let alert;
+  try {
+    alert = await createPriceAlert({
+      userId: user.id,
+      cardId,
+      variantId,
+      grade,
+      gradingCompanyId,
+      thresholdPercent,
+      direction,
+      deliveryMethod,
+    });
+  } catch {
+    return NextResponse.json({ error: 'Failed to create alert' }, { status: 500 });
+  }
 
   if (!alert) {
     return NextResponse.json({ error: 'Failed to create alert' }, { status: 500 });
