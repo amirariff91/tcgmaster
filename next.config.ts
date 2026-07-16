@@ -37,6 +37,15 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "*.cloudfront.net",
       },
+      // One Piece Card Game official site (for bypassing CORP)
+      {
+        protocol: "https",
+        hostname: "www.onepiece-cardgame.com",
+      },
+      {
+        protocol: "https",
+        hostname: "en.onepiece-cardgame.com",
+      },
     ],
   },
 };

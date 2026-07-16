@@ -1,0 +1,26 @@
+Starting Price Sync Engine...
+Processing page 1 (1000 cards)...
+Failed to update last_price_fetch: {
+  message: "Bad Request",
+}
+Processing page 2 (1000 cards)...
+Failed to update last_price_fetch: {
+  message: "Bad Request",
+}
+Processing page 3 (1000 cards)...
+Failed to update last_price_fetch: {
+  message: "Bad Request",
+}
+Processing page 4 (1000 cards)...
+Failed to update last_price_fetch: {
+  message: "Bad Request",
+}
+Processing page 5 (1000 cards)...
+Failed to update last_price_fetch: {
+  message: "Bad Request",
+}
+Processing page 6 (858 cards)...
+Failed to update last_price_fetch: {
+  message: "Bad Request",
+}
+Price Sync Complete! Processed 5858 cards.

@@ -76,17 +76,17 @@ const stats = [
 
 export default function AboutPage() {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-[#060c18] pt-24">
       {/* Hero Section */}
       <section className="bg-gradient-to-b from-zinc-50 to-white">
         <div className="container py-20 text-center">
-          <h1 className="text-4xl md:text-5xl font-bold text-zinc-900 mb-6">
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-6">
             The Smarter Way to{' '}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
               Collect & Invest
             </span>
           </h1>
-          <p className="text-xl text-zinc-600 max-w-2xl mx-auto mb-8">
+          <p className="text-xl text-zinc-400 max-w-2xl mx-auto mb-8">
             TCGMaster is the price intelligence platform that helps collectors and investors make
             smarter decisions with real-time data and powerful analytics.
           </p>
@@ -94,29 +94,29 @@ export default function AboutPage() {
       </section>
 
       {/* Problem Section */}
-      <section className="py-16 bg-zinc-50">
+      <section className="py-16 bg-[#060c18]">
         <div className="container">
           <div className="max-w-3xl mx-auto text-center">
-            <h2 className="text-2xl md:text-3xl font-bold text-zinc-900 mb-6">
+            <h2 className="text-2xl md:text-3xl font-bold text-white mb-6">
               Collectors Deserve Better Tools
             </h2>
-            <p className="text-lg text-zinc-600 mb-8">
+            <p className="text-lg text-zinc-400 mb-8">
               The TCG market moves fast. Prices fluctuate daily. Finding accurate, real-time data
               across grading companies and marketplaces has always been a challenge. Spreadsheets
               can&apos;t keep up. Neither can outdated price guides.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-white rounded-xl p-6 border border-zinc-200">
+              <div className="bg-[#0b1329] rounded-xl p-6 border border-white/10">
                 <div className="text-3xl mb-2">📊</div>
-                <p className="text-zinc-600">Scattered price data across dozens of sites</p>
+                <p className="text-zinc-400">Scattered price data across dozens of sites</p>
               </div>
-              <div className="bg-white rounded-xl p-6 border border-zinc-200">
+              <div className="bg-[#0b1329] rounded-xl p-6 border border-white/10">
                 <div className="text-3xl mb-2">⏰</div>
-                <p className="text-zinc-600">Outdated information that costs you money</p>
+                <p className="text-zinc-400">Outdated information that costs you money</p>
               </div>
-              <div className="bg-white rounded-xl p-6 border border-zinc-200">
+              <div className="bg-[#0b1329] rounded-xl p-6 border border-white/10">
                 <div className="text-3xl mb-2">📝</div>
-                <p className="text-zinc-600">Manual tracking in messy spreadsheets</p>
+                <p className="text-zinc-400">Manual tracking in messy spreadsheets</p>
               </div>
             </div>
           </div>
@@ -127,10 +127,10 @@ export default function AboutPage() {
       <section className="py-16">
         <div className="container">
           <div className="text-center mb-12">
-            <h2 className="text-2xl md:text-3xl font-bold text-zinc-900 mb-4">
+            <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
               One Platform. Complete Control.
             </h2>
-            <p className="text-lg text-zinc-600 max-w-2xl mx-auto">
+            <p className="text-lg text-zinc-400 max-w-2xl mx-auto">
               TCGMaster brings together everything you need to track, analyze, and grow your
               collection with confidence.
             </p>
@@ -142,8 +142,8 @@ export default function AboutPage() {
                 key={feature.title}
                 className={cn(
                   'flex gap-4 p-6 rounded-xl',
-                  'bg-white border border-zinc-200',
-                  'hover:border-zinc-300 hover:shadow-sm',
+                  'bg-[#0b1329] border border-white/10',
+                  'hover:border-white/20 hover:shadow-sm',
                   'transition-all duration-200'
                 )}
               >
@@ -153,8 +153,8 @@ export default function AboutPage() {
                   </div>
                 </div>
                 <div>
-                  <h3 className="font-semibold text-zinc-900 mb-2">{feature.title}</h3>
-                  <p className="text-zinc-600 text-sm">{feature.description}</p>
+                  <h3 className="font-semibold text-white mb-2">{feature.title}</h3>
+                  <p className="text-zinc-400 text-sm">{feature.description}</p>
                 </div>
               </div>
             ))}
@@ -183,10 +183,10 @@ export default function AboutPage() {
             <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-6">
               <Users className="w-8 h-8 text-blue-600" />
             </div>
-            <h2 className="text-2xl md:text-3xl font-bold text-zinc-900 mb-4">
+            <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
               Join Thousands of Collectors
             </h2>
-            <p className="text-lg text-zinc-600 mb-8">
+            <p className="text-lg text-zinc-400 mb-8">
               Start tracking your collection today. Free to sign up, powerful enough for serious
               collectors.
             </p>

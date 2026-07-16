@@ -1,6 +1,6 @@
 // Currency conversion utilities with exchangerate.host API integration
 
-export type SupportedCurrency = 'USD' | 'EUR' | 'GBP' | 'JPY' | 'CAD' | 'AUD';
+export type SupportedCurrency = 'USD' | 'EUR' | 'GBP' | 'JPY' | 'CAD' | 'AUD' | 'MYR';
 
 export interface ExchangeRates {
   base: string;
@@ -23,6 +23,7 @@ export const currencyInfo: Record<SupportedCurrency, { symbol: string; name: str
   JPY: { symbol: '¥', name: 'Japanese Yen', locale: 'ja-JP' },
   CAD: { symbol: 'C$', name: 'Canadian Dollar', locale: 'en-CA' },
   AUD: { symbol: 'A$', name: 'Australian Dollar', locale: 'en-AU' },
+  MYR: { symbol: 'RM', name: 'Malaysian Ringgit', locale: 'ms-MY' },
 };
 
 // Static fallback rates (approximate, updated periodically)
@@ -33,6 +34,7 @@ const FALLBACK_RATES: Record<SupportedCurrency, number> = {
   JPY: 149.5,
   CAD: 1.36,
   AUD: 1.53,
+  MYR: 4.75,
 };
 
 const CACHE_KEY = 'tcgmaster_exchange_rates';
@@ -49,7 +51,7 @@ export async function fetchExchangeRates(): Promise<ExchangeRates | null> {
 
     // Fetch fresh rates
     const response = await fetch(
-      'https://api.exchangerate.host/latest?base=USD&symbols=EUR,GBP,JPY,CAD,AUD',
+      'https://api.exchangerate.host/latest?base=USD&symbols=EUR,GBP,JPY,CAD,AUD,MYR',
       { next: { revalidate: 3600 } } // Cache for 1 hour on server
     );
 
@@ -73,6 +75,7 @@ export async function fetchExchangeRates(): Promise<ExchangeRates | null> {
         JPY: data.rates?.JPY ?? FALLBACK_RATES.JPY,
         CAD: data.rates?.CAD ?? FALLBACK_RATES.CAD,
         AUD: data.rates?.AUD ?? FALLBACK_RATES.AUD,
+        MYR: data.rates?.MYR ?? FALLBACK_RATES.MYR,
       },
     };
 

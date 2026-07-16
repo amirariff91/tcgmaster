@@ -1,0 +1,69 @@
+2026-07-15T02:57:53: Failed to fetch queue {
+2026-07-15T02:57:53:   message: "Error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()",
+2026-07-15T02:57:53:   details: "",
+2026-07-15T02:57:53:   hint: "",
+2026-07-15T02:57:53:   code: "",
+2026-07-15T02:57:53: }
+2026-07-16T07:13:51: Snkrdunk fetch error for OP08-067_r1: 52 |     });
+2026-07-16T07:13:51: 53 |     #timeoutId;
+2026-07-16T07:13:51: 54 |     #timeoutError;
+2026-07-16T07:13:51: 55 |     constructor(opts) {
+2026-07-16T07:13:51: 56 |         if (opts && opts.timeout > 0) {
+2026-07-16T07:13:51: 57 |             this.#timeoutError = new TimeoutError(opts.message);
+2026-07-16T07:13:51:                                       ^
+2026-07-16T07:13:51: TimeoutError: Navigation timeout of 30000 ms exceeded
+2026-07-16T07:13:51:       at new Deferred (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/util/Deferred.js:57:34)
+2026-07-16T07:13:51:       at create (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/util/Deferred.js:18:16)
+2026-07-16T07:13:51:       at new LifecycleWatcher (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/LifecycleWatcher.js:70:46)
+2026-07-16T07:13:51:       at goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:150:29)
+2026-07-16T07:13:51:       at goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/api/Page.js:576:43)
+2026-07-16T07:13:51:       at fetchSnkrdunkPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/snkrdunk.ts:27:16)
+2026-07-16T07:13:51: 
+2026-07-16T10:41:55: Yuyutei fetch error for OP08-067_r1: DOMException {
+2026-07-16T10:41:55:   stack: "",
+2026-07-16T10:41:55:   code: 23,
+2026-07-16T10:41:55:   name: "TimeoutError",
+2026-07-16T10:41:55:   message: "The operation timed out.",
+2026-07-16T10:41:55:   INDEX_SIZE_ERR: 1,
+2026-07-16T10:41:55:   DOMSTRING_SIZE_ERR: 2,
+2026-07-16T10:41:55:   HIERARCHY_REQUEST_ERR: 3,
+2026-07-16T10:41:55:   WRONG_DOCUMENT_ERR: 4,
+2026-07-16T10:41:55:   INVALID_CHARACTER_ERR: 5,
+2026-07-16T10:41:55:   NO_DATA_ALLOWED_ERR: 6,
+2026-07-16T10:41:55:   NO_MODIFICATION_ALLOWED_ERR: 7,
+2026-07-16T10:41:55:   NOT_FOUND_ERR: 8,
+2026-07-16T10:41:55:   NOT_SUPPORTED_ERR: 9,
+2026-07-16T10:41:55:   INUSE_ATTRIBUTE_ERR: 10,
+2026-07-16T10:41:55:   INVALID_STATE_ERR: 11,
+2026-07-16T10:41:55:   SYNTAX_ERR: 12,
+2026-07-16T10:41:55:   INVALID_MODIFICATION_ERR: 13,
+2026-07-16T10:41:55:   NAMESPACE_ERR: 14,
+2026-07-16T10:41:55:   INVALID_ACCESS_ERR: 15,
+2026-07-16T10:41:55:   VALIDATION_ERR: 16,
+2026-07-16T10:41:55:   TYPE_MISMATCH_ERR: 17,
+2026-07-16T10:41:55:   SECURITY_ERR: 18,
+2026-07-16T10:41:55:   NETWORK_ERR: 19,
+2026-07-16T10:41:55:   ABORT_ERR: 20,
+2026-07-16T10:41:55:   URL_MISMATCH_ERR: 21,
+2026-07-16T10:41:55:   QUOTA_EXCEEDED_ERR: 22,
+2026-07-16T10:41:55:   TIMEOUT_ERR: 23,
+2026-07-16T10:41:55:   INVALID_NODE_TYPE_ERR: 24,
+2026-07-16T10:41:55:   DATA_CLONE_ERR: 25,
+2026-07-16T10:41:55:   toString: [Function: toString],
+2026-07-16T10:41:55: }
+2026-07-16T13:48:46: Snkrdunk fetch error for OP09-050_p3: 52 |     });
+2026-07-16T13:48:46: 53 |     #timeoutId;
+2026-07-16T13:48:46: 54 |     #timeoutError;
+2026-07-16T13:48:46: 55 |     constructor(opts) {
+2026-07-16T13:48:46: 56 |         if (opts && opts.timeout > 0) {
+2026-07-16T13:48:46: 57 |             this.#timeoutError = new TimeoutError(opts.message);
+2026-07-16T13:48:46:                                       ^
+2026-07-16T13:48:46: TimeoutError: Navigation timeout of 30000 ms exceeded
+2026-07-16T13:48:46:       at new Deferred (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/util/Deferred.js:57:34)
+2026-07-16T13:48:46:       at create (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/util/Deferred.js:18:16)
+2026-07-16T13:48:46:       at new LifecycleWatcher (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/LifecycleWatcher.js:70:46)
+2026-07-16T13:48:46:       at goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:150:29)
+2026-07-16T13:48:46:       at goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/api/Page.js:576:43)
+2026-07-16T13:48:46:       at fetchSnkrdunkPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/snkrdunk.ts:27:16)
+2026-07-16T13:48:46:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-jp-op.ts:46:35)
+2026-07-16T13:48:46: 

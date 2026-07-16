@@ -26,17 +26,17 @@ export function CategoryCards({ categories }: CategoryCardsProps) {
     <section className="space-y-4">
       <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">Markets covered</p>
-          <h2 className="font-serif text-3xl font-semibold tracking-tight text-stone-950 md:text-4xl">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-orange-500">Markets covered</p>
+          <h2 className="font-serif text-3xl font-semibold tracking-tight text-white md:text-4xl">
             Market lanes, not directory tiles.
           </h2>
         </div>
-        <p className="max-w-xl text-sm leading-6 text-stone-600">
+        <p className="max-w-xl text-sm leading-6 text-zinc-400">
           Each lane shows coverage, demand, and movement context so collectors know where the market is active.
         </p>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-[0_1px_2px_rgba(41,37,36,0.06)]">
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#0b1329]/80 backdrop-blur-sm shadow-[0_1px_2px_rgba(0,0,0,0.2)]">
         {categories.map((category, index) => (
           <CategoryLane key={category.slug} category={category} index={index} />
         ))}
@@ -54,20 +54,19 @@ function CategoryLane({ category, index }: CategoryLaneProps) {
   const isPositive = !category.change?.startsWith('-');
 
   return (
-    <Link
-      href={`/${category.slug}`}
+    <div
       className={cn(
-        'group grid gap-4 px-5 py-5 transition-colors hover:bg-amber-50/50 md:grid-cols-[1.3fr_0.8fr_0.8fr_auto] md:items-center md:px-6',
-        index !== 0 && 'border-t border-stone-200'
+        'group grid gap-4 px-5 py-5 transition-colors md:grid-cols-[1.3fr_0.8fr_0.8fr_auto] md:items-center md:px-6',
+        index !== 0 && 'border-t border-white/10'
       )}
     >
       <div className="flex items-start gap-4">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-stone-300 bg-stone-100 text-stone-800">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-orange-400">
           <BarChart3 className="h-5 w-5" />
         </div>
         <div>
-          <h3 className="text-lg font-semibold text-stone-950">{category.name}</h3>
-          <p className="text-sm text-stone-600">{category.description}</p>
+          <h3 className="text-lg font-semibold text-white">{category.name}</h3>
+          <p className="text-sm text-zinc-400">{category.description}</p>
         </div>
       </div>
 
@@ -75,25 +74,24 @@ function CategoryLane({ category, index }: CategoryLaneProps) {
       <Metric
         label="7d signal"
         value={category.change || 'Active'}
-        className={isPositive ? 'text-emerald-700' : 'text-red-700'}
+        className={isPositive ? 'text-emerald-400' : 'text-red-400'}
       />
 
       <div className="flex items-center justify-between gap-4 md:justify-end">
         <div className="text-left md:text-right">
-          <p className="text-xs uppercase tracking-[0.16em] text-stone-500">Top mover</p>
-          <p className="text-sm font-medium text-stone-900">{category.topMover || category.signal || 'Live comps'}</p>
+          <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">Top mover</p>
+          <p className="text-sm font-medium text-orange-400">{category.topMover || category.signal || 'Live comps'}</p>
         </div>
-        <ArrowRight className="h-4 w-4 text-stone-400 transition-transform group-hover:translate-x-1 group-hover:text-stone-900" />
       </div>
-    </Link>
+    </div>
   );
 }
 
 function Metric({ label, value, className }: { label: string; value: string; className?: string }) {
   return (
     <div>
-      <p className="text-xs uppercase tracking-[0.16em] text-stone-500">{label}</p>
-      <p className={cn('mt-1 font-mono text-sm font-semibold tabular-nums text-stone-950', className)}>{value}</p>
+      <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">{label}</p>
+      <p className={cn('mt-1 font-mono text-sm font-semibold tabular-nums text-white', className)}>{value}</p>
     </div>
   );
 }

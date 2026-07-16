@@ -5,6 +5,9 @@ import { ArrowRight, Search, TrendingUp, Sparkles } from 'lucide-react';
 import { SearchBar } from '@/components/search/search-bar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardImage } from '@/components/card/card-image';
+import { formatNumber, formatSetName } from '@/lib/utils';
+import { createClient } from '@/lib/supabase/server';
 import { Badge } from '@/components/ui/badge';
 import { formatPrice, formatPriceChange } from '@/lib/utils';
 
@@ -208,13 +211,13 @@ export default async function GamePage({ params }: PageProps) {
                 >
                   <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-zinc-100">
                     <span className="text-2xl font-bold text-zinc-400">
-                      {set.name.charAt(0)}
+                      {formatSetName(set.name).charAt(0)}
                     </span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-zinc-900 group-hover:text-blue-600">
-                        {set.name}
+                      <h3 className="font-semibold text-zinc-900 group-hover:text-blue-600 truncate" title={formatSetName(set.name)}>
+                        {formatSetName(set.name)}
                       </h3>
                       {set.trending && (
                         <Badge variant="warning" className="gap-1">

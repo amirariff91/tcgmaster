@@ -7,7 +7,7 @@ import { type SupportedCurrency, currencyInfo } from '@/lib/currency';
 import { useCurrencyContext } from '@/lib/currency-context';
 import { trackCurrencyChanged } from '@/lib/analytics';
 
-const currencies: SupportedCurrency[] = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD'];
+const currencies: SupportedCurrency[] = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'MYR'];
 
 interface CurrencyToggleProps {
   className?: string;

@@ -131,10 +131,10 @@ function SignUpForm() {
 
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t border-zinc-200" />
+            <span className="w-full border-t border-white/10" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-white px-2 text-zinc-500">
+            <span className="bg-[#0b1329] px-2 text-zinc-400">
               Or continue with email
             </span>
           </div>
@@ -204,7 +204,7 @@ function SignUpForm() {
           </Button>
         </form>
 
-        <p className="text-center text-xs text-zinc-500">
+        <p className="text-center text-xs text-zinc-400">
           By creating an account, you agree to our{' '}
           <Link href="/terms" className="underline hover:text-zinc-700">
             Terms of Service
@@ -217,7 +217,7 @@ function SignUpForm() {
       </CardContent>
 
       <CardFooter className="flex flex-col gap-4">
-        <p className="text-center text-sm text-zinc-500">
+        <p className="text-center text-sm text-zinc-400">
           Already have an account?{' '}
           <Link
             href={`/login?redirectTo=${encodeURIComponent(redirectTo)}`}
@@ -233,7 +233,7 @@ function SignUpForm() {
 
 export default function SignUpPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-zinc-50">
+    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-[#060c18]">
       <React.Suspense fallback={
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">

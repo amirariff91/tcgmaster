@@ -149,3 +149,27 @@ export function isValidCertNumber(certNumber: string, company: string): boolean 
       return cleaned.length >= 6;
   }
 }
+
+export function formatDisplayNumber(gameSlug: string | null | undefined, number: string, cardCount?: number): string {
+  if (!number) return '';
+  
+  // Strip _pX, -pX, _rX, -rX suffixes for UI display
+  let cleanNumber = number.replace(/[_-][pr]\d+/g, '');
+  
+  // Pokemon cards append /total if not already present
+  if (gameSlug === 'pokemon') {
+    return cleanNumber.includes('/') || !cardCount ? cleanNumber : `${cleanNumber}/${cardCount}`;
+  }
+  
+  // For One Piece and Dragon Ball FW, just return the clean number without /cardCount
+  return cleanNumber;
+}
+
+export function formatSetName(name: string | null | undefined): string {
+  if (!name) return '';
+  let formatted = name.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+  formatted = formatted.replace(/^([a-z]+)-([0-9]+)\s*:/i, (match, p1, p2) => {
+    return `${p1.toUpperCase()}${p2} :`;
+  });
+  return formatted;
+}

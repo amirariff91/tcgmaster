@@ -157,7 +157,8 @@ export const syncPrices = inngest.createFunction(
               { ex: CACHE_TTL.prices }
             );
 
-            // Add to price history
+            // Add to price history (Disabled ppt-api per user request)
+            /*
             if (pptCard.prices.market) {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               await (supabase.from('price_history') as any).insert({
@@ -168,6 +169,7 @@ export const syncPrices = inngest.createFunction(
                 confidence: 'high',
               });
             }
+            */
 
             updated++;
           } catch (err) {

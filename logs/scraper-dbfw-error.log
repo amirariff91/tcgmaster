@@ -1,0 +1,9 @@
+2026-07-16T08:26:01: Cardrush fetch error for FB03-010: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-16T08:26:01:   path: "https://www.cardrush-db.jp/product-list?keyword=FB03-010",
+2026-07-16T08:26:01:  errno: 0,
+2026-07-16T08:26:01:   code: "ECONNRESET"
+2026-07-16T08:26:01: 
+2026-07-16T08:26:01:       at async fetchCardrushData (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/cardrush.ts:5:319)
+2026-07-16T08:26:01:       at async fetchCardrushPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/cardrush.ts:58:34)
+2026-07-16T08:26:01:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-dbfw.ts:27:46)
+2026-07-16T08:26:01: 

@@ -79,14 +79,42 @@
   50% { opacity: 0.5; }
 }
 
+@keyframes marquee-left {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-50%, 0, 0); }
+}
+
+@keyframes marquee-right {
+  0% { transform: translate3d(-50%, 0, 0); }
+  100% { transform: translate3d(0, 0, 0); }
+}
+
+.animate-marquee-left {
+  animation: marquee-left 56s linear infinite;
+  will-change: transform;
+}
+
+.animate-marquee-left:hover {
+  animation-play-state: paused !important;
+}
+
+.animate-marquee-right {
+  animation: marquee-right 56s linear infinite;
+  will-change: transform;
+}
+
+.animate-marquee-right:hover {
+  animation-play-state: paused !important;
+}
+
 /* Base styles - relying on Tailwind's Preflight for resets */
 html {
   scroll-behavior: smooth;
 }
 
 body {
-  background: #ffffff;
-  color: #09090b;
+  background: #060c18;
+  color: #f4f4f5;
   font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { searchCards, getSearchSuggestions, getPopularSearches } from '@/lib/search/service';
+import { formatDisplayNumber, formatSetName } from '@/lib/utils';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -11,6 +12,7 @@ export async function GET(request: NextRequest) {
   const game = searchParams.get('game') || undefined;
   const set = searchParams.get('set') || undefined;
   const rarity = searchParams.get('rarity') || undefined;
+  const lang = searchParams.get('lang') as 'en' | 'ja' | 'all' | undefined;
   const autocomplete = searchParams.get('autocomplete') === 'true';
   const popular = searchParams.get('popular') === 'true';
 
@@ -20,11 +22,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ data: popularSearches });
   }
 
-  // Return empty if no query
-  if (!query || query.length < 2) {
-    return NextResponse.json({ results: [] });
-  }
-
+  // Let empty query pass through to get default list
   // Autocomplete mode - fast suggestions
   if (autocomplete) {
     const suggestions = await getSearchSuggestions(query, limit);
@@ -37,14 +35,14 @@ export async function GET(request: NextRequest) {
         name: card.name,
         slug: `${card.game}/${card.setSlug}/${card.slug}`,
         image_url: card.imageUrl,
-        subtitle: `${card.setName} - #${card.number}`,
+        subtitle: `${formatSetName(card.setName)} - #${formatDisplayNumber(card.game, card.number)}`,
         price: card.marketPrice,
         game: card.game,
       })),
       ...suggestions.sets.map((set) => ({
         type: 'set' as const,
         id: set.slug,
-        name: set.name,
+        name: formatSetName(set.name),
         slug: `pokemon/${set.slug}`,
         image_url: null,
         subtitle: `${set.cardCount} cards`,
@@ -60,13 +58,16 @@ export async function GET(request: NextRequest) {
   }
 
   // Full search mode
+  const sort = searchParams.get('sort') || undefined;
   const results = await searchCards(query, {
     page,
     pageSize,
+    sort,
     filters: {
       game,
       set,
       rarity,
+      lang,
     },
   });
 
@@ -78,7 +79,7 @@ export async function GET(request: NextRequest) {
         name: card.name,
         slug: `${card.game}/${card.setSlug}/${card.slug}`,
         image_url: card.imageUrl,
-        subtitle: `${card.setName} - #${card.number}`,
+        subtitle: `${formatSetName(card.setName)} - #${formatDisplayNumber(card.game, card.number)}`,
         price: card.marketPrice,
         game: card.game,
         rarity: card.rarity,

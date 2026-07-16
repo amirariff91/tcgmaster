@@ -24,12 +24,12 @@ export const metadata: Metadata = {
     template: '%s | TCGMaster',
   },
   description:
-    'Search card prices, compare graded comps where source-backed data exists, and manage Pokemon and sports-card collection values.',
+    'Search card prices, compare graded comps where source-backed data exists, and manage One Piece and Dragon Ball collection values.',
   keywords: [
     'TCG',
     'trading cards',
-    'Pokemon cards',
-    'sports cards',
+    'One Piece cards',
+    'Dragon Ball cards',
     'price guide',
     'PSA',
     'BGS',
@@ -46,7 +46,7 @@ export const metadata: Metadata = {
     siteName: 'TCGMaster',
     title: 'TCGMaster - TCG Price Intelligence & Collection Management',
     description:
-      'Track Pokemon, sports cards, and more with real-time pricing, graded card data, and portfolio tools.',
+      'Track One Piece and Dragon Ball cards with real-time pricing, graded card data, and portfolio tools.',
   },
   twitter: {
     card: 'summary_large_image',
@@ -86,7 +86,7 @@ export default function RootLayout({
           </>
         )}
       </head>
-      <body className={`${inter.variable} ${newsreader.variable} font-sans antialiased bg-white text-zinc-900`}>
+      <body className={`${inter.variable} ${newsreader.variable} font-sans antialiased bg-[#060c18] text-zinc-100`}>
         <Providers>
           <div className="flex min-h-screen flex-col">
             <Header />

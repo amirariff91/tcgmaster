@@ -87,10 +87,15 @@ function LoginForm() {
   };
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader className="text-center">
-        <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
-        <CardDescription>
+    <Card className="w-full max-w-md relative z-10 bg-[#0b1329]/80 backdrop-blur-xl border-white/10 shadow-2xl">
+      <CardHeader className="text-center pb-8">
+        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/5 border border-white/10 shadow-inner">
+           <span className="text-orange-500 font-black text-3xl italic tracking-tighter" style={{ fontFamily: 'Impact, sans-serif' }}>
+             TM
+           </span>
+        </div>
+        <CardTitle className="text-3xl font-bold text-white tracking-tight">Welcome back</CardTitle>
+        <CardDescription className="text-zinc-400 text-base mt-2">
           Sign in to your TCGMaster account
         </CardDescription>
       </CardHeader>
@@ -110,7 +115,7 @@ function LoginForm() {
 
         <Button
           variant="outline"
-          className="w-full"
+          className="w-full bg-white/5 border-white/10 text-white hover:bg-white/10 hover:text-white transition-all"
           onClick={handleGoogleSignIn}
           disabled={isLoading}
         >
@@ -137,10 +142,10 @@ function LoginForm() {
 
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t border-zinc-200" />
+            <span className="w-full border-t border-white/10" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-white px-2 text-zinc-500">
+            <span className="bg-transparent px-2 text-zinc-500 font-medium tracking-wider">
               Or continue with email
             </span>
           </div>
@@ -148,7 +153,7 @@ function LoginForm() {
 
         <form onSubmit={handleSignIn} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email" className="text-zinc-300">Email</Label>
             <Input
               id="email"
               type="email"
@@ -157,12 +162,13 @@ function LoginForm() {
               onChange={(e) => setEmail(e.target.value)}
               required
               disabled={isLoading}
+              className="bg-white/5 border-white/10 text-white placeholder:text-zinc-600 focus-visible:ring-orange-500/50 focus-visible:border-orange-500"
             />
           </div>
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password" className="text-zinc-300">Password</Label>
               <Button
                 type="button"
                 variant="link"
@@ -181,10 +187,11 @@ function LoginForm() {
               onChange={(e) => setPassword(e.target.value)}
               required
               disabled={isLoading}
+              className="bg-white/5 border-white/10 text-white placeholder:text-zinc-600 focus-visible:ring-orange-500/50 focus-visible:border-orange-500"
             />
           </div>
 
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button type="submit" className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-white font-bold tracking-wide shadow-[0_0_15px_rgba(249,115,22,0.4)] border-none" disabled={isLoading}>
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -198,11 +205,11 @@ function LoginForm() {
       </CardContent>
 
       <CardFooter className="flex flex-col gap-4">
-        <p className="text-center text-sm text-zinc-500">
+        <p className="text-center text-sm text-zinc-400">
           Don&apos;t have an account?{' '}
           <Link
             href={`/signup?redirectTo=${encodeURIComponent(redirectTo)}`}
-            className="font-medium text-emerald-600 hover:underline"
+            className="font-semibold text-orange-400 hover:text-orange-300 transition-colors"
           >
             Sign up
           </Link>
@@ -214,12 +221,15 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-zinc-50">
+    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-[#060c18] relative overflow-hidden">
+      {/* Ambient background glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-orange-600/15 rounded-full blur-[150px] pointer-events-none" />
+      
       <React.Suspense fallback={
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
-            <CardDescription>Loading...</CardDescription>
+        <Card className="w-full max-w-md relative z-10 bg-[#0b1329]/80 backdrop-blur-xl border-white/10 shadow-2xl">
+          <CardHeader className="text-center pb-8">
+            <CardTitle className="text-2xl font-bold text-white">Welcome back</CardTitle>
+            <CardDescription className="text-zinc-400">Loading...</CardDescription>
           </CardHeader>
         </Card>
       }>

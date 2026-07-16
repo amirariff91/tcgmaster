@@ -65,10 +65,10 @@ export function CardGridItem({
         onClick={handleClick}
         className={cn(
           'flex gap-3 p-3 rounded-lg',
-          'bg-white border border-zinc-200',
-          'hover:border-zinc-300 hover:shadow-sm',
+          'bg-[#0b1329]/80 backdrop-blur-sm border border-white/10',
+          'hover:border-white/20 hover:bg-white/5 hover:shadow-[0_0_15px_rgba(255,255,255,0.05)]',
           'transition-all duration-200',
-          'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
+          'focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-[#060c18]'
         )}
       >
         {/* Card Image / Placeholder */}
@@ -116,13 +116,13 @@ export function CardGridItem({
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-xs text-zinc-500 font-medium">
+              <p className="text-xs text-zinc-400 font-medium">
                 {card.number}
               </p>
-              <h3 className="font-semibold text-zinc-900 truncate">
+              <h3 className="font-semibold text-white truncate">
                 {card.name}
               </h3>
-              <p className="text-xs text-zinc-500">
+              <p className="text-xs text-zinc-400">
                 {rarityDisplay[card.rarity] || card.rarity}
               </p>
             </div>
@@ -140,17 +140,17 @@ export function CardGridItem({
           </div>
 
           {/* Prices */}
-          <div className="mt-2 pt-2 border-t border-zinc-100">
+          <div className="mt-2 pt-2 border-t border-white/10">
             <div className="flex items-baseline justify-between gap-2">
               <div>
-                <span className="text-xs text-zinc-500">Raw: </span>
-                <span className="font-medium text-zinc-900">
+                <span className="text-xs text-zinc-400">Raw: </span>
+                <span className="font-medium text-white">
                   {format(card.prices.raw)}
                 </span>
               </div>
               <div className="text-right">
-                <span className="text-xs text-zinc-500">PSA 10: </span>
-                <span className="font-medium text-zinc-900">
+                <span className="text-xs text-zinc-400">PSA 10: </span>
+                <span className="font-medium text-orange-400">
                   {format(card.prices.psa10)}
                 </span>
               </div>
@@ -177,24 +177,24 @@ export function CardGridItem({
 // Skeleton loader for card grid item
 export function CardGridItemSkeleton() {
   return (
-    <div className="flex gap-3 p-3 rounded-lg bg-white border border-zinc-200">
+    <div className="flex gap-3 p-3 rounded-lg bg-[#0b1329]/80 backdrop-blur-sm border border-white/10">
       {/* Image skeleton */}
-      <div className="w-20 h-28 rounded bg-zinc-200 animate-pulse" />
+      <div className="w-20 h-28 rounded bg-white/10 animate-pulse" />
 
       {/* Content skeleton */}
       <div className="flex-1">
         <div className="space-y-2">
-          <div className="h-3 w-12 bg-zinc-200 rounded animate-pulse" />
-          <div className="h-4 w-24 bg-zinc-200 rounded animate-pulse" />
-          <div className="h-3 w-16 bg-zinc-200 rounded animate-pulse" />
+          <div className="h-3 w-12 bg-white/10 rounded animate-pulse" />
+          <div className="h-4 w-24 bg-white/5 rounded animate-pulse" />
+          <div className="h-3 w-16 bg-white/10 rounded animate-pulse" />
         </div>
 
-        <div className="mt-4 pt-2 border-t border-zinc-100 space-y-2">
+        <div className="mt-4 pt-2 border-t border-white/10 space-y-2">
           <div className="flex justify-between">
-            <div className="h-3 w-16 bg-zinc-200 rounded animate-pulse" />
-            <div className="h-3 w-20 bg-zinc-200 rounded animate-pulse" />
+            <div className="h-3 w-16 bg-white/10 rounded animate-pulse" />
+            <div className="h-3 w-20 bg-white/5 rounded animate-pulse" />
           </div>
-          <div className="h-3 w-14 bg-zinc-200 rounded animate-pulse" />
+          <div className="h-3 w-14 bg-white/10 rounded animate-pulse" />
         </div>
       </div>
     </div>

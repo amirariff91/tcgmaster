@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { getSetBySlug, getRelatedSets, mockSets } from '@/lib/mock-data';
 import { SetPageClient } from './set-page-client';
 import { createClient } from '@/lib/supabase/server';
+import { formatSetName } from '@/lib/utils';
 import type { MockSet, MockCard } from '@/lib/mock-data';
 
 interface SetPageProps {
@@ -108,7 +109,7 @@ async function getSetFromDB(gameSlug: string, setSlug: string): Promise<MockSet 
 
     return {
       id: setData.id,
-      name: setData.name,
+      name: formatSetName(setData.name),
       slug: setData.slug,
       game: game.display_name,
       gameSlug: game.slug,
@@ -143,8 +144,9 @@ export async function generateMetadata({ params }: SetPageProps): Promise<Metada
 
   if (!setData) return { title: 'Set Not Found | TCGMaster' };
 
-  const title = `${setData.name} - ${setData.game} Cards | TCGMaster`;
-  const description = `Complete price guide for ${setData.name} (${setData.game}). Track prices for ${setData.card_count} cards including Raw and PSA graded values.`;
+  const formattedName = formatSetName(setData.name);
+  const title = `${formattedName} - ${setData.game} Cards | TCGMaster`;
+  const description = `Complete price guide for ${formattedName} (${setData.game}). Track prices for ${setData.card_count} cards including Raw and PSA graded values.`;
 
   return {
     title,

@@ -1,0 +1,141 @@
+2026-07-14T23:48:07: AI Extraction error: 14108 |                 },
+2026-07-14T23:48:07: 14109 |             };
+2026-07-14T23:48:07: 14110 |         }
+2026-07-14T23:48:07: 14111 |         const errorMessage = JSON.stringify(errorBody);
+2026-07-14T23:48:07: 14112 |         if (status >= 400 && status < 600) {
+2026-07-14T23:48:07: 14113 |             const apiError = new ApiError({
+2026-07-14T23:48:07:                                      ^
+2026-07-14T23:48:07: ApiError: {"error":{"code":503,"message":"This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.","status":"UNAVAILABLE"}}
+2026-07-14T23:48:07:  status: 503,
+2026-07-14T23:48:07: 
+2026-07-14T23:48:07:       at throwErrorIfNotOK (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:14113:30)
+2026-07-14T23:48:07:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:13813:19)
+2026-07-14T23:48:07: 
+2026-07-14T23:49:08: AI Extraction error: 14108 |                 },
+2026-07-14T23:49:08: 14109 |             };
+2026-07-14T23:49:08: 14110 |         }
+2026-07-14T23:49:08: 14111 |         const errorMessage = JSON.stringify(errorBody);
+2026-07-14T23:49:08: 14112 |         if (status >= 400 && status < 600) {
+2026-07-14T23:49:08: 14113 |             const apiError = new ApiError({
+2026-07-14T23:49:08:                                      ^
+2026-07-14T23:49:08: ApiError: {"error":{"code":503,"message":"This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.","status":"UNAVAILABLE"}}
+2026-07-14T23:49:08:  status: 503,
+2026-07-14T23:49:08: 
+2026-07-14T23:49:08:       at throwErrorIfNotOK (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:14113:30)
+2026-07-14T23:49:08:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:13813:19)
+2026-07-14T23:49:08: 
+2026-07-15T01:16:00: Failed to update Stussy {
+2026-07-15T01:16:00:   message: "Error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()",
+2026-07-15T01:16:00:   details: "",
+2026-07-15T01:16:00:   hint: "",
+2026-07-15T01:16:00:   code: "",
+2026-07-15T01:16:00: }
+2026-07-15T02:38:20: Failed to update Lim {
+2026-07-15T02:38:20:   message: "Error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()",
+2026-07-15T02:38:20:   details: "",
+2026-07-15T02:38:20:   hint: "",
+2026-07-15T02:38:20:   code: "",
+2026-07-15T02:38:20: }
+2026-07-15T02:57:25: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-15T02:57:25: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-15T02:57:25: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-15T02:57:25: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-15T02:57:25: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-15T02:57:25: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-15T02:57:25:                                           ^
+2026-07-15T02:57:25: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-15T02:57:25:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
+2026-07-15T02:57:25:  errno: 0,
+2026-07-15T02:57:25:   code: "ECONNRESET"
+2026-07-15T02:57:25: 
+2026-07-15T02:57:25:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-15T02:57:25:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-15T02:57:25:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:116:28)
+2026-07-15T02:57:25: 
+2026-07-15T03:33:47: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-15T03:33:47: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-15T03:33:47: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-15T03:33:47: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-15T03:33:47: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-15T03:33:47: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-15T03:33:47:                                           ^
+2026-07-15T03:33:47: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-15T03:33:47:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
+2026-07-15T03:33:47:  errno: 0,
+2026-07-15T03:33:47:   code: "ECONNRESET"
+2026-07-15T03:33:47: 
+2026-07-15T03:33:47:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-15T03:33:47:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-15T03:33:47: 
+2026-07-15T03:34:54: Failed to update Monkey.D.Luffy {
+2026-07-15T03:34:54:   message: "Error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()",
+2026-07-15T03:34:54:   details: "",
+2026-07-15T03:34:54:   hint: "",
+2026-07-15T03:34:54:   code: "",
+2026-07-15T03:34:54: }
+2026-07-15T04:13:35: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-15T04:13:35: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-15T04:13:35: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-15T04:13:35: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-15T04:13:35: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-15T04:13:35: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-15T04:13:35:                                           ^
+2026-07-15T04:13:35: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-15T04:13:35:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
+2026-07-15T04:13:35:  errno: 0,
+2026-07-15T04:13:35:   code: "ECONNRESET"
+2026-07-15T04:13:35: 
+2026-07-15T04:13:35:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-15T04:13:35:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-15T04:13:35: 
+2026-07-15T04:27:55: Failed to update Tsuru {
+2026-07-15T04:27:55:   message: "Error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()",
+2026-07-15T04:27:55:   details: "",
+2026-07-15T04:27:55:   hint: "",
+2026-07-15T04:27:55:   code: "",
+2026-07-15T04:27:55: }
+2026-07-15T15:03:23: AI Extraction error: 14108 |                 },
+2026-07-15T15:03:23: 14109 |             };
+2026-07-15T15:03:23: 14110 |         }
+2026-07-15T15:03:23: 14111 |         const errorMessage = JSON.stringify(errorBody);
+2026-07-15T15:03:23: 14112 |         if (status >= 400 && status < 600) {
+2026-07-15T15:03:23: 14113 |             const apiError = new ApiError({
+2026-07-15T15:03:23:                                      ^
+2026-07-15T15:03:23: ApiError: {"error":{"code":503,"message":"This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.","status":"UNAVAILABLE"}}
+2026-07-15T15:03:23:  status: 503,
+2026-07-15T15:03:23: 
+2026-07-15T15:03:23:       at throwErrorIfNotOK (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:14113:30)
+2026-07-15T15:03:23:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:13813:19)
+2026-07-15T15:03:23: 
+2026-07-16T10:42:03: AI Extraction error: DOMException {
+2026-07-16T10:42:03:   stack: "",
+2026-07-16T10:42:03:   code: 23,
+2026-07-16T10:42:03:   name: "TimeoutError",
+2026-07-16T10:42:03:   message: "The operation timed out.",
+2026-07-16T10:42:03:   INDEX_SIZE_ERR: 1,
+2026-07-16T10:42:03:   DOMSTRING_SIZE_ERR: 2,
+2026-07-16T10:42:03:   HIERARCHY_REQUEST_ERR: 3,
+2026-07-16T10:42:03:   WRONG_DOCUMENT_ERR: 4,
+2026-07-16T10:42:03:   INVALID_CHARACTER_ERR: 5,
+2026-07-16T10:42:03:   NO_DATA_ALLOWED_ERR: 6,
+2026-07-16T10:42:03:   NO_MODIFICATION_ALLOWED_ERR: 7,
+2026-07-16T10:42:03:   NOT_FOUND_ERR: 8,
+2026-07-16T10:42:03:   NOT_SUPPORTED_ERR: 9,
+2026-07-16T10:42:03:   INUSE_ATTRIBUTE_ERR: 10,
+2026-07-16T10:42:03:   INVALID_STATE_ERR: 11,
+2026-07-16T10:42:03:   SYNTAX_ERR: 12,
+2026-07-16T10:42:03:   INVALID_MODIFICATION_ERR: 13,
+2026-07-16T10:42:03:   NAMESPACE_ERR: 14,
+2026-07-16T10:42:03:   INVALID_ACCESS_ERR: 15,
+2026-07-16T10:42:03:   VALIDATION_ERR: 16,
+2026-07-16T10:42:03:   TYPE_MISMATCH_ERR: 17,
+2026-07-16T10:42:03:   SECURITY_ERR: 18,
+2026-07-16T10:42:03:   NETWORK_ERR: 19,
+2026-07-16T10:42:03:   ABORT_ERR: 20,
+2026-07-16T10:42:03:   URL_MISMATCH_ERR: 21,
+2026-07-16T10:42:03:   QUOTA_EXCEEDED_ERR: 22,
+2026-07-16T10:42:03:   TIMEOUT_ERR: 23,
+2026-07-16T10:42:03:   INVALID_NODE_TYPE_ERR: 24,
+2026-07-16T10:42:03:   DATA_CLONE_ERR: 25,
+2026-07-16T10:42:03:   toString: [Function: toString],
+2026-07-16T10:42:03: }

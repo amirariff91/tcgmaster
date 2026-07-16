@@ -34,21 +34,15 @@ export function MarketMovers({ gainers, losers }: MarketMoversProps) {
     <section className="space-y-5">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">Today&apos;s movement</p>
-          <h2 className="font-serif text-3xl font-semibold tracking-tight text-stone-950 md:text-4xl">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-orange-500">Today&apos;s movement</p>
+          <h2 className="font-serif text-3xl font-semibold tracking-tight text-white md:text-4xl">
             Prices with volume and confidence.
           </h2>
         </div>
-        <Link
-          href="/market"
-          className="inline-flex items-center gap-2 text-sm font-medium text-stone-700 transition-colors hover:text-stone-950"
-        >
-          View full market desk <ArrowRight className="h-4 w-4" />
-        </Link>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-[0_1px_2px_rgba(41,37,36,0.06)]">
-        <div className="hidden grid-cols-[3rem_1.6fr_0.8fr_0.8fr_0.7fr_0.8fr_0.8fr] gap-4 border-b border-stone-200 bg-stone-100/80 px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-stone-500 md:grid">
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-transparent shadow-[0_1px_2px_rgba(0,0,0,0.2)]">
+        <div className="hidden grid-cols-[3rem_1.6fr_0.8fr_0.8fr_0.7fr_0.8fr_0.8fr] gap-4 border-b border-white/10 bg-white/5 px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400 md:grid">
           <span>#</span>
           <span>Card</span>
           <span>Grade</span>
@@ -58,48 +52,64 @@ export function MarketMovers({ gainers, losers }: MarketMoversProps) {
           <span className="text-right">Confidence</span>
         </div>
 
-        <div className="divide-y divide-stone-200">
+        <div className="divide-y divide-white/10">
           {rows.map((card, index) => {
             const isPositive = card.change >= 0;
             return (
-              <Link
+              <div
                 key={card.id}
-                href={`/${card.slug}`}
-                className="grid gap-3 px-5 py-4 transition-colors hover:bg-amber-50/50 md:grid-cols-[3rem_1.6fr_0.8fr_0.8fr_0.7fr_0.8fr_0.8fr] md:items-center md:gap-4"
+                className="grid gap-3 px-5 py-4 transition-colors md:grid-cols-[3rem_1.6fr_0.8fr_0.8fr_0.7fr_0.8fr_0.8fr] md:items-center md:gap-4"
               >
-                <span className="font-mono text-sm text-stone-400">{String(index + 1).padStart(2, '0')}</span>
-                <div>
-                  <p className="font-semibold text-stone-950">{card.name}</p>
-                  <p className="text-sm text-stone-600">{card.set}</p>
-                  <p className="mt-1 text-xs text-stone-500 md:hidden">
-                    {card.grade} · {card.source || 'Tracked comps'} · {card.confidence || 'High'} confidence
-                  </p>
+                <span className="font-mono text-sm text-zinc-500">{String(index + 1).padStart(2, '0')}</span>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-white/5 border border-white/10">
+                    <span className="font-serif text-sm font-bold text-white">
+                      {card.set.substring(0, 3)}
+                    </span>
+                  </div>
+                  <div>
+                    <div className="font-medium text-zinc-200">{card.name}</div>
+                    <div className="text-xs text-zinc-500">{card.set}</div>
+                  </div>
                 </div>
-                <span className="hidden text-sm font-medium text-stone-700 md:block">{card.grade}</span>
-                <span className="font-mono text-sm font-semibold tabular-nums text-stone-950 md:text-right">
+                <div className="text-sm text-zinc-400">
+                  {card.grade}
+                </div>
+                <div className="text-right font-medium text-white">
                   {format(card.price)}
-                </span>
-                <span
+                </div>
+                <div
                   className={cn(
-                    'inline-flex items-center gap-1 font-mono text-sm font-semibold tabular-nums md:justify-end',
-                    isPositive ? 'text-emerald-700' : 'text-red-700'
+                    'flex items-center justify-end gap-1 text-sm font-medium',
+                    isPositive ? 'text-emerald-400' : 'text-rose-400'
                   )}
                 >
-                  {isPositive ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
+                  {isPositive ? (
+                    <TrendingUp className="h-3.5 w-3.5" />
+                  ) : (
+                    <TrendingDown className="h-3.5 w-3.5" />
+                  )}
                   {formatPriceChange(card.change)}
-                </span>
-                <span className="hidden font-mono text-sm tabular-nums text-stone-700 md:block md:text-right">
-                  {card.volume || 0} comps
-                </span>
-                <span className="hidden text-sm text-stone-700 md:block md:text-right">
-                  {card.confidence || 'High'}
-                </span>
-              </Link>
+                </div>
+                <div className="text-right text-sm text-zinc-400">
+                  {card.volume ? card.volume.toLocaleString() : '-'}
+                </div>
+                <div className="flex items-center justify-end">
+                  <span className={cn(
+                    "px-2 py-0.5 rounded-full text-xs font-medium border",
+                    card.confidence === 'High' ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
+                    card.confidence === 'Medium' ? "bg-amber-500/10 text-amber-400 border-amber-500/20" :
+                    "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"
+                  )}>
+                    {card.confidence || 'Thin'}
+                  </span>
+                </div>
+              </div>
             );
           })}
         </div>
 
-        <div className="border-t border-stone-200 bg-stone-50 px-5 py-3 text-xs leading-5 text-stone-600">
+        <div className="border-t border-white/10 bg-white/5 px-5 py-3 text-xs leading-5 text-zinc-400">
           Movement combines completed-sale comps with active listing pressure. Thin-volume items are marked before they distort the market view.
         </div>
       </div>

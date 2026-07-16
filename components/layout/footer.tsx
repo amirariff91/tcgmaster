@@ -1,98 +1,58 @@
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { Linkedin } from 'lucide-react';
 
-const footerLinks = {
-  categories: {
-    title: 'Categories',
-    links: [
-      { label: 'Pokemon', href: '/pokemon' },
-      { label: 'Basketball', href: '/sports-basketball' },
-      { label: 'Baseball', href: '/sports-baseball' },
-    ],
-  },
-  tools: {
-    title: 'Tools',
-    links: [
-      { label: 'Market Movers', href: '/market' },
-      { label: 'Cert Lookup', href: '/cert' },
-      { label: 'Price Alerts', href: '/alerts' },
-      { label: 'Portfolio', href: '/portfolio' },
-    ],
-  },
-  company: {
-    title: 'Company',
-    links: [
-      { label: 'About', href: '/about' },
-      { label: 'Blog', href: '/blog' },
-      { label: 'Contact', href: '/contact' },
-    ],
-  },
-  legal: {
-    title: 'Legal',
-    links: [
-      { label: 'Privacy', href: '/privacy' },
-      { label: 'Terms', href: '/terms' },
-    ],
-  },
-};
+import Image from 'next/image';
 
 export function Footer({ className }: { className?: string }) {
   return (
-    <footer
-      className={cn(
-        'border-t border-zinc-200 bg-zinc-50',
-        className
-      )}
-    >
-      <div className="container-footer py-12">
-        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-5">
-          {/* Brand */}
-          <div className="lg:col-span-2">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600">
-                <span className="text-lg font-bold text-white">T</span>
-              </div>
-              <span className="text-xl font-bold text-zinc-900">
-                TCGMaster
-              </span>
-            </Link>
-            <p className="mt-4 max-w-xs text-sm text-zinc-500">
-              Search card prices, compare graded comps, and track collection value where
-              source-backed data is available.
-            </p>
+    <footer className={cn('bg-[#060c18] relative overflow-hidden pt-32 pb-16', className)}>
+       
+       {/* Faded Background Image */}
+       <div className="absolute inset-0 w-full h-full z-0 pointer-events-none">
+         <Image 
+           src="/footer-bg.jpg" 
+           alt="Footer Background" 
+           fill 
+           className="object-cover opacity-60 [mask-image:linear-gradient(to_bottom,transparent_0%,black_40%,black_100%)]" 
+           priority
+         />
+       </div>
+
+       <div className="container relative z-10 flex flex-col md:flex-row justify-between gap-16 lg:gap-24">
+          
+          {/* LEFT SIDE - Typography & Navigation */}
+          <div className="flex flex-col max-w-md shrink-0">
+             
+             {/* Logo Marker */}
+             <div className="mb-6 flex items-center">
+                <span className="text-orange-500 font-black text-5xl italic tracking-tighter" style={{ fontFamily: 'Impact, sans-serif' }}>
+                  TM
+                </span>
+             </div>
+             
+             {/* Bold Headline */}
+             <h2 className="text-white text-[32px] md:text-[40px] font-bold leading-[1.1] mb-12 tracking-tight drop-shadow-lg">
+               The Future of TCG<br />is Tactical
+             </h2>
+
+             {/* Links Grid */}
+             <div className="grid grid-cols-2 gap-x-8 gap-y-5 mb-16">
+                <Link href="/privacy" className="text-zinc-300 hover:text-white transition-colors text-[15px] drop-shadow-md">Legal Notice</Link>
+                <Link href="/contact" className="text-zinc-300 hover:text-white transition-colors text-[15px] drop-shadow-md">Support</Link>
+                
+                <Link href="/privacy" className="text-zinc-300 hover:text-white transition-colors text-[15px] drop-shadow-md">Privacy Policy</Link>
+                <div /> 
+                
+                <Link href="/terms" className="text-zinc-300 hover:text-white transition-colors text-[15px] col-start-1 drop-shadow-md">Terms of Use</Link>
+             </div>
+
+             {/* Copyright */}
+             <p className="text-zinc-400 text-sm drop-shadow-md">
+                © {new Date().getFullYear()} TCG Master. ALL RIGHT RESERVED
+             </p>
           </div>
-
-          {/* Links */}
-          {Object.values(footerLinks).map((section) => (
-            <div key={section.title}>
-              <h3 className="text-sm font-semibold text-zinc-900">
-                {section.title}
-              </h3>
-              <ul className="mt-4 space-y-3">
-                {section.links.map((link) => (
-                  <li key={link.href}>
-                    <Link
-                      href={link.href}
-                      className="text-sm text-zinc-500 transition-colors hover:text-zinc-900"
-                    >
-                      {link.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-zinc-200 pt-8 sm:flex-row">
-          <p className="text-sm text-zinc-500">
-            &copy; {new Date().getFullYear()} TCGMaster. All rights reserved.
-          </p>
-          <p className="text-sm text-zinc-400">
-            Prices are for reference only. Always verify before purchasing.
-          </p>
-        </div>
-      </div>
+       </div>
     </footer>
   );
 }

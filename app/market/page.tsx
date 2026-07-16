@@ -4,11 +4,11 @@ import { MarketClient } from './market-client';
 export const metadata: Metadata = {
   title: 'Market Movers | TCGMaster',
   description:
-    'Track the top gainers and losers in the TCG market. Real-time price movements across Pokemon, Basketball, and Baseball cards.',
+    'Track the top gainers and losers in the TCG market. Real-time price movements across One Piece and Dragon Ball cards.',
   openGraph: {
     title: 'Market Movers | TCGMaster',
     description:
-      'Track the top gainers and losers in the TCG market. Real-time price movements across Pokemon, Basketball, and Baseball cards.',
+      'Track the top gainers and losers in the TCG market. Real-time price movements across One Piece and Dragon Ball cards.',
     type: 'website',
     siteName: 'TCGMaster',
   },

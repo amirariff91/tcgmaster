@@ -38,7 +38,7 @@ function Placeholder({ showText = true, alt, className, sizeClassName }: Placeho
   return (
     <div
       className={cn(
-        'flex items-center justify-center rounded-lg bg-gradient-to-br from-zinc-200 to-zinc-300',
+        'flex items-center justify-center rounded-lg bg-white/5 border border-white/10',
         sizeClassName,
         className
       )}
@@ -47,7 +47,7 @@ function Placeholder({ showText = true, alt, className, sizeClassName }: Placeho
       aria-label={`Placeholder for ${alt}`}
     >
       {showText && (
-        <span className="text-4xl text-zinc-400 select-none" aria-hidden="true">
+        <span className="text-4xl text-zinc-600 select-none" aria-hidden="true">
           ?
         </span>
       )}
@@ -60,7 +60,7 @@ function LoadingSkeleton({ alt, className, sizeClassName }: Omit<PlaceholderProp
   return (
     <div
       className={cn(
-        'relative overflow-hidden rounded-lg bg-gradient-to-br from-zinc-200 to-zinc-300',
+        'relative overflow-hidden rounded-lg bg-white/5 border border-white/10',
         sizeClassName,
         className
       )}
@@ -86,11 +86,17 @@ export function CardImage({
     src ? 'loading' : 'error'
   );
   const config = sizeConfig[size];
+  const imgRef = React.useRef<HTMLImageElement>(null);
 
-  // Reset loading state when src changes
+  // Reset loading state when src changes or check if already cached
   React.useEffect(() => {
     if (src) {
-      setLoadingState('loading');
+      // If the image is restored from BFCache, it might already be fully loaded
+      if (imgRef.current?.complete && imgRef.current?.naturalWidth > 0) {
+        setLoadingState('loaded');
+      } else {
+        setLoadingState('loading');
+      }
     } else {
       setLoadingState('error');
     }
@@ -134,6 +140,7 @@ export function CardImage({
 
       {/* The actual image — use width/height (not fill) so parent needs no explicit height */}
       <Image
+        ref={imgRef}
         src={src}
         alt={alt}
         width={500}
@@ -200,7 +207,7 @@ export function LazyCardImage({
       <div
         ref={containerRef}
         className={cn(
-          'relative overflow-hidden rounded-lg bg-gradient-to-br from-zinc-200 to-zinc-300',
+          'relative overflow-hidden rounded-lg bg-white/5 border border-white/10',
           config.className,
           props.className
         )}
@@ -231,13 +238,13 @@ export function CardThumbnail({ src, alt, className, name }: CardThumbnailProps)
     return (
       <div
         className={cn(
-          'flex h-12 w-10 items-center justify-center rounded bg-gradient-to-br from-zinc-200 to-zinc-300',
+          'flex h-12 w-10 items-center justify-center rounded bg-white/5 border border-white/10',
           className
         )}
         role="img"
         aria-label={`${alt} thumbnail`}
       >
-        <span className="text-sm font-semibold text-zinc-500 select-none">
+        <span className="text-sm font-semibold text-zinc-400 select-none">
           {initial}
         </span>
       </div>
@@ -276,13 +283,13 @@ export function CardImageWithErrorBoundary({
       fallback || (
         <div
           className={cn(
-            'flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-zinc-300 bg-zinc-50',
+            'flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-white/10 bg-white/5',
             config.className,
             props.className
           )}
           style={{ aspectRatio: '5/7' }}
         >
-          <span className="text-3xl text-zinc-400">!</span>
+          <span className="text-3xl text-zinc-600">!</span>
           <span className="mt-1 text-xs text-zinc-500 text-center px-2">{props.alt}</span>
         </div>
       )

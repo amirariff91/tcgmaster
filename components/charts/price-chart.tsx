@@ -434,3 +434,119 @@ export function MockOHLCChart({
     />
   );
 }
+
+export interface MultiSourcePriceChartProps {
+  data: Record<string, number | string>[]; // e.g., { date: '2023', 'Yuyutei': 120, 'Snkrdunk': 130 }
+  sources: string[];
+  className?: string;
+  height?: number;
+}
+
+const sourceColors: Record<string, string> = {
+  'Market': '#10b981', // green
+  'Yuyutei': '#3b82f6', // blue
+  'Snkrdunk': '#8b5cf6', // purple
+  'Cardrush': '#f59e0b', // orange
+  'TCGPlayer': '#ef4444', // red
+};
+
+export function MultiSourcePriceChart({
+  data,
+  sources,
+  className,
+  height = 300,
+}: MultiSourcePriceChartProps) {
+  const [activeSources, setActiveSources] = React.useState<Set<string>>(new Set(sources));
+
+  const toggleSource = (source: string) => {
+    const newSet = new Set(activeSources);
+    if (newSet.has(source)) {
+      newSet.delete(source);
+    } else {
+      newSet.add(source);
+    }
+    // Prevent hiding all
+    if (newSet.size === 0) return;
+    setActiveSources(newSet);
+  };
+
+  return (
+    <div className={cn('space-y-4 rounded-2xl bg-white/40 backdrop-blur-md p-4 border border-zinc-200/50 shadow-sm relative overflow-hidden', className)}>
+      <div className="absolute inset-0 bg-gradient-to-br from-white/30 to-white/10 pointer-events-none" />
+      <div className="relative z-10 flex flex-wrap gap-2">
+        {sources.map((source) => (
+          <button
+            key={source}
+            onClick={() => toggleSource(source)}
+            className={cn(
+              'rounded-full px-3 py-1 text-xs font-semibold transition-colors border',
+              activeSources.has(source)
+                ? 'text-white border-transparent'
+                : 'bg-transparent text-zinc-400 border-zinc-200'
+            )}
+            style={{
+              backgroundColor: activeSources.has(source)
+                ? sourceColors[source] || '#71717a'
+                : undefined,
+            }}
+          >
+            {source}
+          </button>
+        ))}
+      </div>
+
+      <div className="relative z-10">
+        <ResponsiveContainer width="100%" height={height}>
+          <LineChart data={data} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+            <defs>
+              <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="4" result="blur" />
+                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+              </filter>
+            </defs>
+            <Tooltip
+            content={({ active, payload, label }) => {
+              if (!active || !payload?.length) return null;
+              return (
+                <div className="rounded-lg border border-zinc-200 bg-white p-3 shadow-lg">
+                  <p className="mb-2 text-sm text-zinc-500">{label ? formatDate(String(label)) : ''}</p>
+                  {payload.map((entry) => (
+                    <div key={entry.dataKey} className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="h-2.5 w-2.5 rounded-full"
+                          style={{ backgroundColor: entry.color }}
+                        />
+                        <span className="text-sm font-medium text-zinc-600">
+                          {entry.dataKey}:
+                        </span>
+                      </div>
+                      <span className="font-bold text-zinc-900 tabular-nums">
+                        {formatPrice(entry.value as number)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              );
+            }}
+          />
+          {sources.map((source) => (
+            <Line
+              key={source}
+              type="monotone"
+              dataKey={source}
+              stroke={sourceColors[source] || '#71717a'}
+              strokeWidth={3}
+              dot={false}
+              activeDot={{ r: 6, strokeWidth: 0 }}
+              hide={!activeSources.has(source)}
+              connectNulls
+              style={{ filter: 'url(#glow)' }}
+            />
+          ))}
+        </LineChart>
+      </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}

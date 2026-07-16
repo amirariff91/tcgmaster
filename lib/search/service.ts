@@ -22,9 +22,7 @@ interface CardSearchRow {
     slug: string;
     games: { slug: string };
   };
-  price_cache: Array<{
-    raw_prices: Record<string, number> | null;
-  }> | null;
+  price_cache_ttl: number | null;
 }
 
 interface CardSuggestionRow {
@@ -78,6 +76,7 @@ export interface SearchResponse {
 interface SearchOptions {
   page?: number;
   pageSize?: number;
+  sort?: string;
   filters?: {
     game?: string;
     set?: string;
@@ -86,6 +85,7 @@ interface SearchOptions {
     maxPrice?: number;
     gradingCompany?: string;
     grade?: number;
+    lang?: 'en' | 'ja' | 'all';
   };
 }
 
@@ -101,6 +101,26 @@ export async function searchCards(
   const pageSize = options.pageSize ?? 20;
   const offset = (page - 1) * pageSize;
 
+  // Intercept completely empty queries (Trending view)
+  const isDefaultView = !query && !options.filters?.game && !options.filters?.set && !options.filters?.rarity && (!options.sort || options.sort === 'relevance');
+  if (isDefaultView) {
+    if (page === 1) {
+      const trending = await redis.get<SearchResponse>('api:search:trending');
+      if (trending) {
+        return trending;
+      }
+    } else {
+      return {
+        results: [],
+        parsed: parseSearchQuery(query),
+        totalCount: 24,
+        page,
+        pageSize,
+        hasMore: false,
+      };
+    }
+  }
+
   // Parse the query using NLP
   const parsed = parseSearchQuery(query);
 
@@ -111,71 +131,152 @@ export async function searchCards(
     return cached;
   }
 
-  // Build the database query
-  let dbQuery = supabase
-    .from('cards')
-    .select(`
-      id,
-      name,
-      slug,
-      number,
-      rarity,
-      image_url,
-      local_image_url,
-      sets!inner (
-        id,
-        name,
-        slug,
-        games!inner (
-          slug
-        )
-      ),
-      price_cache (
-        raw_prices
-      )
-    `, { count: 'exact' });
+  // Helper to build the base query with all filters applied
+  const buildBaseQuery = (head: boolean = false) => {
+    const columns = head 
+      ? 'id, sets!inner ( games!inner ( slug ) )'
+      : `
+          id,
+          name,
+          slug,
+          number,
+          rarity,
+          image_url,
+          local_image_url,
+          price_cache_ttl,
+          sets!inner (
+            id,
+            name,
+            slug,
+            games!inner (
+              slug
+            )
+          )
+        `;
+        
+    let dbQuery = supabase.from('cards').select(columns, { count: 'exact', head });
 
-  // Apply text search
-  if (parsed.cardName) {
-    // Use trigram search for fuzzy matching
-    dbQuery = dbQuery.ilike('name', `%${parsed.cardName}%`);
+    // Apply text search
+    if (parsed.cardName && parsed.cardName.length >= 2) {
+      dbQuery = dbQuery.or(`name.ilike.%${parsed.cardName}%,number.ilike.%${parsed.cardName}%`);
+    }
+
+    // Apply set filter
+    if (parsed.setName) {
+      dbQuery = dbQuery.ilike('sets.name', `%${parsed.setName}%`);
+    } else if (options.filters?.set) {
+      dbQuery = dbQuery.eq('sets.slug', options.filters.set);
+    }
+
+    // Apply game filter
+    if (options.filters?.game) {
+      dbQuery = dbQuery.eq('sets.games.slug', options.filters.game);
+    }
+
+    // Apply rarity filter
+    if (parsed.rarity || options.filters?.rarity) {
+      const rarity = parsed.rarity || options.filters?.rarity;
+      dbQuery = dbQuery.ilike('rarity', `%${rarity}%`);
+    }
+
+    // Apply language filter
+    if (options.filters?.lang === 'en') {
+      dbQuery = dbQuery.not('slug', 'ilike', '%-ja');
+    } else if (options.filters?.lang === 'ja') {
+      dbQuery = dbQuery.ilike('slug', '%-ja');
+    }
+
+    // Filter out cards with no prices when sorting by "Recently Updated"
+    // so that failed scraper attempts don't bubble to the top
+    if (options.sort === 'recent') {
+      dbQuery = dbQuery.not('price_cache_ttl', 'is', null);
+    }
+
+    return dbQuery;
+  };
+
+  // Helper to apply sorting
+  const applySort = (q: any) => {
+    if (options.sort === 'price-desc') {
+      return q.order('price_cache_ttl', { ascending: false, nullsFirst: false });
+    } else if (options.sort === 'price-asc') {
+      return q.order('price_cache_ttl', { ascending: true, nullsFirst: false });
+    } else if (options.sort === 'name-asc') {
+      return q.order('name', { ascending: true });
+    } else {
+      return q.order('last_price_fetch', { ascending: false, nullsFirst: false }).order('name');
+    }
+  };
+
+  // 1. Get total count and complete count
+  const { count: totalCount } = await buildBaseQuery(true);
+  const { count: completeCount } = await buildBaseQuery(true).not('image_url', 'is', null);
+
+  const safeTotalCount = totalCount || 0;
+  const safeCompleteCount = completeCount || 0;
+
+  let completeCards: CardSearchRow[] = [];
+  let incompleteCards: CardSearchRow[] = [];
+
+  // 2. Fetch Complete Cards (if within range)
+  if (offset < safeCompleteCount) {
+    const completeFetchSize = Math.min(pageSize, safeCompleteCount - offset);
+    
+    // If a custom sort is applied, don't split by image! Query all!
+    const isCustomSort = options.sort && options.sort !== 'relevance';
+    
+    if (isCustomSort) {
+      let qAll = buildBaseQuery(false);
+      qAll = applySort(qAll);
+      qAll = qAll.range(offset, offset + pageSize - 1);
+      
+      const { data, error } = await qAll;
+      if (error) {
+        console.error('Search error (All):', error);
+        throw new Error('Search failed');
+      }
+      completeCards = (data as unknown as CardSearchRow[]) || [];
+    } else {
+      let qComplete = buildBaseQuery(false).not('image_url', 'is', null);
+      qComplete = applySort(qComplete);
+      qComplete = qComplete.range(offset, offset + completeFetchSize - 1);
+      
+      const { data, error } = await qComplete;
+      if (error) {
+        console.error('Search error (Complete):', error);
+        throw new Error('Search failed');
+      }
+      completeCards = (data as unknown as CardSearchRow[]) || [];
+    }
   }
 
-  // Apply set filter from parsed query or options
-  if (parsed.setName) {
-    dbQuery = dbQuery.ilike('sets.name', `%${parsed.setName}%`);
-  } else if (options.filters?.set) {
-    dbQuery = dbQuery.eq('sets.slug', options.filters.set);
+  // 3. Fetch Incomplete Cards (if more items needed to fill the page)
+  if (completeCards.length < pageSize) {
+    const isCustomSort = options.sort && options.sort !== 'relevance';
+    
+    if (!isCustomSort) {
+      const remainingSize = pageSize - completeCards.length;
+      const incompleteOffset = Math.max(0, offset - safeCompleteCount);
+      
+      let qIncomplete = buildBaseQuery(false).is('image_url', null);
+      qIncomplete = applySort(qIncomplete);
+      qIncomplete = qIncomplete.range(incompleteOffset, incompleteOffset + remainingSize - 1);
+      
+      const { data, error } = await qIncomplete;
+      if (error) {
+        console.error('Search error (Incomplete):', error);
+        throw new Error('Search failed');
+      }
+      incompleteCards = (data as unknown as CardSearchRow[]) || [];
+    }
   }
 
-  // Apply game filter
-  if (options.filters?.game) {
-    dbQuery = dbQuery.eq('sets.games.slug', options.filters.game);
-  }
-
-  // Apply rarity filter
-  if (parsed.rarity || options.filters?.rarity) {
-    const rarity = parsed.rarity || options.filters?.rarity;
-    dbQuery = dbQuery.ilike('rarity', `%${rarity}%`);
-  }
-
-  // Execute query with pagination
-  const { data: cards, count, error } = await dbQuery
-    .range(offset, offset + pageSize - 1)
-    .order('name');
-
-  if (error) {
-    console.error('Search error:', error);
-    throw new Error('Search failed');
-  }
+  const typedCards = [...completeCards, ...incompleteCards];
 
   // Transform and score results
-  const typedCards = cards as CardSearchRow[] | null;
-  const results: SearchResult[] = (typedCards || []).map((card) => {
+  const results: SearchResult[] = typedCards.map((card) => {
     const set = Array.isArray(card.sets) ? card.sets[0] : card.sets;
     const game = set?.games;
-    const priceCache = Array.isArray(card.price_cache) ? card.price_cache[0] : card.price_cache;
-    const rawPrices = priceCache?.raw_prices;
 
     const result: SearchResult = {
       id: card.id,
@@ -185,13 +286,12 @@ export async function searchCards(
       number: card.number,
       rarity: card.rarity,
       imageUrl: card.local_image_url || card.image_url,
-      marketPrice: rawPrices?.nearMint ?? null,
+      marketPrice: card.price_cache_ttl ? card.price_cache_ttl / 100 : null,
       slug: card.slug,
       game: game?.slug || 'pokemon',
       score: 0,
     };
 
-    // Calculate match score
     result.score = scoreCardMatch(
       {
         name: card.name,
@@ -204,19 +304,21 @@ export async function searchCards(
     return result;
   });
 
-  // Sort by score (descending), then by name
-  results.sort((a, b) => {
-    if (b.score !== a.score) return b.score - a.score;
-    return a.name.localeCompare(b.name);
-  });
+  // Sort by score (descending), then by name ONLY IF relevance sorting is active
+  if (!options.sort || options.sort === 'relevance') {
+    results.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return a.name.localeCompare(b.name);
+    });
+  }
 
   const response: SearchResponse = {
     results,
     parsed,
-    totalCount: count || 0,
+    totalCount: safeTotalCount,
     page,
     pageSize,
-    hasMore: (count || 0) > offset + pageSize,
+    hasMore: safeTotalCount > offset + pageSize,
   };
 
   // Cache the results
@@ -228,9 +330,6 @@ export async function searchCards(
   return response;
 }
 
-/**
- * Get autocomplete suggestions for a partial query
- */
 export async function getSearchSuggestions(
   query: string,
   limit: number = 8
@@ -262,7 +361,7 @@ export async function getSearchSuggestions(
         games!inner (slug)
       )
     `)
-    .ilike('name', `%${query}%`)
+    .or(`name.ilike.%${query}%,number.ilike.%${query}%`)
     .limit(limit);
 
   // Search sets
