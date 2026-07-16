@@ -1,4 +1,4 @@
-import { fetchEnglishPrice } from './scripts/price-engine/tcgcsv';
+import { fetchEnglishPrice } from './lib/price-engine/tcgcsv';
 
 async function run() {
   console.log("Testing TCGCSV Live Fetching...");

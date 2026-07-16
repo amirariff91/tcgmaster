@@ -1,5 +1,5 @@
-import { fetchJapanesePrice } from './scripts/price-engine/yuyutei';
-import { fetchSnkrdunkPrice } from './scripts/price-engine/snkrdunk';
+import { fetchJapanesePrice } from './lib/price-engine/yuyutei';
+import { fetchSnkrdunkPrice } from './lib/price-engine/snkrdunk';
 
 async function run() {
   console.log("Testing Variant Scraping Logic...");

@@ -36,7 +36,7 @@ export default async function HomePage() {
     .limit(500);
 
   // In-memory filter to strictly enforce the OP and DBFW rules
-  const filteredCards = (rawCards || []).filter(card => {
+  const filteredCards = (rawCards || []).filter((card: any) => {
     const slug = card.slug || '';
     const rarity = (card.rarity || '').toLowerCase();
     const name = (card.name || '').toLowerCase();

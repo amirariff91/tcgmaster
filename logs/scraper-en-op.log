@@ -75645,3 +75645,692 @@
 2026-07-16T16:37:17: ]
 2026-07-16T16:37:18: [English OP] Sleeping for 17s... Zzz...
 2026-07-16T16:37:18: 
+2026-07-16T16:37:35: [English OP] Processing: Jozu (ST30-005_p1)
+2026-07-16T16:37:35: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:37:35:   {
+2026-07-16T16:37:35:     price: 1.32,
+2026-07-16T16:37:35:     source: "tcgplayer",
+2026-07-16T16:37:35:   }
+2026-07-16T16:37:35: ]
+2026-07-16T16:37:35: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:37:35: 
+2026-07-16T16:37:52: [English OP] Processing: Gum-Gum Jet Gatling (OP03-072_p1)
+2026-07-16T16:37:52: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:37:52:   {
+2026-07-16T16:37:52:     price: 0.51,
+2026-07-16T16:37:52:     source: "tcgplayer",
+2026-07-16T16:37:52:   }
+2026-07-16T16:37:52: ]
+2026-07-16T16:37:52: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:37:52: 
+2026-07-16T16:38:09: [English OP] Processing: Roronoa Zoro (OP06-118_r2)
+2026-07-16T16:38:09: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:38:09:   {
+2026-07-16T16:38:09:     price: 2353.33,
+2026-07-16T16:38:09:     source: "tcgplayer",
+2026-07-16T16:38:09:   }
+2026-07-16T16:38:09: ]
+2026-07-16T16:38:09: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:38:09: 
+2026-07-16T16:38:26: [English OP] Processing: White Snake (OP06-059_r1)
+2026-07-16T16:38:26: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:38:26:   {
+2026-07-16T16:38:26:     price: 0.11,
+2026-07-16T16:38:26:     source: "tcgplayer",
+2026-07-16T16:38:26:   }
+2026-07-16T16:38:26: ]
+2026-07-16T16:38:26: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:38:26: 
+2026-07-16T16:38:43: [English OP] Processing: Maynard (OP05-052_p1)
+2026-07-16T16:38:43: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:38:43:   {
+2026-07-16T16:38:43:     price: 0.06,
+2026-07-16T16:38:43:     source: "tcgplayer",
+2026-07-16T16:38:43:   }
+2026-07-16T16:38:43: ]
+2026-07-16T16:38:44: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:38:44: 
+2026-07-16T16:39:01: [English OP] Processing: You're the One Who Should Disappear. (OP06-115_r1)
+2026-07-16T16:39:01: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:39:01:   {
+2026-07-16T16:39:01:     price: 1.37,
+2026-07-16T16:39:01:     source: "tcgplayer",
+2026-07-16T16:39:01:   }
+2026-07-16T16:39:01: ]
+2026-07-16T16:39:01: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:39:01: 
+2026-07-16T16:39:18: [English OP] Processing: Mary Geoise (OP05-097_r1)
+2026-07-16T16:39:18: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:39:18:   {
+2026-07-16T16:39:18:     price: 0.09,
+2026-07-16T16:39:18:     source: "tcgplayer",
+2026-07-16T16:39:18:   }
+2026-07-16T16:39:18: ]
+2026-07-16T16:39:18: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:39:18: 
+2026-07-16T16:39:35: [English OP] Processing: Sengoku (OP06-049_p1)
+2026-07-16T16:39:35: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:39:35:   {
+2026-07-16T16:39:35:     price: 0.05,
+2026-07-16T16:39:35:     source: "tcgplayer",
+2026-07-16T16:39:35:   }
+2026-07-16T16:39:35: ]
+2026-07-16T16:39:35: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:39:35: 
+2026-07-16T16:39:52: [English OP] Processing: Franky (OP07-107_r1)
+2026-07-16T16:39:52: [English OP] Failed to find any prices, skipping...
+2026-07-16T16:39:52: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:39:52: 
+2026-07-16T16:40:09: [English OP] Processing: Shiki (OP06-073_r1)
+2026-07-16T16:40:09: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:40:09:   {
+2026-07-16T16:40:09:     price: 0.07,
+2026-07-16T16:40:09:     source: "tcgplayer",
+2026-07-16T16:40:09:   }
+2026-07-16T16:40:09: ]
+2026-07-16T16:40:09: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:40:09: 
+2026-07-16T16:40:27: [English OP] Processing: Urouge (OP07-021_r2)
+2026-07-16T16:40:27: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:40:27:   {
+2026-07-16T16:40:27:     price: 0.09,
+2026-07-16T16:40:27:     source: "tcgplayer",
+2026-07-16T16:40:27:   }
+2026-07-16T16:40:27: ]
+2026-07-16T16:40:27: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:40:27: 
+2026-07-16T16:40:44: [English OP] Processing: Bartolomeo (OP07-031_p1)
+2026-07-16T16:40:44: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:40:44:   {
+2026-07-16T16:40:44:     price: 0.07,
+2026-07-16T16:40:44:     source: "tcgplayer",
+2026-07-16T16:40:44:   }
+2026-07-16T16:40:44: ]
+2026-07-16T16:40:44: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:40:44: 
+2026-07-16T16:41:01: [English OP] Processing: Sanji (OP06-119_p3)
+2026-07-16T16:41:01: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:41:01:   {
+2026-07-16T16:41:01:     price: 29.41,
+2026-07-16T16:41:01:     source: "tcgplayer",
+2026-07-16T16:41:01:   }
+2026-07-16T16:41:01: ]
+2026-07-16T16:41:02: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:41:02: 
+2026-07-16T16:41:19: [English OP] Processing: Monkey.D.Dragon (OP07-015_p1)
+2026-07-16T16:41:19: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:41:19:   {
+2026-07-16T16:41:19:     price: 12.05,
+2026-07-16T16:41:19:     source: "tcgplayer",
+2026-07-16T16:41:19:   }
+2026-07-16T16:41:19: ]
+2026-07-16T16:41:19: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:41:19: 
+2026-07-16T16:41:36: [English OP] Processing: Slow-Slow Beam Sword (OP07-076_r1)
+2026-07-16T16:41:36: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:41:36:   {
+2026-07-16T16:41:36:     price: 0.26,
+2026-07-16T16:41:36:     source: "tcgplayer",
+2026-07-16T16:41:36:   }
+2026-07-16T16:41:36: ]
+2026-07-16T16:41:36: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:41:36: 
+2026-07-16T16:41:53: [English OP] Processing: Crocodile (OP07-040_p3)
+2026-07-16T16:41:53: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:41:53:   {
+2026-07-16T16:41:53:     price: 0.1,
+2026-07-16T16:41:53:     source: "tcgplayer",
+2026-07-16T16:41:53:   }
+2026-07-16T16:41:53: ]
+2026-07-16T16:41:53: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:41:53: 
+2026-07-16T16:42:10: [English OP] Processing: Crocodile (OP07-040_p2)
+2026-07-16T16:42:10: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:42:10:   {
+2026-07-16T16:42:10:     price: 0.1,
+2026-07-16T16:42:10:     source: "tcgplayer",
+2026-07-16T16:42:10:   }
+2026-07-16T16:42:10: ]
+2026-07-16T16:42:10: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:42:10: 
+2026-07-16T16:42:28: [English OP] Processing: He Possesses the World's Most Brilliant Mind (OP07-114_r1)
+2026-07-16T16:42:28: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:42:28:   {
+2026-07-16T16:42:28:     price: 0.13,
+2026-07-16T16:42:28:     source: "tcgplayer",
+2026-07-16T16:42:28:   }
+2026-07-16T16:42:28: ]
+2026-07-16T16:42:28: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:42:28: 
+2026-07-16T16:42:45: [English OP] Processing: Benn.Beckman (OP09-009_r1)
+2026-07-16T16:42:45: [English OP] Failed to find any prices, skipping...
+2026-07-16T16:42:45: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:42:45: 
+2026-07-16T16:43:02: [English OP] Processing: Limejuice (OP09-014_p1)
+2026-07-16T16:43:02: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:43:02:   {
+2026-07-16T16:43:02:     price: 0.11,
+2026-07-16T16:43:02:     source: "tcgplayer",
+2026-07-16T16:43:02:   }
+2026-07-16T16:43:02: ]
+2026-07-16T16:43:02: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:43:02: 
+2026-07-16T16:43:19: [English OP] Processing: Shanks (OP09-004_r1)
+2026-07-16T16:43:19: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:43:19:   {
+2026-07-16T16:43:19:     price: 2028,
+2026-07-16T16:43:19:     source: "tcgplayer",
+2026-07-16T16:43:19:   }
+2026-07-16T16:43:19: ]
+2026-07-16T16:43:19: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:43:19: 
+2026-07-16T16:43:36: [English OP] Processing: Kalgara (OP08-099_r1)
+2026-07-16T16:43:36: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:43:36:   {
+2026-07-16T16:43:36:     price: 0.06,
+2026-07-16T16:43:36:     source: "tcgplayer",
+2026-07-16T16:43:36:   }
+2026-07-16T16:43:36: ]
+2026-07-16T16:43:36: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:43:36: 
+2026-07-16T16:43:53: [English OP] Processing: Black Maria (OP08-074_r1)
+2026-07-16T16:43:53: [English OP] Failed to find any prices, skipping...
+2026-07-16T16:43:53: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:43:53: 
+2026-07-16T16:44:10: [English OP] Processing: God Thread (OP10-079_p1)
+2026-07-16T16:44:10: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:44:10:   {
+2026-07-16T16:44:10:     price: 0.1,
+2026-07-16T16:44:10:     source: "tcgplayer",
+2026-07-16T16:44:10:   }
+2026-07-16T16:44:10: ]
+2026-07-16T16:44:10: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:44:10: 
+2026-07-16T16:44:28: [English OP] Processing: Gum-Gum Lightning (OP09-077_r2)
+2026-07-16T16:44:28: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:44:28:   {
+2026-07-16T16:44:28:     price: 0.15,
+2026-07-16T16:44:28:     source: "tcgplayer",
+2026-07-16T16:44:28:   }
+2026-07-16T16:44:28: ]
+2026-07-16T16:44:28: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:44:28: 
+2026-07-16T16:44:45: [English OP] Processing: Roronoa Zoro (OP09-076_r2)
+2026-07-16T16:44:45: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:44:45:   {
+2026-07-16T16:44:45:     price: 0.2,
+2026-07-16T16:44:45:     source: "tcgplayer",
+2026-07-16T16:44:45:   }
+2026-07-16T16:44:45: ]
+2026-07-16T16:44:45: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:44:45: 
+2026-07-16T16:45:02: [English OP] Processing: Franky (OP09-072_r1)
+2026-07-16T16:45:02: [English OP] Failed to find any prices, skipping...
+2026-07-16T16:45:02: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:45:02: 
+2026-07-16T16:45:19: [English OP] Processing: Catarina Devon (OP09-084_r1)
+2026-07-16T16:45:19: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:45:19:   {
+2026-07-16T16:45:19:     price: 0.12,
+2026-07-16T16:45:19:     source: "tcgplayer",
+2026-07-16T16:45:19:   }
+2026-07-16T16:45:19: ]
+2026-07-16T16:45:19: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:45:19: 
+2026-07-16T16:45:36: [English OP] Processing: Dracule Mihawk (OP09-048_r1)
+2026-07-16T16:45:36: [English OP] Failed to find any prices, skipping...
+2026-07-16T16:45:36: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:45:36: 
+2026-07-16T16:45:53: [English OP] Processing: Crocodile (OP09-046_r1)
+2026-07-16T16:45:53: [English OP] Failed to find any prices, skipping...
+2026-07-16T16:45:53: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:45:53: 
+2026-07-16T16:46:10: [English OP] Processing: Scratchmen Apoo (OP10-108_p1)
+2026-07-16T16:46:10: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:46:10:   {
+2026-07-16T16:46:10:     price: 0.06,
+2026-07-16T16:46:10:     source: "tcgplayer",
+2026-07-16T16:46:10:   }
+2026-07-16T16:46:10: ]
+2026-07-16T16:46:10: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:46:10: 
+2026-07-16T16:46:28: [English OP] Processing: Portgas.D.Ace (P-074)
+2026-07-16T16:46:28: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:46:28:   {
+2026-07-16T16:46:28:     price: 0.36,
+2026-07-16T16:46:28:     source: "tcgplayer",
+2026-07-16T16:46:28:   }
+2026-07-16T16:46:28: ]
+2026-07-16T16:46:28: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:46:28: 
+2026-07-16T16:46:45: [English OP] Processing: Black Hole (OP09-098_p1)
+2026-07-16T16:46:45: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:46:45:   {
+2026-07-16T16:46:45:     price: 0.17,
+2026-07-16T16:46:45:     source: "tcgplayer",
+2026-07-16T16:46:45:   }
+2026-07-16T16:46:45: ]
+2026-07-16T16:46:45: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:46:45: 
+2026-07-16T16:47:02: [English OP] Processing: Kyros (OP10-046_r1)
+2026-07-16T16:47:02: [English OP] Failed to find any prices, skipping...
+2026-07-16T16:47:02: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:47:02: 
+2026-07-16T16:47:19: [English OP] Processing: Eustass"Captain"Kid (OP10-112_r1)
+2026-07-16T16:47:19: [English OP] Failed to find any prices, skipping...
+2026-07-16T16:47:19: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:47:19: 
+2026-07-16T16:47:36: [English OP] Processing: Basil Hawkins (OP10-109_r1)
+2026-07-16T16:47:36: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:47:36:   {
+2026-07-16T16:47:36:     price: 0.32,
+2026-07-16T16:47:36:     source: "tcgplayer",
+2026-07-16T16:47:36:   }
+2026-07-16T16:47:36: ]
+2026-07-16T16:47:36: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:47:36: 
+2026-07-16T16:47:53: [English OP] Processing: Jesus Burgess (OP09-086_r2)
+2026-07-16T16:47:53: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:47:53:   {
+2026-07-16T16:47:53:     price: 0.23,
+2026-07-16T16:47:53:     source: "tcgplayer",
+2026-07-16T16:47:53:   }
+2026-07-16T16:47:53: ]
+2026-07-16T16:47:54: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:47:54: 
+2026-07-16T16:48:11: [English OP] Processing: Cavendish (OP10-105_r1)
+2026-07-16T16:48:11: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:48:11:   {
+2026-07-16T16:48:11:     price: 0.05,
+2026-07-16T16:48:11:     source: "tcgplayer",
+2026-07-16T16:48:11:   }
+2026-07-16T16:48:11: ]
+2026-07-16T16:48:11: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:48:11: 
+2026-07-16T16:48:28: [English OP] Processing: Four Thousand-Brick Fist (OP05-020)
+2026-07-16T16:48:28: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:48:28:   {
+2026-07-16T16:48:28:     price: 0.06,
+2026-07-16T16:48:28:     source: "tcgplayer",
+2026-07-16T16:48:28:   }
+2026-07-16T16:48:28: ]
+2026-07-16T16:48:28: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:48:28: 
+2026-07-16T16:48:45: [English OP] Processing: Hody Jones (OP06-020)
+2026-07-16T16:48:45: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:48:45:   {
+2026-07-16T16:48:45:     price: 0.2,
+2026-07-16T16:48:45:     source: "tcgplayer",
+2026-07-16T16:48:45:   }
+2026-07-16T16:48:45: ]
+2026-07-16T16:48:45: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:48:45: 
+2026-07-16T16:49:02: [English OP] Processing: Nami (PRB02-012_p1)
+2026-07-16T16:49:02: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:49:02:   {
+2026-07-16T16:49:02:     price: 41.65,
+2026-07-16T16:49:02:     source: "tcgplayer",
+2026-07-16T16:49:02:   }
+2026-07-16T16:49:02: ]
+2026-07-16T16:49:02: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:49:02: 
+2026-07-16T16:49:19: [English OP] Processing: Boa Hancock (PRB02-017_p1)
+2026-07-16T16:49:19: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:49:19:   {
+2026-07-16T16:49:19:     price: 73.92,
+2026-07-16T16:49:19:     source: "tcgplayer",
+2026-07-16T16:49:19:   }
+2026-07-16T16:49:19: ]
+2026-07-16T16:49:19: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:49:19: 
+2026-07-16T16:49:36: [English OP] Processing: After All These Years I'm Losing My Edge!!! (OP11-097)
+2026-07-16T16:49:36: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:49:36:   {
+2026-07-16T16:49:36:     price: 0.5,
+2026-07-16T16:49:36:     source: "tcgplayer",
+2026-07-16T16:49:36:   }
+2026-07-16T16:49:36: ]
+2026-07-16T16:49:36: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:49:36: 
+2026-07-16T16:49:54: [English OP] Processing: Portgas.D.Ace (PRB02-018)
+2026-07-16T16:49:54: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:49:54:   {
+2026-07-16T16:49:54:     price: 0.72,
+2026-07-16T16:49:54:     source: "tcgplayer",
+2026-07-16T16:49:54:   }
+2026-07-16T16:49:54: ]
+2026-07-16T16:49:54: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:49:54: 
+2026-07-16T16:50:11: [English OP] Processing: Hina (ST06-008_p1)
+2026-07-16T16:50:11: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:50:11:   {
+2026-07-16T16:50:11:     price: 0.51,
+2026-07-16T16:50:11:     source: "tcgplayer",
+2026-07-16T16:50:11:   }
+2026-07-16T16:50:11: ]
+2026-07-16T16:50:11: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:50:11: 
+2026-07-16T16:50:28: [English OP] Processing: Sabo (PRB02-014)
+2026-07-16T16:50:28: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:50:28:   {
+2026-07-16T16:50:28:     price: 251.26,
+2026-07-16T16:50:28:     source: "tcgplayer",
+2026-07-16T16:50:28:   }
+2026-07-16T16:50:28: ]
+2026-07-16T16:50:28: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:50:28: 
+2026-07-16T16:50:45: [English OP] Processing: Koby (PRB02-001_p1)
+2026-07-16T16:50:45: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:50:45:   {
+2026-07-16T16:50:45:     price: 41.15,
+2026-07-16T16:50:45:     source: "tcgplayer",
+2026-07-16T16:50:45:   }
+2026-07-16T16:50:45: ]
+2026-07-16T16:50:45: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:50:45: 
+2026-07-16T16:51:02: [English OP] Processing: Boa Hancock (PRB02-017)
+2026-07-16T16:51:02: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:51:02:   {
+2026-07-16T16:51:02:     price: 3.46,
+2026-07-16T16:51:02:     source: "tcgplayer",
+2026-07-16T16:51:02:   }
+2026-07-16T16:51:02: ]
+2026-07-16T16:51:02: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:51:02: 
+2026-07-16T16:51:19: [English OP] Processing: Sabo (PRB02-014_p1)
+2026-07-16T16:51:19: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:51:19:   {
+2026-07-16T16:51:19:     price: 251.26,
+2026-07-16T16:51:19:     source: "tcgplayer",
+2026-07-16T16:51:19:   }
+2026-07-16T16:51:19: ]
+2026-07-16T16:51:19: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:51:19: 
+2026-07-16T16:51:37: [English OP] Processing: Trafalgar Law (PRB02-002_p1)
+2026-07-16T16:51:37: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:51:37:   {
+2026-07-16T16:51:37:     price: 26.4,
+2026-07-16T16:51:37:     source: "tcgplayer",
+2026-07-16T16:51:37:   }
+2026-07-16T16:51:37: ]
+2026-07-16T16:51:37: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:51:37: 
+2026-07-16T16:51:54: [English OP] Processing: Portgas.D.Ace (PRB02-018_p1)
+2026-07-16T16:51:54: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:51:54:   {
+2026-07-16T16:51:54:     price: 13.12,
+2026-07-16T16:51:54:     source: "tcgplayer",
+2026-07-16T16:51:54:   }
+2026-07-16T16:51:54: ]
+2026-07-16T16:51:54: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:51:54: 
+2026-07-16T16:52:11: [English OP] Processing: Plastic Surgery Shot (ST12-017_r1)
+2026-07-16T16:52:11: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:52:11:   {
+2026-07-16T16:52:11:     price: 0.07,
+2026-07-16T16:52:11:     source: "tcgplayer",
+2026-07-16T16:52:11:   }
+2026-07-16T16:52:11: ]
+2026-07-16T16:52:11: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:52:11: 
+2026-07-16T16:52:28: [English OP] Processing: Mr.3(Galdino) (PRB02-009)
+2026-07-16T16:52:28: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:52:28:   {
+2026-07-16T16:52:28:     price: 0.52,
+2026-07-16T16:52:28:     source: "tcgplayer",
+2026-07-16T16:52:28:   }
+2026-07-16T16:52:28: ]
+2026-07-16T16:52:28: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:52:28: 
+2026-07-16T16:52:45: [English OP] Processing: Jewelry Bonney (PRB02-004)
+2026-07-16T16:52:45: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:52:45:   {
+2026-07-16T16:52:45:     price: 1.42,
+2026-07-16T16:52:45:     source: "tcgplayer",
+2026-07-16T16:52:45:   }
+2026-07-16T16:52:45: ]
+2026-07-16T16:52:45: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:52:45: 
+2026-07-16T16:53:02: [English OP] Processing: Charlotte Katakuri (ST16-003_r1)
+2026-07-16T16:53:02: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:53:02:   {
+2026-07-16T16:53:02:     price: 0.05,
+2026-07-16T16:53:02:     source: "tcgplayer",
+2026-07-16T16:53:02:   }
+2026-07-16T16:53:02: ]
+2026-07-16T16:53:02: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:53:02: 
+2026-07-16T16:53:20: [English OP] Processing: Monkey.D.Luffy (ST16-005_p1)
+2026-07-16T16:53:20: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:53:20:   {
+2026-07-16T16:53:20:     price: 0.26,
+2026-07-16T16:53:20:     source: "tcgplayer",
+2026-07-16T16:53:20:   }
+2026-07-16T16:53:20: ]
+2026-07-16T16:53:20: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:53:20: 
+2026-07-16T16:53:37: [English OP] Processing: Monkey.D.Luffy (ST16-005_r1)
+2026-07-16T16:53:37: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:53:37:   {
+2026-07-16T16:53:37:     price: 0.12,
+2026-07-16T16:53:37:     source: "tcgplayer",
+2026-07-16T16:53:37:   }
+2026-07-16T16:53:37: ]
+2026-07-16T16:53:37: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:53:37: 
+2026-07-16T16:53:54: [English OP] Processing: Roronoa Zoro (ST14-013_r1)
+2026-07-16T16:53:54: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:53:54:   {
+2026-07-16T16:53:54:     price: 0.13,
+2026-07-16T16:53:54:     source: "tcgplayer",
+2026-07-16T16:53:54:   }
+2026-07-16T16:53:54: ]
+2026-07-16T16:53:54: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:53:54: 
+2026-07-16T16:54:11: [English OP] Processing: Shanks (ST16-004_p2)
+2026-07-16T16:54:11: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:54:11:   {
+2026-07-16T16:54:11:     price: 42.81,
+2026-07-16T16:54:11:     source: "tcgplayer",
+2026-07-16T16:54:11:   }
+2026-07-16T16:54:11: ]
+2026-07-16T16:54:11: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:54:11: 
+2026-07-16T16:54:28: [English OP] Processing: The Three Brothers' Bond (ST13-019_r1)
+2026-07-16T16:54:28: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:54:28:   {
+2026-07-16T16:54:28:     price: 0.1,
+2026-07-16T16:54:28:     source: "tcgplayer",
+2026-07-16T16:54:28:   }
+2026-07-16T16:54:28: ]
+2026-07-16T16:54:28: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:54:28: 
+2026-07-16T16:54:45: [English OP] Processing: I Have My Crew!! (ST14-016_p1)
+2026-07-16T16:54:45: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:54:45:   {
+2026-07-16T16:54:45:     price: 0.2,
+2026-07-16T16:54:45:     source: "tcgplayer",
+2026-07-16T16:54:45:   }
+2026-07-16T16:54:45: ]
+2026-07-16T16:54:46: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:54:46: 
+2026-07-16T16:55:03: [English OP] Processing: Gum-Gum Giant (OP09-078_p2)
+2026-07-16T16:55:03: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:55:03:   {
+2026-07-16T16:55:03:     price: 0.54,
+2026-07-16T16:55:03:     source: "tcgplayer",
+2026-07-16T16:55:03:   }
+2026-07-16T16:55:03: ]
+2026-07-16T16:55:03: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:55:03: 
+2026-07-16T16:55:20: [English OP] Processing: Yamato (EB01-007_p1)
+2026-07-16T16:55:20: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:55:20:   {
+2026-07-16T16:55:20:     price: 0.24,
+2026-07-16T16:55:20:     source: "tcgplayer",
+2026-07-16T16:55:20:   }
+2026-07-16T16:55:20: ]
+2026-07-16T16:55:20: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:55:20: 
+2026-07-16T16:55:37: [English OP] Processing: Uso-Hachi (ST18-001_r1)
+2026-07-16T16:55:37: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:55:37:   {
+2026-07-16T16:55:37:     price: 2.19,
+2026-07-16T16:55:37:     source: "tcgplayer",
+2026-07-16T16:55:37:   }
+2026-07-16T16:55:37: ]
+2026-07-16T16:55:37: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:55:37: 
+2026-07-16T16:55:54: [English OP] Processing: O-Nami (ST18-002_r1)
+2026-07-16T16:55:54: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:55:54:   {
+2026-07-16T16:55:54:     price: 14.06,
+2026-07-16T16:55:54:     source: "tcgplayer",
+2026-07-16T16:55:54:   }
+2026-07-16T16:55:54: ]
+2026-07-16T16:55:54: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:55:54: 
+2026-07-16T16:56:11: [English OP] Processing: Buggy (ST17-003_r1)
+2026-07-16T16:56:11: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:56:11:   {
+2026-07-16T16:56:11:     price: 0.15,
+2026-07-16T16:56:11:     source: "tcgplayer",
+2026-07-16T16:56:11:   }
+2026-07-16T16:56:11: ]
+2026-07-16T16:56:11: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:56:11: 
+2026-07-16T16:56:28: [English OP] Processing: Thousand Sunny (ST14-017_p1)
+2026-07-16T16:56:28: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:56:28:   {
+2026-07-16T16:56:28:     price: 0.19,
+2026-07-16T16:56:28:     source: "tcgplayer",
+2026-07-16T16:56:28:   }
+2026-07-16T16:56:28: ]
+2026-07-16T16:56:29: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:56:29: 
+2026-07-16T16:56:46: [English OP] Processing: San-Gorou (ST18-003_r1)
+2026-07-16T16:56:46: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:56:46:   {
+2026-07-16T16:56:46:     price: 0.1,
+2026-07-16T16:56:46:     source: "tcgplayer",
+2026-07-16T16:56:46:   }
+2026-07-16T16:56:46: ]
+2026-07-16T16:56:46: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:56:46: 
+2026-07-16T16:57:03: [English OP] Processing: Charlotte Amande (OP04-105_p1)
+2026-07-16T16:57:03: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:57:03:   {
+2026-07-16T16:57:03:     price: 0.15,
+2026-07-16T16:57:03:     source: "tcgplayer",
+2026-07-16T16:57:03:   }
+2026-07-16T16:57:03: ]
+2026-07-16T16:57:03: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:57:03: 
+2026-07-16T16:57:20: [English OP] Processing: Come On!! We'll Fight You!! (OP09-020_p2)
+2026-07-16T16:57:20: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:57:20:   {
+2026-07-16T16:57:20:     price: 0.17,
+2026-07-16T16:57:20:     source: "tcgplayer",
+2026-07-16T16:57:20:   }
+2026-07-16T16:57:20: ]
+2026-07-16T16:57:20: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:57:20: 
+2026-07-16T16:57:37: [English OP] Processing: Donquixote Rosinante (OP05-030_p2)
+2026-07-16T16:57:37: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:57:37:   {
+2026-07-16T16:57:37:     price: 0.39,
+2026-07-16T16:57:37:     source: "tcgplayer",
+2026-07-16T16:57:37:   }
+2026-07-16T16:57:37: ]
+2026-07-16T16:57:37: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:57:37: 
+2026-07-16T16:57:54: [English OP] Processing: Franky (OP01-021_p3)
+2026-07-16T16:57:54: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:57:54:   {
+2026-07-16T16:57:54:     price: 0.11,
+2026-07-16T16:57:54:     source: "tcgplayer",
+2026-07-16T16:57:54:   }
+2026-07-16T16:57:54: ]
+2026-07-16T16:57:55: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:57:55: 
+2026-07-16T16:58:12: [English OP] Processing: Blaze Slice (OP07-116_p2)
+2026-07-16T16:58:12: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:58:12:   {
+2026-07-16T16:58:12:     price: 0.22,
+2026-07-16T16:58:12:     source: "tcgplayer",
+2026-07-16T16:58:12:   }
+2026-07-16T16:58:12: ]
+2026-07-16T16:58:12: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:58:12: 
+2026-07-16T16:58:29: [English OP] Processing: Nico Robin (OP01-017_p2)
+2026-07-16T16:58:29: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:58:29:   {
+2026-07-16T16:58:29:     price: 0.45,
+2026-07-16T16:58:29:     source: "tcgplayer",
+2026-07-16T16:58:29:   }
+2026-07-16T16:58:29: ]
+2026-07-16T16:58:29: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:58:29: 
+2026-07-16T16:58:46: [English OP] Processing: Perfume Femur (OP07-057_p1)
+2026-07-16T16:58:46: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:58:46:   {
+2026-07-16T16:58:46:     price: 1.24,
+2026-07-16T16:58:46:     source: "tcgplayer",
+2026-07-16T16:58:46:   }
+2026-07-16T16:58:46: ]
+2026-07-16T16:58:46: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:58:46: 
+2026-07-16T16:59:03: [English OP] Processing: Okiku (OP01-035_p3)
+2026-07-16T16:59:03: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:59:03:   {
+2026-07-16T16:59:03:     price: 0.26,
+2026-07-16T16:59:03:     source: "tcgplayer",
+2026-07-16T16:59:03:   }
+2026-07-16T16:59:03: ]
+2026-07-16T16:59:03: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:59:03: 
+2026-07-16T16:59:20: [English OP] Processing: Raise Max (OP06-016_p1)
+2026-07-16T16:59:20: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:59:20:   {
+2026-07-16T16:59:20:     price: 0.14,
+2026-07-16T16:59:20:     source: "tcgplayer",
+2026-07-16T16:59:20:   }
+2026-07-16T16:59:20: ]
+2026-07-16T16:59:20: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:59:20: 
+2026-07-16T16:59:38: [English OP] Processing: Brook (OP01-022_p1)
+2026-07-16T16:59:38: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:59:38:   {
+2026-07-16T16:59:38:     price: 0.25,
+2026-07-16T16:59:38:     source: "tcgplayer",
+2026-07-16T16:59:38:   }
+2026-07-16T16:59:38: ]
+2026-07-16T16:59:38: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:59:38: 
+2026-07-16T16:59:55: [English OP] Processing: Ice Age (OP02-117_p7)
+2026-07-16T16:59:55: [English OP] Successfully fetched 1 prices: [
+2026-07-16T16:59:55:   {
+2026-07-16T16:59:55:     price: 0.12,
+2026-07-16T16:59:55:     source: "tcgplayer",
+2026-07-16T16:59:55:   }
+2026-07-16T16:59:55: ]
+2026-07-16T16:59:55: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T16:59:55: 
+2026-07-16T17:00:12: [English OP] Processing: Fukurou (OP03-088_p2)
+2026-07-16T17:00:12: [English OP] Successfully fetched 1 prices: [
+2026-07-16T17:00:12:   {
+2026-07-16T17:00:12:     price: 0.08,
+2026-07-16T17:00:12:     source: "tcgplayer",
+2026-07-16T17:00:12:   }
+2026-07-16T17:00:12: ]
+2026-07-16T17:00:12: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T17:00:12: 
+2026-07-16T17:00:29: [English OP] Processing: Boa Hancock (OP07-051_p4)
+2026-07-16T17:00:29: [English OP] Successfully fetched 1 prices: [
+2026-07-16T17:00:29:   {
+2026-07-16T17:00:29:     price: 55.11,
+2026-07-16T17:00:29:     source: "tcgplayer",
+2026-07-16T17:00:29:   }
+2026-07-16T17:00:29: ]
+2026-07-16T17:00:29: [English OP] Sleeping for 17s... Zzz...
+2026-07-16T17:00:29: 

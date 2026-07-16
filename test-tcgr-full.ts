@@ -1,5 +1,5 @@
 import * as cheerio from 'cheerio';
-import { fetchTcgRepublicPrice } from './scripts/price-engine/tcgrepublic.ts';
+import { fetchTcgRepublicPrice } from './scripts/price-engine/tcgrepublic';
 
 async function test() {
   const query = 'OP01-120';
@@ -21,7 +21,7 @@ async function test() {
   const html = await response.text();
   const $ = cheerio.load(html);
   
-  let selectedResult = null;
+  let selectedResult: any = null;
   const results = $('a');
   
   results.each((_, el) => {

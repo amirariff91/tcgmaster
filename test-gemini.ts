@@ -4,8 +4,8 @@ async function testModel(model: string) {
   try {
     const res = await ai.models.generateContent({ model, contents: 'Hi' });
     console.log(`SUCCESS [${model}]:`, res.text);
-  } catch (e) {
-    console.log(`ERROR [${model}]:`, e.message);
+  } catch (e: any) {
+    console.log(`ERROR [${model}]:`, e?.message);
   }
 }
 async function run() {
