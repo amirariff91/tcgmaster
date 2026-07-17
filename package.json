@@ -29,7 +29,7 @@
     "dotenv": "^17.4.2",
     "exceljs": "^4.4.0",
     "framer-motion": "^12.42.2",
-    "inngest": "^3.49.3",
+    "inngest": "^3.54.2",
     "lightweight-charts": "^5.1.0",
     "lucide-react": "^0.562.0",
     "next": "16.1.4",
