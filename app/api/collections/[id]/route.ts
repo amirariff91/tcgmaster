@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createServerClient } from '@/lib/supabase/client';
 import { createClient } from '@/lib/supabase/server';
 
 interface RouteParams {
@@ -38,11 +39,38 @@ interface CollectionItemData {
   fees: number | null;
   acquisition_date: string | null;
   acquisition_type: string;
+  acquisition_source: string | null;
   notes: string | null;
   current_value: number | null;
   created_at: string;
   cards: CardData | null;
   grading_companies: GradingCompanyData | null;
+}
+
+interface PublicCollectionItemData {
+  id: string;
+  card_id: string | null;
+  variant_id: string | null;
+  grade: string;
+  grading_company_id: string | null;
+  cert_number: string | null;
+  current_value: number | null;
+  created_at: string;
+  cards: CardData | null;
+  grading_companies: GradingCompanyData | null;
+}
+
+interface PublicCollectionWithItems {
+  id: string;
+  name: string;
+  type: string;
+  description: string | null;
+  is_public: boolean;
+  total_value: number | null;
+  items_count: number;
+  created_at: string;
+  updated_at: string;
+  collection_items: PublicCollectionItemData[];
 }
 
 interface CardData {
@@ -75,6 +103,109 @@ interface GradingCompanyData {
   slug: string;
 }
 
+const OWNER_COLLECTION_SELECT = `
+  id,
+  user_id,
+  name,
+  type,
+  description,
+  is_public,
+  anonymous_share,
+  share_token,
+  total_value,
+  total_cost_basis,
+  items_count,
+  created_at,
+  updated_at,
+  collection_items (
+    id,
+    card_id,
+    variant_id,
+    grade,
+    grading_company_id,
+    cert_number,
+    cost_basis,
+    cost_basis_source,
+    fees,
+    acquisition_date,
+    acquisition_type,
+    acquisition_source,
+    notes,
+    current_value,
+    created_at,
+    cards (
+      id,
+      name,
+      slug,
+      number,
+      rarity,
+      image_url,
+      local_image_url,
+      sets (
+        id,
+        name,
+        slug,
+        games (
+          id,
+          name,
+          slug
+        )
+      )
+    ),
+    grading_companies (
+      id,
+      name,
+      slug
+    )
+  )
+`;
+
+const PUBLIC_COLLECTION_SELECT = `
+  id,
+  name,
+  type,
+  description,
+  is_public,
+  total_value,
+  items_count,
+  created_at,
+  updated_at,
+  collection_items (
+    id,
+    card_id,
+    variant_id,
+    grade,
+    grading_company_id,
+    cert_number,
+    current_value,
+    created_at,
+    cards (
+      id,
+      name,
+      slug,
+      number,
+      rarity,
+      image_url,
+      local_image_url,
+      sets (
+        id,
+        name,
+        slug,
+        games (
+          id,
+          name,
+          slug
+        )
+      )
+    ),
+    grading_companies (
+      id,
+      name,
+      slug
+    )
+  )
+`;
+
 // GET /api/collections/[id] - Get a specific collection with items
 export async function GET(request: NextRequest, { params }: RouteParams) {
   const { id } = await params;
@@ -82,92 +213,68 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Fetch the collection
-  const { data: collectionData, error } = await supabase
+  // An owner probe is enough to select the full private projection. Every
+  // non-owner, including a signed-in public viewer, uses the safe public path.
+  let isOwner = false;
+  if (user) {
+    const { data: ownerData, error: ownerError } = await supabase
+      .from('collections')
+      .select('id')
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (ownerError) {
+      return NextResponse.json(
+        { error: 'Collection not found' },
+        { status: 404 }
+      );
+    }
+
+    isOwner = Boolean(ownerData);
+  }
+
+  if (isOwner) {
+    // Owners retain the full private projection, including cost-basis fields.
+    const { data: collectionData, error } = await supabase
+      .from('collections')
+      .select(OWNER_COLLECTION_SELECT)
+      .eq('id', id)
+      .single();
+
+    const collection = collectionData as CollectionWithItems | null;
+
+    if (error || !collection) {
+      return NextResponse.json(
+        { error: 'Collection not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ data: collection });
+  }
+
+  // Option (a): use the server-only service-role client for the public path,
+  // with an explicit safe projection. The service role is never exposed to the
+  // browser, and the migration also limits direct anon Data API reads.
+  const publicSupabase = createServerClient();
+  const { data: publicCollectionData, error: publicError } = await publicSupabase
     .from('collections')
-    .select(`
-      id,
-      user_id,
-      name,
-      type,
-      description,
-      is_public,
-      anonymous_share,
-      share_token,
-      total_value,
-      total_cost_basis,
-      items_count,
-      created_at,
-      updated_at,
-      collection_items (
-        id,
-        card_id,
-        variant_id,
-        grade,
-        grading_company_id,
-        cert_number,
-        cost_basis,
-        cost_basis_source,
-        fees,
-        acquisition_date,
-        acquisition_type,
-        notes,
-        current_value,
-        created_at,
-        cards (
-          id,
-          name,
-          slug,
-          number,
-          rarity,
-          image_url,
-          local_image_url,
-          sets (
-            id,
-            name,
-            slug,
-            games (
-              id,
-              name,
-              slug
-            )
-          )
-        ),
-        grading_companies (
-          id,
-          name,
-          slug
-        )
-      )
-    `)
+    .select(PUBLIC_COLLECTION_SELECT)
     .eq('id', id)
+    .eq('is_public', true)
     .single();
 
-  const collection = collectionData as CollectionWithItems | null;
+  const publicCollection = publicCollectionData as PublicCollectionWithItems | null;
 
-  if (error || !collection) {
+  if (publicError || !publicCollection) {
     return NextResponse.json(
       { error: 'Collection not found' },
       { status: 404 }
     );
   }
 
-  // Check access - must be owner or collection must be public
-  if (collection.user_id !== user?.id && !collection.is_public) {
-    return NextResponse.json(
-      { error: 'Access denied' },
-      { status: 403 }
-    );
-  }
-
-  // Hide user_id if anonymous share
-  if (collection.anonymous_share && collection.user_id !== user?.id) {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { user_id, ...publicCollection } = collection;
-    return NextResponse.json({ data: publicCollection });
-  }
-
-  return NextResponse.json({ data: collection });
+  return NextResponse.json({ data: publicCollection });
 }
 
 // PATCH /api/collections/[id] - Update a collection
