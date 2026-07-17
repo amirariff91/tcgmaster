@@ -89,7 +89,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   }
 
   // Look up the cert
-  let certData;
+  let certData: PSACertData | BGSCertData | null = null;
   let gradingCompanyId: string | null = null;
 
   if (grading_company === 'psa') {
@@ -119,9 +119,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     );
   }
 
-  if (!certData) {
+  if (!certData || !certData.isValid) {
     return NextResponse.json(
-      { error: 'Certificate not found or could not be verified' },
+      { error: certData?.error || 'Certificate not found or could not be verified' },
       { status: 404 }
     );
   }
@@ -149,6 +149,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
   }
 
+  // collection_items requires a card_id, so this endpoint cannot add a
+  // verified certificate that is not represented in the card catalog.
+  if (!cardId) {
+    return NextResponse.json(
+      { error: 'Certificate verified, but the card was not found in the catalog' },
+      { status: 422 }
+    );
+  }
+
   // Store cert data in cert_history. cert_history is a shared catalog table, not
   // user-owned, so end users hold no write grant on it — write as service_role.
   // Safe: the caller is authenticated and collection ownership is verified above.
@@ -163,7 +172,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     holder_generation: certInfo.holderGeneration || certInfo.holderType || null,
     is_reholder: certInfo.isReholder || false,
     grade_history: [],
-    is_verified: true,
+    is_verified: certData.isValid,
     last_verified_at: new Date().toISOString(),
     scraped_at: new Date().toISOString(),
   }, {
