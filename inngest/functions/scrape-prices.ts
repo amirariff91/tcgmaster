@@ -14,7 +14,9 @@ export const scrapePricesJob = inngest.createFunction(
   async ({ step, logger }) => {
     const { createClient } = await import('@supabase/supabase-js');
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+    // Writes to `cards` require service_role: end users hold no write grant and RLS
+    // permits reads only. Must be the secret key — the publishable key cannot write.
+    const supabaseKey = process.env.SUPABASE_SECRET_KEY || '';
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // 1. Fetch 10 oldest cards

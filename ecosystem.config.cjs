@@ -30,7 +30,6 @@ module.exports = {
       name: 'scraper-en-op',
       script: 'bun',
       args: 'run scripts/price-engine/queue-english-op.ts',
-      cwd: '/Users/ioi/Documents/TcgMaster/tcgmaster',
       env: {
         SAFE_MODE: SAFE_MODE ? '1' : '0',
       },
@@ -51,7 +50,6 @@ module.exports = {
       name: 'scraper-jp-op',
       script: 'bun',
       args: 'run scripts/price-engine/queue-jp-op.ts',
-      cwd: '/Users/ioi/Documents/TcgMaster/tcgmaster',
       env: {
         SAFE_MODE: SAFE_MODE ? '1' : '0',
       },
@@ -72,7 +70,6 @@ module.exports = {
       name: 'scraper-dbfw',
       script: 'bun',
       args: 'run scripts/price-engine/queue-dbfw.ts',
-      cwd: '/Users/ioi/Documents/TcgMaster/tcgmaster',
       env: {
         SAFE_MODE: SAFE_MODE ? '1' : '0',
       },
@@ -95,7 +92,6 @@ module.exports = {
       name: 'artist-gemini',
       script: 'bun',
       args: 'run scripts/extract-artists-gemini.ts',
-      cwd: '/Users/ioi/Documents/TcgMaster/tcgmaster',
       env: {
         SAFE_MODE: SAFE_MODE ? '1' : '0',
         GEMINI_MODEL: 'gemini-3.1-flash-lite',

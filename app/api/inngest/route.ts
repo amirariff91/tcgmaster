@@ -8,6 +8,10 @@ import {
   calculateTrending,
   scrapePopulationData,
   scrapeCardPopulation,
+  fetchCardImage,
+  batchFetchImages,
+  scheduledPokemonImageFetch,
+  retryFailedImageFetches,
 } from '@/inngest/functions';
 
 // Create an API that serves Inngest functions
@@ -21,5 +25,14 @@ export const { GET, POST, PUT } = serve({
     calculateTrending,
     scrapePopulationData,
     scrapeCardPopulation,
+    // Image fetchers: exported but never registered, so their crons never fired.
+    fetchCardImage,
+    batchFetchImages,
+    scheduledPokemonImageFetch,
+    retryFailedImageFetches,
+    // NOT registered: scrapePricesJob (inngest/functions/scrape-prices.ts).
+    // Its '* * * * *' cron scrapes the same `cards` rows as the PM2 queue-*.ts
+    // workers, so enabling it would double-scrape and raise ban risk. Register it
+    // only once the PM2-vs-Inngest split is decided.
   ],
 });

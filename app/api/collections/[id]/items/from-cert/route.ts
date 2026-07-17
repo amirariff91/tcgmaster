@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createServerClient } from '@/lib/supabase/client';
 import { lookupPSACert, PSACertData } from '@/lib/scrapers/psa';
 import { lookupBGSCert, BGSCertData } from '@/lib/scrapers/bgs';
 
@@ -148,9 +149,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
   }
 
-  // Store cert data in cert_history
+  // Store cert data in cert_history. cert_history is a shared catalog table, not
+  // user-owned, so end users hold no write grant on it — write as service_role.
+  // Safe: the caller is authenticated and collection ownership is verified above.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase.from('cert_history') as any).upsert({
+  await (createServerClient().from('cert_history') as any).upsert({
     cert_number,
     grading_company_id: gradingCompanyId!,
     card_id: cardId,
