@@ -1,4 +1,10 @@
 -- Provision public user profiles and default collections for new auth users.
+--
+-- public.users has RLS enabled (001_initial_schema.sql:571) with only SELECT and
+-- UPDATE policies, so the signup callback's insert (made with the user's own session)
+-- was silently denied and its error discarded. Result: auth.users had 4 rows while
+-- public.users had 0, and every FK-dependent feature (collections, price_alerts)
+-- failed. Provision in the database instead, where RLS does not apply.
 
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER
@@ -40,6 +46,8 @@ BEGIN
 
   RETURN NEW;
 EXCEPTION
+  -- Never let a provisioning failure block authentication itself; surface it in the
+  -- Postgres logs instead. The backfill below can repair anyone this misses.
   WHEN OTHERS THEN
     RAISE WARNING 'Failed to provision public data for auth user %: %', NEW.id, SQLERRM;
     RETURN NEW;
