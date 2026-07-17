@@ -14,6 +14,13 @@
 #          is lost on every redeploy.
 FROM inngest/inngest:latest
 
+# Coolify's healthcheck probes from inside the container with curl (falling back to
+# wget); this image ships neither, so without curl the container is reported unhealthy
+# and the deploy rolls back even though the server is serving. Probe path is /health.
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
 ENV INNGEST_SQLITE_DIR=/data
 
 EXPOSE 8288 8289

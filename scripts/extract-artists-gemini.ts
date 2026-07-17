@@ -1,23 +1,65 @@
 import { createClient } from '@supabase/supabase-js';
-import { GoogleGenAI } from '@google/genai';
 
 // Load env automatically via bun
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.SUPABASE_SECRET_KEY! || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Initialize Gemini - Requires GEMINI_API_KEY in .env
-if (!process.env.GEMINI_API_KEY) {
-  console.error("Missing GEMINI_API_KEY in .env file.");
-  console.error("Please generate a free key from Google AI Studio and add it to .env");
+// Vision model runs on Ollama Cloud rather than Gemini — same job, one less vendor,
+// and it reads these cards at least as accurately (verified against known-artist cards).
+const OLLAMA_API_KEY = process.env.OLLAMA_API_KEY;
+const OLLAMA_MODEL = process.env.OLLAMA_VISION_MODEL || 'gemma4:31b';
+const OLLAMA_URL = process.env.OLLAMA_BASE_URL || 'https://ollama.com';
+
+if (!OLLAMA_API_KEY) {
+  console.error("Missing OLLAMA_API_KEY.");
+  console.error("Create one at https://ollama.com/settings/keys and set OLLAMA_API_KEY.");
   process.exit(1);
 }
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
-// SAFE_MODE=1 → longer sleep between Gemini calls
+// SAFE_MODE=1 → longer sleep between vision calls
 const SAFE_MODE = process.env.SAFE_MODE === '1';
 const SLEEP_MS = SAFE_MODE ? 15000 : 12000;
+
+// Every OP card carries a copyright strip (e.g. "©E.O/S., T.A. BANDAI MADE IN JAPAN")
+// on the same edge as the artist credit. Cards WITHOUT a credit make vision models read
+// that strip as a name — Gemini turned "©E.O" into "Eiichiro Oda". Name the trap so the
+// model returns Unknown instead of inventing an artist.
+const ARTIST_PROMPT = [
+  "This is a One Piece Trading Card Game card. The artist/illustrator name, when present,",
+  "appears as vertical text along the RIGHT edge of the card (rotated 90°).",
+  "",
+  "Return ONLY the artist's name (e.g. 'KOTORINA', 'phima', 'ASAKI KURODA').",
+  "",
+  "Return exactly 'Unknown' if there is no artist credit. Do NOT return any of the following,",
+  "which are copyright/publisher text and are NOT artists:",
+  "  - anything containing (c), ©, 'E.O', 'S.', 'T.A.', 'BANDAI', 'MADE IN JAPAN', 'EN'",
+  "  - 'Eiichiro Oda' unless it is clearly printed as the illustrator credit itself",
+  "If the only text you can see on that edge is the copyright line, return 'Unknown'.",
+].join('\n');
+
+async function askVisionModel(base64Data: string, _mimeType: string): Promise<string> {
+  const res = await fetch(`${OLLAMA_URL}/api/chat`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${OLLAMA_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: OLLAMA_MODEL,
+      stream: false,
+      messages: [{ role: 'user', content: ARTIST_PROMPT, images: [base64Data] }],
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`${res.status} ${res.statusText}: ${body.slice(0, 200)}`);
+  }
+
+  const data = await res.json();
+  return (data?.message?.content ?? '').trim() || 'Unknown';
+}
 
 /**
  * Detect MIME type from HTTP Content-Type header.
@@ -48,25 +90,7 @@ async function extractArtist(imageUrl: string): Promise<string | null> {
       const buffer = Buffer.from(arrayBuffer);
       const base64Data = buffer.toString('base64');
       
-      const response = await ai.models.generateContent({
-        model: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
-        contents: [
-          {
-            role: 'user',
-            parts: [
-              { text: "This is a One Piece Trading Card Game card. The artist/illustrator name appears as **vertical text printed along the RIGHT edge** of the card (rotated 90°). Look specifically at the right-side border of the card. Return ONLY the artist's name (e.g. 'KOTORINA', 'Miki Takahashi', 'Eiichiro Oda'). If you cannot find any name, return 'Unknown'." },
-              {
-                inlineData: {
-                  data: base64Data,
-                  mimeType: mimeType
-                }
-              }
-            ]
-          }
-        ]
-      });
-      
-      const artist = response.text?.trim() || 'Unknown';
+      const artist = await askVisionModel(base64Data, mimeType);
       return artist;
     } catch (error: any) {
       if (error?.message?.includes('429') || error?.status === 429) {

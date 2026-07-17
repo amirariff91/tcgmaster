@@ -16,7 +16,7 @@
  *   scraper-en-op  — TCGCSV for English One Piece (fast, JSON API, no Puppeteer)
  *   scraper-jp-op  — Yuyutei primary + SnkrDunk fallback for Japanese One Piece
  *   scraper-dbfw   — CardRush for Dragon Ball Fusion World
- *   artist-gemini  — Gemini Vision artist extractor for EN OP cards
+ *   artist-vision  — Ollama Cloud vision artist extractor for EN OP cards
  */
 
 const SAFE_MODE = process.env.SAFE_MODE === '1';
@@ -84,25 +84,27 @@ module.exports = {
     },
 
     // ─────────────────────────────────────────────
-    // Gemini Artist Extractor — EN One Piece first
+    // Vision Artist Extractor (Ollama Cloud) — EN One Piece first
     // Runs as idle-loop: waits 5min when backlog is empty
     // Expand to JA OP + DBFW in Phase 2
     // ─────────────────────────────────────────────
     {
-      name: 'artist-gemini',
+      name: 'artist-vision',
       script: 'bun',
       args: 'run scripts/extract-artists-gemini.ts',
       env: {
         SAFE_MODE: SAFE_MODE ? '1' : '0',
-        GEMINI_MODEL: 'gemini-3.1-flash-lite',
+        OLLAMA_VISION_MODEL: 'gemma4:31b',
       },
       watch: false,
+      // The script exits(1) without OLLAMA_API_KEY. Don't restart it forever in that
+      // case — the price scrapers are independent and must not be drowned in its logs.
       autorestart: true,
-      restart_delay: 10000,  // Longer delay — Gemini errors can be transient
+      restart_delay: 10000,  // Longer delay — vision API errors can be transient
       max_restarts: 30,
       min_uptime: '10s',
-      log_file: './logs/artist-gemini.log',
-      error_file: './logs/artist-gemini-error.log',
+      log_file: './logs/artist-vision.log',
+      error_file: './logs/artist-vision-error.log',
       time: true,
     },
   ],
