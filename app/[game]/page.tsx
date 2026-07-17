@@ -1,140 +1,233 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { Metadata } from 'next';
-import { ArrowRight, Search, TrendingUp, Sparkles } from 'lucide-react';
+import { ArrowRight, Search, TrendingUp } from 'lucide-react';
 import { SearchBar } from '@/components/search/search-bar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CardImage } from '@/components/card/card-image';
-import { formatNumber, formatSetName } from '@/lib/utils';
+import { formatDate, formatPrice, formatSetName } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/server';
 import { Badge } from '@/components/ui/badge';
-import { formatPrice, formatPriceChange } from '@/lib/utils';
 
-// Mock game data
-const gamesData: Record<string, {
+interface GameData {
+  id: string;
   name: string;
+  slug: string;
   display_name: string;
-  description: string;
+}
+
+interface SetRow {
+  id: string;
+  name: string;
+  slug: string;
+  release_date: string | null;
+  card_count: number | null;
+}
+
+interface SetPriceRow {
+  id: string;
+  market: unknown;
+  cards: {
+    set_id: string;
+  };
+}
+
+interface TopPriceRow {
+  market: unknown;
+  cards: {
+    id: string;
+    name: string;
+    slug: string;
+    sets: {
+      name: string;
+      slug: string;
+    };
+  };
+}
+
+interface LatestPriceRow {
+  fetched_at: string;
+}
+
+interface GamePageData {
+  game: GameData;
+  sets: Array<SetRow & { avg_price: number | null }>;
   total_cards: number;
   total_sets: number;
-}> = {
-  pokemon: {
-    name: 'Pokemon',
-    display_name: 'Pokemon',
-    description: 'Explore prices for Pokemon TCG cards from Base Set to modern expansions.',
-    total_cards: 15000,
-    total_sets: 120,
-  },
-  'sports-basketball': {
-    name: 'Basketball',
-    display_name: 'Basketball Cards',
-    description: 'Track prices for basketball cards including Topps, Fleer, and Panini.',
-    total_cards: 25000,
-    total_sets: 200,
-  },
-  'sports-baseball': {
-    name: 'Baseball',
-    display_name: 'Baseball Cards',
-    description: 'Price guide for baseball cards from vintage Topps to modern releases.',
-    total_cards: 50000,
-    total_sets: 350,
-  },
-};
+  top_cards: Array<{
+    id: string;
+    name: string;
+    set: string;
+    slug: string;
+    set_slug: string;
+    price: number;
+  }>;
+  latest_price_update: string | null;
+}
 
-// Mock sets data
-const mockSets = [
-  {
-    id: '1',
-    name: 'Base Set',
-    slug: 'base-set',
-    release_date: '1999-01-09',
-    card_count: 102,
-    image_url: null,
-    avg_price: 850,
-    trending: true,
-  },
-  {
-    id: '2',
-    name: 'Jungle',
-    slug: 'jungle',
-    release_date: '1999-06-16',
-    card_count: 64,
-    image_url: null,
-    avg_price: 320,
-    trending: false,
-  },
-  {
-    id: '3',
-    name: 'Fossil',
-    slug: 'fossil',
-    release_date: '1999-10-10',
-    card_count: 62,
-    image_url: null,
-    avg_price: 280,
-    trending: false,
-  },
-  {
-    id: '4',
-    name: 'Base Set 2',
-    slug: 'base-set-2',
-    release_date: '2000-02-24',
-    card_count: 130,
-    image_url: null,
-    avg_price: 180,
-    trending: false,
-  },
-  {
-    id: '5',
-    name: 'Team Rocket',
-    slug: 'team-rocket',
-    release_date: '2000-04-24',
-    card_count: 83,
-    image_url: null,
-    avg_price: 350,
-    trending: true,
-  },
-  {
-    id: '6',
-    name: 'Neo Genesis',
-    slug: 'neo-genesis',
-    release_date: '2000-12-16',
-    card_count: 111,
-    image_url: null,
-    avg_price: 620,
-    trending: true,
-  },
-];
+const PAGE_SIZE = 1000;
 
-const mockTopCards = [
-  {
-    id: '1',
-    name: 'Charizard',
-    set: 'Base Set',
-    slug: 'charizard-holo',
-    set_slug: 'base-set',
-    price: 42000,
-    change: 5.2,
-  },
-  {
-    id: '2',
-    name: 'Lugia',
-    set: 'Neo Genesis',
-    slug: 'lugia-holo',
-    set_slug: 'neo-genesis',
-    price: 12500,
-    change: 8.3,
-  },
-  {
-    id: '3',
-    name: 'Blastoise',
-    set: 'Base Set',
-    slug: 'blastoise-holo',
-    set_slug: 'base-set',
-    price: 8500,
-    change: -2.1,
-  },
-];
+function getMarketPrice(market: unknown): number | null {
+  if (typeof market === 'number' && Number.isFinite(market) && market > 0) {
+    return market;
+  }
+
+  return null;
+}
+
+type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
+
+async function getAllSets(supabase: SupabaseClient, gameId: string): Promise<SetRow[]> {
+  const sets: SetRow[] = [];
+
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from('sets')
+      .select('id, name, slug, release_date, card_count')
+      .eq('game_id', gameId)
+      .order('priority', { ascending: false })
+      .order('name')
+      .order('id')
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (error) throw error;
+
+    const page = (data || []) as SetRow[];
+    sets.push(...page);
+
+    if (page.length < PAGE_SIZE) return sets;
+  }
+}
+
+async function getAllSetPrices(supabase: SupabaseClient, gameId: string): Promise<SetPriceRow[]> {
+  const prices: SetPriceRow[] = [];
+
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from('price_cache')
+      .select('id, market:raw_prices->market, cards!inner(set_id, sets!inner(game_id))')
+      .eq('cards.sets.game_id', gameId)
+      .gt('raw_prices->market', 0)
+      .order('id', { ascending: true })
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (error) throw error;
+
+    // Supabase's generated types cannot represent aliased JSON paths and nested rows reliably.
+    const page = (data || []) as unknown as SetPriceRow[];
+    prices.push(...page);
+
+    if (page.length < PAGE_SIZE) return prices;
+  }
+}
+
+async function getGameBySlug(gameSlug: string): Promise<GameData | null> {
+  const supabase = await createClient();
+  const { data: game, error } = await supabase
+    .from('games')
+    .select('id, name, slug, display_name')
+    .eq('slug', gameSlug)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!game) return null;
+  return game as unknown as GameData;
+}
+
+async function getGamePageData(gameSlug: string): Promise<GamePageData | null> {
+  const gameData = await getGameBySlug(gameSlug);
+
+  if (!gameData) return null;
+
+  const supabase = await createClient();
+
+  const [sets, cardsCount, topCardsResult, latestPriceResult, setPrices] = await Promise.all([
+    getAllSets(supabase, gameData.id),
+    supabase
+      .from('cards')
+      .select('id, sets!inner(game_id)', { count: 'exact', head: true })
+      .eq('sets.game_id', gameData.id),
+    supabase
+      .from('price_cache')
+      .select(`
+        market:raw_prices->market,
+        cards!inner (
+          id,
+          name,
+          slug,
+          sets!inner (
+            name,
+            slug,
+            game_id
+          )
+        )
+      `)
+      .eq('cards.sets.game_id', gameData.id)
+      .gt('raw_prices->market', 0)
+      .order('raw_prices->market', { ascending: false })
+      .order('id', { ascending: true })
+      .limit(3),
+    supabase
+      .from('price_cache')
+      .select('fetched_at, cards!inner(sets!inner(game_id))')
+      .eq('cards.sets.game_id', gameData.id)
+      .gt('raw_prices->market', 0)
+      .order('fetched_at', { ascending: false })
+      .order('id', { ascending: true })
+      .limit(1),
+    getAllSetPrices(supabase, gameData.id),
+  ]);
+
+  if (cardsCount.error) throw cardsCount.error;
+  if (topCardsResult.error) throw topCardsResult.error;
+  if (latestPriceResult.error) throw latestPriceResult.error;
+
+  const priceTotalsBySet = new Map<string, { count: number; total: number }>();
+
+  for (const row of setPrices) {
+    const price = getMarketPrice(row.market);
+    if (price === null) continue;
+
+    const totals = priceTotalsBySet.get(row.cards.set_id) || { count: 0, total: 0 };
+    totals.count += 1;
+    totals.total += price;
+    priceTotalsBySet.set(row.cards.set_id, totals);
+  }
+
+  // Supabase's generated types cannot represent aliased JSON paths and nested rows reliably.
+  const topPriceRows = (topCardsResult.data || []) as unknown as TopPriceRow[];
+  const topCards = topPriceRows.flatMap((row) => {
+    const price = getMarketPrice(row.market);
+    if (price === null) return [];
+
+    return [{
+      id: row.cards.id,
+      name: row.cards.name,
+      set: row.cards.sets.name,
+      slug: row.cards.slug,
+      set_slug: row.cards.sets.slug,
+      price,
+    }];
+  });
+  const latestPriceRows = (latestPriceResult.data || []) as unknown as LatestPriceRow[];
+  const latestPriceUpdate = latestPriceRows[0]?.fetched_at || null;
+
+  return {
+    game: gameData,
+    sets: sets.map((set) => {
+      const totals = priceTotalsBySet.get(set.id);
+      const avg_price = totals
+        ? totals.total / totals.count
+        : null;
+
+      return { ...set, avg_price };
+    }),
+    total_cards: cardsCount.count || 0,
+    total_sets: sets.length,
+    top_cards: topCards,
+    latest_price_update: latestPriceUpdate,
+  };
+}
 
 interface PageProps {
   params: Promise<{
@@ -144,7 +237,7 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { game } = await params;
-  const gameData = gamesData[game];
+  const gameData = await getGameBySlug(game);
 
   if (!gameData) {
     return { title: 'Not Found' };
@@ -152,17 +245,27 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   return {
     title: `${gameData.display_name} Price Guide`,
-    description: gameData.description,
+    description: `Explore ${gameData.display_name} card prices and set data.`,
   };
 }
 
 export default async function GamePage({ params }: PageProps) {
   const { game } = await params;
-  const gameData = gamesData[game];
+  const gamePageData = await getGamePageData(game);
 
-  if (!gameData) {
+  if (!gamePageData) {
     notFound();
   }
+
+  const {
+    game: gameData,
+    sets,
+    total_cards: totalCards,
+    total_sets: totalSets,
+    top_cards: topCards,
+    latest_price_update: latestPriceUpdate,
+  } = gamePageData;
+  const description = `Explore ${gameData.display_name} card prices and set data.`;
 
   return (
     <div className="min-h-screen">
@@ -171,13 +274,13 @@ export default async function GamePage({ params }: PageProps) {
         <div className="container mx-auto px-4 py-12 md:py-16">
           <div className="mx-auto max-w-3xl text-center">
             <Badge variant="secondary" className="mb-4">
-              {gameData.total_cards.toLocaleString()}+ cards tracked
+              {totalCards.toLocaleString()} cards tracked
             </Badge>
             <h1 className="mb-4 text-4xl font-bold tracking-tight text-zinc-900 md:text-5xl">
               {gameData.display_name} Price Guide
             </h1>
             <p className="mb-8 text-lg text-zinc-600">
-              {gameData.description}
+              {description}
             </p>
             <div className="mx-auto max-w-xl">
               <SearchBar
@@ -198,12 +301,12 @@ export default async function GamePage({ params }: PageProps) {
                 Sets
               </h2>
               <span className="text-sm text-zinc-500">
-                {gameData.total_sets} sets
+                {totalSets} sets
               </span>
             </div>
 
             <div className="space-y-3">
-              {mockSets.map((set) => (
+              {sets.map((set) => (
                 <Link
                   key={set.id}
                   href={`/${game}/${set.slug}`}
@@ -219,20 +322,14 @@ export default async function GamePage({ params }: PageProps) {
                       <h3 className="font-semibold text-zinc-900 group-hover:text-blue-600 truncate" title={formatSetName(set.name)}>
                         {formatSetName(set.name)}
                       </h3>
-                      {set.trending && (
-                        <Badge variant="warning" className="gap-1">
-                          <Sparkles className="h-3 w-3" />
-                          Hot
-                        </Badge>
-                      )}
                     </div>
                     <p className="text-sm text-zinc-500">
-                      {set.card_count} cards | Released {set.release_date?.slice(0, 4)}
+                      {set.card_count === null ? 'No Data Yet' : `${set.card_count} cards`} | Released {set.release_date?.slice(0, 4) || 'Unknown'}
                     </p>
                   </div>
                   <div className="text-right">
                     <p className="font-semibold text-zinc-900">
-                      {formatPrice(set.avg_price)}
+                      {set.avg_price === null ? 'No Data Yet' : formatPrice(set.avg_price)}
                     </p>
                     <p className="text-sm text-zinc-500">avg. price</p>
                   </div>
@@ -260,7 +357,11 @@ export default async function GamePage({ params }: PageProps) {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {mockTopCards.map((card, index) => (
+                {topCards.length === 0 ? (
+                  <p className="py-2 text-sm text-zinc-500">
+                    No cards with price data yet.
+                  </p>
+                ) : topCards.map((card, index) => (
                   <Link
                     key={card.id}
                     href={`/${game}/${card.set_slug}/${card.slug}`}
@@ -279,13 +380,6 @@ export default async function GamePage({ params }: PageProps) {
                       <p className="font-semibold text-zinc-900">
                         {formatPrice(card.price)}
                       </p>
-                      <p
-                        className={`text-sm ${
-                          card.change >= 0 ? 'text-emerald-600' : 'text-red-600'
-                        }`}
-                      >
-                        {formatPriceChange(card.change)}
-                      </p>
                     </div>
                   </Link>
                 ))}
@@ -302,19 +396,19 @@ export default async function GamePage({ params }: PageProps) {
                   <div className="flex justify-between">
                     <dt className="text-zinc-500">Total Cards</dt>
                     <dd className="font-semibold text-zinc-900">
-                      {gameData.total_cards.toLocaleString()}
+                      {totalCards.toLocaleString()}
                     </dd>
                   </div>
                   <div className="flex justify-between">
                     <dt className="text-zinc-500">Total Sets</dt>
                     <dd className="font-semibold text-zinc-900">
-                      {gameData.total_sets}
+                      {totalSets}
                     </dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt className="text-zinc-500">Price Updates</dt>
+                    <dt className="text-zinc-500">Last Price Update</dt>
                     <dd className="font-semibold text-zinc-900">
-                      Real-time
+                      {latestPriceUpdate ? formatDate(latestPriceUpdate) : 'No Data Yet'}
                     </dd>
                   </div>
                 </dl>

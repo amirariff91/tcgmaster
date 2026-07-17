@@ -22,7 +22,7 @@ type SearchCardResult = {
   image_url: string | null;
   set: { id: string; name: string; slug: string };
   current_price?: number;
-  price_change_24h: number;
+  price_change_24h?: number;
 };
 
 
@@ -198,7 +198,6 @@ function SearchResults() {
             image_url: c.image_url,
             set: { id: setSlug, name: formatSetName(c.subtitle?.split(' - ')[0] || ''), slug: setSlug },
             current_price: c.price ?? undefined,
-            price_change_24h: 0,
           };
         });
 
