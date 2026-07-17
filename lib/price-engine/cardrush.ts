@@ -1,4 +1,5 @@
 import * as cheerio from 'cheerio';
+import { waitForSourceRateLimit } from './rate-limiter';
 
 // JPY to USD conversion rate — update periodically (check xe.com). ~157 as of mid-2026.
 const JPY_TO_USD = 157;
@@ -11,6 +12,8 @@ export interface CardrushResult {
 
 export async function fetchCardrushData(cardNumber: string): Promise<CardrushResult> {
   try {
+    await waitForSourceRateLimit('cardrush');
+
     // If we're passed an exact Cardrush product URL, go straight to it!
     if (cardNumber.startsWith('http') && cardNumber.includes('/product/')) {
       const response = await fetch(cardNumber, {

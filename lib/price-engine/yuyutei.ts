@@ -1,10 +1,13 @@
 import * as cheerio from 'cheerio';
+import { waitForSourceRateLimit } from './rate-limiter';
 
 // JPY to USD conversion rate — update periodically (check xe.com). ~157 as of mid-2026.
 const JPY_TO_USD = 157;
 
 export async function fetchJapanesePrice(query: string, setName?: string): Promise<{ price: number; url: string } | null> {
   try {
+    await waitForSourceRateLimit('yuyutei');
+
     let rawQuery = query;
 
     // If we're passed an exact Yuyutei product URL, go straight to it!
