@@ -15,40 +15,11 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
-      // Check if user profile exists, create if not
-      const { data: { user } } = await supabase.auth.getUser();
-
-      if (user) {
-        const { data: existingUser } = await supabase
-          .from('users')
-          .select('id')
-          .eq('id', user.id)
-          .single();
-
-        if (!existingUser) {
-          // Create user profile with founding collector flag
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (supabase.from('users') as any).insert({
-            id: user.id,
-            email: user.email!,
-            display_name: user.user_metadata?.display_name || user.email?.split('@')[0],
-            avatar_url: user.user_metadata?.avatar_url,
-            is_founding_collector: true, // Early adopters get this badge
-          });
-
-          // Create default collection
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (supabase.from('collections') as any).insert({
-            user_id: user.id,
-            name: 'My Collection',
-            type: 'personal',
-            is_public: false,
-          });
-        }
-      }
-
+      // User provisioning is handled by the database trigger on auth.users.
       return NextResponse.redirect(`${origin}${redirectTo}`);
     }
+
+    console.error('[auth/callback] Failed to exchange auth code for session:', error);
   }
 
   // Auth error - redirect to login with error
