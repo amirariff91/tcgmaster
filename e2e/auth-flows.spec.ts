@@ -6,13 +6,13 @@ test.describe('Settings Page - Auth Protection', () => {
     await page.goto('/settings');
 
     // Should redirect to login with redirect param
-    await page.waitForURL(/\/login\?redirect=.*settings/);
+    await page.waitForURL(/\/login\?redirectTo=.*settings/);
     expect(page.url()).toContain('/login');
-    expect(page.url()).toContain('redirect=%2Fsettings');
+    expect(page.url()).toContain('redirectTo=%2Fsettings');
   });
 
   test('login page shows redirect param', async ({ page }) => {
-    await page.goto('/login?redirect=/settings');
+    await page.goto('/login?redirectTo=/settings');
 
     // Login page should be displayed
     // (Assuming there's a login form or heading)
@@ -116,19 +116,28 @@ test.describe('Notification Settings Persistence', () => {
 });
 
 test.describe('Error States', () => {
-  test('shows 404 page for non-existent routes', async ({ page }) => {
-    const response = await page.goto('/this-page-does-not-exist-xyz-123');
-    expect(response?.status()).toBe(404);
+  test('shows not-found experience for non-existent routes', async ({ page }) => {
+    await page.goto('/this-page-does-not-exist-xyz-123');
+    await expect(page.getByText('This page could not be found.')).toBeVisible();
+    // The root layout emits its own `index, follow` robots tag on every page, so
+    // assert a noindex tag is present rather than matching a single robots tag.
+    await expect(page.locator('meta[name="robots"][content*="noindex"]').first()).toBeAttached();
   });
 
-  test('shows 404 for invalid game', async ({ page }) => {
-    const response = await page.goto('/invalid-game/some-set');
-    expect(response?.status()).toBe(404);
+  test('shows not-found experience for invalid game', async ({ page }) => {
+    await page.goto('/invalid-game/some-set');
+    await expect(page.getByText('This page could not be found.')).toBeVisible();
+    // The root layout emits its own `index, follow` robots tag on every page, so
+    // assert a noindex tag is present rather than matching a single robots tag.
+    await expect(page.locator('meta[name="robots"][content*="noindex"]').first()).toBeAttached();
   });
 
-  test('shows 404 for invalid set in valid game', async ({ page }) => {
-    const response = await page.goto('/pokemon/invalid-set-xyz');
-    expect(response?.status()).toBe(404);
+  test('shows not-found experience for invalid set in valid game', async ({ page }) => {
+    await page.goto('/pokemon/invalid-set-xyz');
+    await expect(page.getByText('This page could not be found.')).toBeVisible();
+    // The root layout emits its own `index, follow` robots tag on every page, so
+    // assert a noindex tag is present rather than matching a single robots tag.
+    await expect(page.locator('meta[name="robots"][content*="noindex"]').first()).toBeAttached();
   });
 });
 
