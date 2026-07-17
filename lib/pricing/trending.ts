@@ -9,10 +9,10 @@ import { redis } from '@/lib/redis/client';
 // Type definitions for Supabase query results
 interface TrendingScoreRow {
   card_id: string;
-  price_change_24h: number;
-  volume_24h: number;
-  search_count_24h: number;
-  social_mentions_24h: number;
+  price_change_24h: number | null;
+  volume_24h: number | null;
+  search_count_24h: number | null;
+  social_mentions_24h: number | null;
   combined_score: number;
   cards: {
     id: string;
@@ -32,10 +32,33 @@ interface CardIdRow {
   id: string;
 }
 
-interface PriceHistoryRow {
+export interface PriceHistoryRow {
+  id: string;
+  card_id: string;
   price: number;
   recorded_at: string;
+  variant_id: string | null;
+  grading_company_id: string | null;
+  grade: string;
+  source: string;
 }
+
+interface SearchAnalyticsRow {
+  id: string;
+  card_id: string;
+  created_at: string;
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// A baseline is valid only when it is 23-25 hours older than the latest tick.
+// Outside this strict +/- 1 hour tolerance, returning null is safer than
+// labelling a materially different interval as a 24-hour price change.
+const PRICE_BASELINE_TOLERANCE_MS = 60 * 60 * 1000;
+const QUERY_PAGE_SIZE = 1000;
+const CARD_PAGE_SIZE = 500;
+const CARD_BATCH_SIZE = 100;
+const BATCH_CONCURRENCY = 4;
 
 // Weights for trending score calculation
 const WEIGHTS = {
@@ -53,10 +76,10 @@ export interface TrendingCard {
   slug: string;
   imageUrl: string | null;
   currentPrice: number | null;
-  priceChange24h: number;
-  volume24h: number;
-  searchCount24h: number;
-  socialMentions24h: number;
+  priceChange24h: number | null;
+  volume24h: number | null;
+  searchCount24h: number | null;
+  socialMentions24h: number | null;
   combinedScore: number;
   game: string;
 }
@@ -65,23 +88,237 @@ export interface TrendingCard {
  * Calculate trending score for a card
  */
 export function calculateTrendingScore(
-  priceChange24h: number,
-  volume24h: number,
-  searchCount24h: number,
-  socialMentions24h: number
+  priceChange24h: number | null,
+  volume24h: number | null,
+  searchCount24h: number | null,
+  socialMentions24h: number | null
 ): number {
-  // Normalize values (these would be tuned based on real data)
-  const normalizedPrice = Math.min(Math.abs(priceChange24h) / 50, 1); // Cap at 50% change
-  const normalizedVolume = Math.min(volume24h / 100, 1); // Cap at 100 sales
-  const normalizedSearches = Math.min(searchCount24h / 1000, 1); // Cap at 1000 searches
-  const normalizedSocial = Math.min(socialMentions24h / 50, 1); // Cap at 50 mentions
+  const signals = [
+    priceChange24h === null
+      ? null
+      : {
+          value: Math.min(Math.abs(priceChange24h) / 50, 1),
+          weight: WEIGHTS.priceChange,
+        },
+    volume24h === null
+      ? null
+      : {
+          value: Math.min(Math.max(volume24h, 0) / 100, 1),
+          weight: WEIGHTS.volume,
+        },
+    searchCount24h === null
+      ? null
+      : {
+          value: Math.min(Math.max(searchCount24h, 0) / 1000, 1),
+          weight: WEIGHTS.searches,
+        },
+    socialMentions24h === null
+      ? null
+      : {
+          value: Math.min(Math.max(socialMentions24h, 0) / 50, 1),
+          weight: WEIGHTS.social,
+        },
+  ].filter((signal): signal is { value: number; weight: number } => signal !== null);
 
-  return (
-    normalizedPrice * WEIGHTS.priceChange +
-    normalizedVolume * WEIGHTS.volume +
-    normalizedSearches * WEIGHTS.searches +
-    normalizedSocial * WEIGHTS.social
+  if (signals.length === 0) return 0;
+
+  const availableWeight = signals.reduce((total, signal) => total + signal.weight, 0);
+  const weightedScore = signals.reduce(
+    (total, signal) => total + signal.value * signal.weight,
+    0
   );
+
+  // Re-normalize over metrics that were actually measured. Missing metrics
+  // carry no positive or negative signal and therefore do not depress a card's
+  // score as though a measured zero had been observed.
+  return weightedScore / availableWeight;
+}
+
+function isSamePriceSeries(
+  left: PriceHistoryRow,
+  right: PriceHistoryRow
+): boolean {
+  return (
+    left.source === right.source &&
+    left.variant_id === right.variant_id &&
+    left.grading_company_id === right.grading_company_id &&
+    left.grade === right.grade
+  );
+}
+
+/**
+ * Compare the card's latest observation with the closest observation to 24
+ * hours earlier in the exact same source/variant/grading-company/grade series.
+ * The baseline must be 23-25 hours older; otherwise there is no honest 24-hour
+ * comparison and the result is null.
+ */
+export function calculatePriceChange24h(
+  priceHistory: PriceHistoryRow[]
+): number | null {
+  const latest = [...priceHistory].sort((left, right) => {
+    const recordedAtDifference =
+      Date.parse(right.recorded_at) - Date.parse(left.recorded_at);
+
+    return recordedAtDifference || right.id.localeCompare(left.id);
+  })[0];
+
+  if (!latest) return null;
+
+  const latestRecordedAt = Date.parse(latest.recorded_at);
+  if (!Number.isFinite(latestRecordedAt) || !Number.isFinite(latest.price)) {
+    return null;
+  }
+
+  let baseline: PriceHistoryRow | null = null;
+  let baselineRecordedAt = Number.NEGATIVE_INFINITY;
+  let closestDistanceFromTarget = Number.POSITIVE_INFINITY;
+
+  for (const candidate of priceHistory) {
+    if (
+      candidate.id === latest.id ||
+      !isSamePriceSeries(candidate, latest) ||
+      !Number.isFinite(candidate.price) ||
+      candidate.price <= 0
+    ) {
+      continue;
+    }
+
+    const candidateRecordedAt = Date.parse(candidate.recorded_at);
+    if (!Number.isFinite(candidateRecordedAt) || candidateRecordedAt >= latestRecordedAt) {
+      continue;
+    }
+
+    const candidateAge = latestRecordedAt - candidateRecordedAt;
+    const distanceFromTarget = Math.abs(candidateAge - DAY_MS);
+    if (distanceFromTarget > PRICE_BASELINE_TOLERANCE_MS) continue;
+
+    if (
+      distanceFromTarget < closestDistanceFromTarget ||
+      (distanceFromTarget === closestDistanceFromTarget &&
+        (candidateRecordedAt > baselineRecordedAt ||
+          (candidateRecordedAt === baselineRecordedAt &&
+            candidate.id.localeCompare(baseline?.id || '') > 0)))
+    ) {
+      baseline = candidate;
+      baselineRecordedAt = candidateRecordedAt;
+      closestDistanceFromTarget = distanceFromTarget;
+    }
+  }
+
+  if (!baseline) return null;
+
+  const change = ((latest.price - baseline.price) / baseline.price) * 100;
+  return Number.isFinite(change) ? change : null;
+}
+
+function chunkCards(cards: CardIdRow[]): CardIdRow[][] {
+  const batches: CardIdRow[][] = [];
+
+  for (let index = 0; index < cards.length; index += CARD_BATCH_SIZE) {
+    batches.push(cards.slice(index, index + CARD_BATCH_SIZE));
+  }
+
+  return batches;
+}
+
+async function fetchAllEligibleCards(
+  supabase: ReturnType<typeof createServerClient>
+): Promise<CardIdRow[]> {
+  const cards: CardIdRow[] = [];
+  let lastId: string | null = null;
+
+  for (;;) {
+    let query = supabase
+      .from('cards')
+      .select('id')
+      .not('last_price_fetch', 'is', null)
+      .order('id', { ascending: true })
+      .limit(CARD_PAGE_SIZE);
+
+    if (lastId !== null) query = query.gt('id', lastId);
+
+    const { data, error } = await query;
+
+    if (error) throw new Error(`Failed to fetch eligible cards: ${error.message}`);
+
+    const page = (data || []) as CardIdRow[];
+    cards.push(...page);
+    if (page.length < CARD_PAGE_SIZE) break;
+    lastId = page[page.length - 1].id;
+  }
+
+  return cards;
+}
+
+async function fetchPriceHistoryForCards(
+  supabase: ReturnType<typeof createServerClient>,
+  cardIds: string[],
+  snapshotAt: string
+): Promise<PriceHistoryRow[]> {
+  const rows: PriceHistoryRow[] = [];
+  let lastId: string | null = null;
+
+  for (;;) {
+    let query = supabase
+      .from('price_history')
+      .select('id, card_id, price, recorded_at, variant_id, grading_company_id, grade, source')
+      .in('card_id', cardIds)
+      .lte('recorded_at', snapshotAt)
+      .order('id', { ascending: true })
+      .limit(QUERY_PAGE_SIZE);
+
+    if (lastId !== null) query = query.gt('id', lastId);
+
+    const { data, error } = await query;
+
+    if (error) throw new Error(error.message);
+
+    const page = (data || []) as PriceHistoryRow[];
+    rows.push(...page);
+    if (page.length < QUERY_PAGE_SIZE) break;
+    lastId = page[page.length - 1].id;
+  }
+
+  return rows;
+}
+
+async function fetchSearchCountsForCards(
+  supabase: ReturnType<typeof createServerClient>,
+  cardIds: string[],
+  windowStart: string,
+  snapshotAt: string
+): Promise<Map<string, number>> {
+  const rows: SearchAnalyticsRow[] = [];
+  let lastId: string | null = null;
+
+  for (;;) {
+    let query = supabase
+      .from('search_analytics')
+      .select('id, card_id, created_at')
+      .in('card_id', cardIds)
+      .gte('created_at', windowStart)
+      .lte('created_at', snapshotAt)
+      .order('id', { ascending: true })
+      .limit(QUERY_PAGE_SIZE);
+
+    if (lastId !== null) query = query.gt('id', lastId);
+
+    const { data, error } = await query;
+
+    if (error) throw new Error(error.message);
+
+    const page = (data || []) as SearchAnalyticsRow[];
+    rows.push(...page);
+    if (page.length < QUERY_PAGE_SIZE) break;
+    lastId = page[page.length - 1].id;
+  }
+
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    counts.set(row.card_id, (counts.get(row.card_id) || 0) + 1);
+  }
+
+  return counts;
 }
 
 /**
@@ -247,100 +484,196 @@ export async function getMarketMovers(
  * Called by Inngest job
  */
 export async function updateAllTrendingScores(): Promise<{
+  eligible: number;
+  processed: number;
   updated: number;
   errors: string[];
 }> {
   const supabase = createServerClient();
   const errors: string[] = [];
+  let eligible = 0;
+  let processed = 0;
   let updated = 0;
 
   try {
-    // Get all cards with recent activity
-    const { data: cardsData } = await supabase
-      .from('cards')
-      .select('id')
-      .not('last_price_fetch', 'is', null);
+    // Stable pagination is required here: PostgREST otherwise returns only its
+    // first 1,000 rows and silently excludes the rest of the catalog.
+    const cards = await fetchAllEligibleCards(supabase);
+    eligible = cards.length;
 
-    const cards = cardsData as CardIdRow[] | null;
-
-    if (!cards || cards.length === 0) {
-      return { updated: 0, errors: [] };
+    if (cards.length === 0) {
+      return { eligible: 0, processed: 0, updated: 0, errors: [] };
     }
 
-    // Calculate metrics for each card
-    for (const card of cards) {
+    const snapshotAt = new Date().toISOString();
+    const searchWindowStart = new Date(
+      Date.parse(snapshotAt) - DAY_MS
+    ).toISOString();
+    const cardBatches = chunkCards(cards);
+
+    console.info(
+      `[trending] Processing ${eligible} eligible cards in ${cardBatches.length} ` +
+        `batches (size ${CARD_BATCH_SIZE}, concurrency ${BATCH_CONCURRENCY})`
+    );
+
+    for (
+      let batchIndex = 0;
+      batchIndex < cardBatches.length;
+      batchIndex += BATCH_CONCURRENCY
+    ) {
+      const concurrentBatches = cardBatches.slice(
+        batchIndex,
+        batchIndex + BATCH_CONCURRENCY
+      );
+      const batchResults = await Promise.all(
+        concurrentBatches.map(async (batch, concurrentIndex) => {
+          const absoluteBatchIndex = batchIndex + concurrentIndex + 1;
+          const cardIds = batch.map((card) => card.id);
+          try {
+            const [priceHistoryResult, searchCountsResult] = await Promise.allSettled([
+              fetchPriceHistoryForCards(supabase, cardIds, snapshotAt),
+              fetchSearchCountsForCards(
+                supabase,
+                cardIds,
+                searchWindowStart,
+                snapshotAt
+              ),
+            ]);
+
+            const historyByCard = new Map<string, PriceHistoryRow[]>();
+            if (priceHistoryResult.status === 'fulfilled') {
+              for (const row of priceHistoryResult.value) {
+                const history = historyByCard.get(row.card_id) || [];
+                history.push(row);
+                historyByCard.set(row.card_id, history);
+              }
+            } else {
+              errors.push(
+                `Batch ${absoluteBatchIndex} price history: ${
+                  priceHistoryResult.reason instanceof Error
+                    ? priceHistoryResult.reason.message
+                    : 'Unknown error'
+                }`
+              );
+            }
+
+            let searchCounts: Map<string, number> | null = null;
+            if (searchCountsResult.status === 'fulfilled') {
+              searchCounts = searchCountsResult.value;
+            } else {
+              errors.push(
+                `Batch ${absoluteBatchIndex} search analytics: ${
+                  searchCountsResult.reason instanceof Error
+                    ? searchCountsResult.reason.message
+                    : 'Unknown error'
+                }`
+              );
+            }
+
+            const calculatedAt = new Date().toISOString();
+            const scoreRows = batch.map((card) => {
+              const priceChange24h =
+                priceHistoryResult.status === 'fulfilled'
+                  ? calculatePriceChange24h(historyByCard.get(card.id) || [])
+                  : null;
+              const searchCount24h = searchCounts?.get(card.id) ??
+                (searchCounts === null ? null : 0);
+
+              // There is no sales-volume or social-mentions ingestion. Null
+              // records that these metrics are unknown; zero would falsely claim
+              // that the integrations measured no activity.
+              const volume24h = null;
+              const socialMentions24h = null;
+
+              return {
+                card_id: card.id,
+                price_change_24h: priceChange24h,
+                volume_24h: volume24h,
+                search_count_24h: searchCount24h,
+                social_mentions_24h: socialMentions24h,
+                combined_score: calculateTrendingScore(
+                  priceChange24h,
+                  volume24h,
+                  searchCount24h,
+                  socialMentions24h
+                ),
+                calculated_at: calculatedAt,
+              };
+            });
+
+            // Generated database types predate the confirmed nullable columns.
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const { error: upsertError } = await (supabase.from('trending_scores') as any)
+              .upsert(scoreRows, { onConflict: 'card_id' });
+
+            if (upsertError) {
+              errors.push(`Batch ${absoluteBatchIndex} upsert: ${upsertError.message}`);
+              return { processed: batch.length, updated: 0 };
+            }
+
+            return { processed: batch.length, updated: batch.length };
+          } catch (error) {
+            errors.push(
+              `Batch ${absoluteBatchIndex}: ${
+                error instanceof Error ? error.message : 'Unknown error'
+              }`
+            );
+            return { processed: batch.length, updated: 0 };
+          }
+        })
+      );
+
+      processed += batchResults.reduce(
+        (total, result) => total + result.processed,
+        0
+      );
+      updated += batchResults.reduce(
+        (total, result) => total + result.updated,
+        0
+      );
+
+      console.info(
+        `[trending] Processed ${processed}/${eligible} cards; ` +
+          `${updated} rows updated; ${errors.length} errors`
+      );
+    }
+
+    if (processed !== eligible) {
+      errors.push(
+        `Processed-card mismatch: expected ${eligible}, processed ${processed}`
+      );
+    }
+
+    if (updated !== eligible) {
+      console.error(
+        `[trending] Incomplete update: ${updated}/${eligible} rows updated`
+      );
+    } else {
+      console.info(`[trending] Completed update for all ${eligible} eligible cards`);
+    }
+
+    if (errors.length > 0) {
+      console.error(`[trending] Completed with ${errors.length} errors`);
+    }
+
+    if (updated === eligible && errors.length === 0) {
       try {
-        // Get price change from history
-        const { data: priceHistoryData } = await supabase
-          .from('price_history')
-          .select('price, recorded_at')
-          .eq('card_id', card.id)
-          .order('recorded_at', { ascending: false })
-          .limit(2);
-
-        const priceHistory = priceHistoryData as PriceHistoryRow[] | null;
-
-        let priceChange24h = 0;
-        if (priceHistory && priceHistory.length >= 2) {
-          const latest = priceHistory[0].price;
-          const previous = priceHistory[1].price;
-          priceChange24h = ((latest - previous) / previous) * 100;
-        }
-
-        // Get volume from price history (count of records in last 24h)
-        const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-        const { count: volume24h } = await supabase
-          .from('price_history')
-          .select('*', { count: 'exact', head: true })
-          .eq('card_id', card.id)
-          .gte('recorded_at', yesterday);
-
-        // Get search count from analytics
-        const { count: searchCount24h } = await supabase
-          .from('search_analytics')
-          .select('*', { count: 'exact', head: true })
-          .eq('card_id', card.id)
-          .gte('created_at', yesterday);
-
-        // Social mentions would come from external API
-        const socialMentions24h = 0;
-
-        // Calculate combined score
-        const combinedScore = calculateTrendingScore(
-          priceChange24h,
-          volume24h || 0,
-          searchCount24h || 0,
-          socialMentions24h
+        // Publish a new cache only after a fully successful catalog update.
+        const trending = await getTrendingCards(20);
+        await redis.set('trending:cards', trending, { ex: 15 * 60 });
+      } catch (error) {
+        errors.push(
+          `Trending cache: ${
+            error instanceof Error ? error.message : 'Unknown error'
+          }`
         );
-
-        // Upsert trending score
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase.from('trending_scores') as any)
-          .upsert({
-            card_id: card.id,
-            price_change_24h: priceChange24h,
-            volume_24h: volume24h || 0,
-            search_count_24h: searchCount24h || 0,
-            social_mentions_24h: socialMentions24h,
-            combined_score: combinedScore,
-            calculated_at: new Date().toISOString(),
-          }, {
-            onConflict: 'card_id',
-          });
-
-        updated++;
-      } catch (err) {
-        errors.push(`Card ${card.id}: ${err instanceof Error ? err.message : 'Unknown error'}`);
       }
+    } else {
+      console.error('[trending] Skipping cache publish after incomplete update');
     }
-
-    // Cache trending results
-    const trending = await getTrendingCards(20);
-    await redis.set('trending:cards', trending, { ex: 15 * 60 }); // 15 min cache
-
   } catch (error) {
     errors.push(error instanceof Error ? error.message : 'Unknown error');
   }
 
-  return { updated, errors };
+  return { eligible, processed, updated, errors };
 }

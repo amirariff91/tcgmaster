@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import { Bell, Plus, Share2, Info, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +11,7 @@ import { formatPrice, formatNumber, getRarityDisplay, formatDate, formatDisplayN
 import { createClient } from '@/lib/supabase/server';
 import { getCardWithPrices } from '@/lib/ppt/service';
 import { createServerClient } from '@/lib/supabase/client';
+import { calculatePriceChange24h } from '@/lib/pricing/trending';
 
 interface CardDataSet {
   id: string;
@@ -42,10 +44,14 @@ interface CardDataPriceCache {
 }
 
 interface CardDataPriceHistory {
+  id: string;
+  card_id: string;
+  variant_id: string | null;
+  grading_company_id: string | null;
   grade: string;
   price: number;
   recorded_at: string;
-  source?: string;
+  source: string;
 }
 
 interface CardDataPopulation {
@@ -123,6 +129,10 @@ async function getCardData(gameSlug: string, setSlug: string, cardSlug: string):
         expires_at
       ),
       price_history (
+        id,
+        card_id,
+        variant_id,
+        grading_company_id,
         grade,
         price,
         recorded_at,
@@ -186,17 +196,7 @@ export default async function CardDetailPage({ params }: PageProps) {
   const cardData = await getCardData(game, set, cardSlug);
 
   if (!cardData) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center py-24 text-center bg-zinc-50">
-        <h1 className="text-3xl font-bold text-zinc-900 mb-3">Card Not Found</h1>
-        <p className="text-zinc-500 mb-6">
-          No card matching <span className="font-mono text-zinc-700">{cardSlug}</span> was found in <span className="font-mono text-zinc-700">{set}</span>.
-        </p>
-        <Link href={`/${game}`} className="text-blue-600 hover:underline">
-          ← Back to {game}
-        </Link>
-      </div>
-    );
+    notFound();
   }
 
   const setData = cardData.sets;
@@ -315,18 +315,7 @@ export default async function CardDetailPage({ params }: PageProps) {
   const priceHistory = Array.from(chartDataMap.values()).sort((a, b) => new Date(a.date as string).getTime() - new Date(b.date as string).getTime());
   const chartSources = Array.from(availableSources);
 
-  let priceChange24h = null;
-  if (priceHistory.length >= 2) {
-      // Find a valid source from chartSources to calculate price change, default to the first one available
-      const sourceForChange = chartSources.includes(winningSource) ? winningSource : chartSources[0];
-      if (sourceForChange) {
-        const latest = priceHistory[priceHistory.length - 1][sourceForChange] as number;
-        const prev = priceHistory[priceHistory.length - 2][sourceForChange] as number;
-        if (prev > 0 && latest > 0) {
-          priceChange24h = ((latest - prev) / prev) * 100;
-        }
-      }
-  }
+  const priceChange24h = calculatePriceChange24h(relevantHistory);
 
   const priceLadderEntries = [
     { grade: 'raw' as const, grading_company: null, price: rawPrices.nearMint || 0, confidence: 'high' as const, last_sale_date: null, population: null },
@@ -564,4 +553,3 @@ export default async function CardDetailPage({ params }: PageProps) {
     </div>
   );
 }
-
