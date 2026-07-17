@@ -35,6 +35,12 @@ RUN npm run build
 FROM node:22-slim AS runner
 WORKDIR /app
 
+# Coolify's healthcheck shells into the container and probes with curl (falling back
+# to wget); node:22-slim ships neither, so without this the container is reported
+# unhealthy and the deploy rolls back even though the app is serving fine.
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
