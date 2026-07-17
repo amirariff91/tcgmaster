@@ -1,0 +1,24 @@
+# Self-hosted Inngest server — deployed as its own Coolify Application from this repo.
+#
+# Why a Dockerfile instead of pointing Coolify straight at inngest/inngest:latest:
+# Coolify's `dockerimage` build pack silently ignores `start_command`, so the container
+# ran the image's default CMD (["inngest"]), printed its help text, exited 0 and
+# restart-looped. Baking the command into CMD here removes Coolify from that path.
+# A locally-built image is not an option either — Coolify's automated cleanup prunes it.
+#
+# --no-ui: the self-hosted dashboard has NO authentication, so it must not be served on
+#          a public domain. The Event API still requires INNGEST_EVENT_KEY, and
+#          server->app calls are signed with INNGEST_SIGNING_KEY.
+# -u:      the app's serve endpoint, which this server syncs and then drives on schedule.
+# /data:   SQLite persistence (INNGEST_SQLITE_DIR). Mount a volume here or run history
+#          is lost on every redeploy.
+FROM inngest/inngest:latest
+
+ENV INNGEST_SQLITE_DIR=/data
+
+EXPOSE 8288 8289
+
+CMD ["inngest", "start", \
+     "--no-ui", \
+     "--sqlite-dir", "/data", \
+     "-u", "https://tcgmaster.com/api/inngest"]
