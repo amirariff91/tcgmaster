@@ -1,13 +1,13 @@
 import * as cheerio from 'cheerio';
-import puppeteer from 'puppeteer-extra';
-import StealthPlugin from 'puppeteer-extra-plugin-stealth';
-
-puppeteer.use(StealthPlugin());
+import { getSharedBrowser } from './browser';
+import { waitForSourceRateLimit } from './rate-limiter';
 
 // Returns both raw and PSA 10 graded prices
 export async function fetchPriceChartingPrice(query: string): Promise<{ price: number; gradedPrice?: number } | null> {
-  let browser;
+  let page;
   try {
+    await waitForSourceRateLimit('pricecharting');
+
     let suffix = '';
     let baseQuery = query;
     if (query.includes('_')) {
@@ -16,11 +16,8 @@ export async function fetchPriceChartingPrice(query: string): Promise<{ price: n
 
     const searchUrl = `https://www.pricecharting.com/search-products?type=prices&q=${encodeURIComponent(baseQuery)}`;
     
-    browser = await puppeteer.launch({ 
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
-    });
-    const page = await browser.newPage();
+    const browser = await getSharedBrowser();
+    page = await browser.newPage();
     
     await page.setViewport({ width: 1280, height: 800 });
     await page.goto(searchUrl, { waitUntil: 'networkidle2', timeout: 60000 });
@@ -80,8 +77,8 @@ export async function fetchPriceChartingPrice(query: string): Promise<{ price: n
   } catch (err) {
     console.error(`PriceCharting fetch error for ${query}:`, err);
   } finally {
-    if (browser) {
-      await browser.close().catch(() => {});
+    if (page) {
+      await page.close().catch(() => {});
     }
   }
   return null;

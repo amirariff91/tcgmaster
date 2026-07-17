@@ -1,22 +1,19 @@
 import * as cheerio from 'cheerio';
-import puppeteer from 'puppeteer-extra';
-import StealthPlugin from 'puppeteer-extra-plugin-stealth';
-
-puppeteer.use(StealthPlugin());
+import { getSharedBrowser } from './browser';
+import { waitForSourceRateLimit } from './rate-limiter';
 
 // Return an object that can contain both raw and graded prices
 export async function fetchSnkrdunkPrice(query: string, setName?: string): Promise<{ price: number; gradedPrice?: number; url: string } | null> {
-  let browser;
+  let page;
   try {
+    await waitForSourceRateLimit('snkrdunk');
+
     let rawQuery = query;
 
     // If we're passed an exact SNKRDUNK product URL, go straight to it!
     if (rawQuery.startsWith('http') && rawQuery.includes('/trading-cards/')) {
-      browser = await puppeteer.launch({ 
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
-      });
-      const page = await browser.newPage();
+      const browser = await getSharedBrowser();
+      page = await browser.newPage();
       await page.setViewport({ width: 1280, height: 800 });
       await page.goto(rawQuery, { waitUntil: 'networkidle2', timeout: 30000 });
       await new Promise(r => setTimeout(r, 2000));
@@ -67,11 +64,8 @@ export async function fetchSnkrdunkPrice(query: string, setName?: string): Promi
 
     const searchUrl = `https://snkrdunk.com/en/search/result?keyword=${encodeURIComponent(baseQuery)}`;
     
-    browser = await puppeteer.launch({ 
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
-    });
-    const page = await browser.newPage();
+    const browser = await getSharedBrowser();
+    page = await browser.newPage();
     await page.setViewport({ width: 1280, height: 800 });
     
     await page.goto(searchUrl, { waitUntil: 'networkidle2', timeout: 30000 });
@@ -148,8 +142,8 @@ export async function fetchSnkrdunkPrice(query: string, setName?: string): Promi
   } catch (err) {
     console.error(`Snkrdunk fetch error for ${query}:`, err);
   } finally {
-    if (browser) {
-      await browser.close().catch(() => {});
+    if (page) {
+      await page.close().catch(() => {});
     }
   }
   return null;
