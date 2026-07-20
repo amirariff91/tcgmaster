@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import { createClient } from '@/lib/supabase/server';
-import { Activity, Database, Sparkles, Trophy, ExternalLink, AlertCircle, BarChart3, Bot, Globe, JapaneseYen, DollarSign } from 'lucide-react';
+import { Activity, Database, Sparkles, Trophy, ExternalLink, BarChart3, Bot, Globe, DollarSign } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
 
@@ -27,34 +27,56 @@ export default async function AdminHealthDashboard() {
   const priceCoverage = totalCards && totalCards > 0 ? Math.round(((cachedPrices || 0) / totalCards) * 100) : 0;
   const artistCoverage = totalCards && totalCards > 0 ? Math.round(((cardsWithArtist || 0) / totalCards) * 100) : 0;
 
-  // 2. Fetch Granular Scraper Configurations
-  const { count: snkrdunkConfigured } = await supabase.from('cards').select('*', { count: 'exact', head: true }).not('snkrdunk_url', 'is', null);
-  const { count: yuyuteiConfigured } = await supabase.from('cards').select('*', { count: 'exact', head: true }).not('yuyutei_url', 'is', null);
-  const { count: cardrushConfigured } = await supabase.from('cards').select('*', { count: 'exact', head: true }).not('cardrush_url', 'is', null);
-  const { count: tcgPlayerConfigured } = await supabase.from('cards').select('*', { count: 'exact', head: true }).not('tcg_player_id', 'is', null);
+  // 2. Fetch Games & Game-Specific Scraper Data
+  const { data: games } = await supabase.from('games').select('id, name, slug');
 
-  // 3. Fetch Granular Scraper Heartbeats
-  const sources = ['snkrdunk', 'yuyutei', 'tcgplayer', 'cardrush'];
-  const heartbeats = await Promise.all(sources.map(async (source) => {
-    const { data } = await supabase
-      .from('price_history')
-      .select('created_at')
-      .eq('source', source)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+  const gameDiagnostics = games ? await Promise.all(games.map(async (game) => {
+    const { count: gameTotalCards } = await supabase.from('cards').select('*, sets!inner(game_id)', { count: 'exact', head: true }).eq('sets.game_id', game.id);
     
-    const date = data?.created_at ? new Date(data.created_at) : null;
-    const isHealthy = date ? (new Date().getTime() - date.getTime()) < 1000 * 60 * 60 * 24 : false; // < 24h
-    
+    // Configured Cards
+    const { count: snkrdunkConfigured } = await supabase.from('cards').select('*, sets!inner(game_id)', { count: 'exact', head: true }).eq('sets.game_id', game.id).not('snkrdunk_url', 'is', null);
+    const { count: yuyuteiConfigured } = await supabase.from('cards').select('*, sets!inner(game_id)', { count: 'exact', head: true }).eq('sets.game_id', game.id).not('yuyutei_url', 'is', null);
+    const { count: cardrushConfigured } = await supabase.from('cards').select('*, sets!inner(game_id)', { count: 'exact', head: true }).eq('sets.game_id', game.id).not('cardrush_url', 'is', null);
+    const { count: tcgPlayerConfigured } = await supabase.from('cards').select('*, sets!inner(game_id)', { count: 'exact', head: true }).eq('sets.game_id', game.id).not('tcg_player_id', 'is', null);
+
+    // Heartbeats (Last successful price fetch in price_history)
+    const sources = ['snkrdunk', 'yuyutei', 'tcgplayer', 'cardrush'];
+    const heartbeats = await Promise.all(sources.map(async (source) => {
+      const { data } = await supabase
+        .from('price_history')
+        .select('recorded_at, cards!inner(sets!inner(game_id))')
+        .eq('source', source)
+        .eq('cards.sets.game_id', game.id)
+        .order('recorded_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      // Extract recorded_at, fallback to null
+      const dateStr = data ? (data as any).recorded_at : null;
+      const date = dateStr ? new Date(dateStr) : null;
+      const isHealthy = date ? (new Date().getTime() - date.getTime()) < 1000 * 60 * 60 * 24 : false; // < 24h
+      
+      return {
+        source,
+        date,
+        isHealthy
+      };
+    }));
+
     return {
-      source,
-      date,
-      isHealthy
+      id: game.id,
+      name: game.name,
+      slug: game.slug,
+      totalCards: gameTotalCards || 0,
+      config: {
+        snkrdunk: snkrdunkConfigured || 0,
+        yuyutei: yuyuteiConfigured || 0,
+        cardrush: cardrushConfigured || 0,
+        tcgplayer: tcgPlayerConfigured || 0,
+      },
+      heartbeats
     };
-  }));
-
-  const getHeartbeat = (source: string) => heartbeats.find(h => h.source === source);
+  })) : [];
 
   return (
     <div className="min-h-screen bg-[#060c18] pt-24 pb-20">
@@ -143,151 +165,184 @@ export default async function AdminHealthDashboard() {
           </div>
         </div>
 
-        {/* Scraper Diagnostics */}
-        <div>
-          <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-             <Bot className="w-5 h-5 text-zinc-400" /> Scraper Diagnostics
-          </h2>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            
-            {/* JP Scrapers */}
-            <div className="bg-[#0b1329] border border-white/10 rounded-2xl p-6 shadow-xl">
-              <div className="flex items-center gap-2 mb-6 pb-4 border-b border-white/10">
-                <Globe className="w-5 h-5 text-emerald-400" />
-                <h3 className="text-lg font-black text-white">Japanese Market Scrapers</h3>
-              </div>
+        {/* TCG Game-by-Game Scrapers */}
+        <div className="space-y-12">
+          {gameDiagnostics.map((game) => (
+            <div key={game.id} className="pt-8 border-t border-white/10">
+              <h2 className="text-2xl font-black text-white mb-6 flex items-center gap-3 capitalize">
+                 <Bot className="w-6 h-6 text-indigo-400" /> {game.name.replace('-', ' ')} Scrapers
+              </h2>
               
-              <div className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 
-                {/* Snkrdunk */}
-                {(() => {
-                  const hb = getHeartbeat('snkrdunk');
-                  const coverage = totalCards && totalCards > 0 ? Math.round(((snkrdunkConfigured || 0) / totalCards) * 100) : 0;
-                  return (
-                    <div className="bg-black/40 rounded-xl p-4 border border-white/5 relative overflow-hidden">
-                      <div className="flex justify-between items-start mb-4">
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <div className={`w-2 h-2 rounded-full ${hb?.isHealthy ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)] animate-pulse'}`} />
-                            <h4 className="font-bold text-white">Snkrdunk</h4>
-                          </div>
-                          <p className="text-xs text-zinc-500">OP / DBFW Puppeteer Engine</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Last Sync</p>
-                          <p className={`font-bold tabular-nums text-sm ${hb?.isHealthy ? 'text-emerald-400' : 'text-red-400'}`}>
-                            {hb?.date ? formatDistanceToNow(hb.date, { addSuffix: true }) : 'Stalled'}
-                          </p>
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <div className="flex justify-between items-end mb-1">
-                          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">URL Configuration</p>
-                          <p className="text-xs font-bold text-zinc-300 tabular-nums">{snkrdunkConfigured?.toLocaleString()} <span className="text-zinc-600">cards mapped</span></p>
-                        </div>
-                        <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
-                          <div className="h-full bg-blue-500 rounded-full" style={{ width: `${coverage}%` }} />
-                        </div>
-                      </div>
+                {/* Japanese Market (Hidden for Pokemon) */}
+                {game.slug !== 'pokemon' && (
+                  <div className="bg-[#0b1329] border border-white/10 rounded-2xl p-6 shadow-xl">
+                    <div className="flex items-center gap-2 mb-6 pb-4 border-b border-white/10">
+                      <Globe className="w-5 h-5 text-emerald-400" />
+                      <h3 className="text-lg font-black text-white">Japanese Market</h3>
                     </div>
-                  );
-                })()}
-
-                {/* Yuyutei */}
-                {(() => {
-                  const hb = getHeartbeat('yuyutei');
-                  const coverage = totalCards && totalCards > 0 ? Math.round(((yuyuteiConfigured || 0) / totalCards) * 100) : 0;
-                  return (
-                    <div className="bg-black/40 rounded-xl p-4 border border-white/5 relative overflow-hidden">
-                      <div className="flex justify-between items-start mb-4">
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <div className={`w-2 h-2 rounded-full ${hb?.isHealthy ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)] animate-pulse'}`} />
-                            <h4 className="font-bold text-white">Yuyutei</h4>
-                          </div>
-                          <p className="text-xs text-zinc-500">OP / DBFW Fast Parser</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Last Sync</p>
-                          <p className={`font-bold tabular-nums text-sm ${hb?.isHealthy ? 'text-emerald-400' : 'text-red-400'}`}>
-                            {hb?.date ? formatDistanceToNow(hb.date, { addSuffix: true }) : 'Stalled'}
-                          </p>
-                        </div>
-                      </div>
+                    
+                    <div className="space-y-6">
                       
-                      <div>
-                        <div className="flex justify-between items-end mb-1">
-                          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">URL Configuration</p>
-                          <p className="text-xs font-bold text-zinc-300 tabular-nums">{yuyuteiConfigured?.toLocaleString()} <span className="text-zinc-600">cards mapped</span></p>
-                        </div>
-                        <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
-                          <div className="h-full bg-blue-500 rounded-full" style={{ width: `${coverage}%` }} />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })()}
+                      {/* Snkrdunk */}
+                      {(() => {
+                        const hb = game.heartbeats.find(h => h.source === 'snkrdunk');
+                        const coverage = game.totalCards > 0 ? Math.round((game.config.snkrdunk / game.totalCards) * 100) : 0;
+                        return (
+                          <div className="bg-black/40 rounded-xl p-4 border border-white/5 relative overflow-hidden">
+                            <div className="flex justify-between items-start mb-4">
+                              <div>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <div className={`w-2 h-2 rounded-full ${hb?.isHealthy ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)] animate-pulse'}`} />
+                                  <h4 className="font-bold text-white">Snkrdunk</h4>
+                                </div>
+                                <p className="text-xs text-zinc-500">Puppeteer Engine</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Last Sync</p>
+                                <p className={`font-bold tabular-nums text-sm ${hb?.isHealthy ? 'text-emerald-400' : 'text-red-400'}`}>
+                                  {hb?.date ? formatDistanceToNow(hb.date, { addSuffix: true }) : 'Stalled'}
+                                </p>
+                              </div>
+                            </div>
+                            
+                            <div>
+                              <div className="flex justify-between items-end mb-1">
+                                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">URL Coverage</p>
+                                <p className="text-xs font-bold text-zinc-300 tabular-nums">{game.config.snkrdunk.toLocaleString()} <span className="text-zinc-600">/ {game.totalCards.toLocaleString()} cards</span></p>
+                              </div>
+                              <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                                <div className="h-full bg-blue-500 rounded-full" style={{ width: `${coverage}%` }} />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
 
-              </div>
-              
-              <div className="mt-6 p-3 bg-white/5 border border-white/10 rounded-lg">
-                <p className="text-xs text-zinc-400 font-mono">Run: <span className="text-emerald-400">npm run scrape:all:safe</span></p>
+                      {/* Yuyutei */}
+                      {(() => {
+                        const hb = game.heartbeats.find(h => h.source === 'yuyutei');
+                        const coverage = game.totalCards > 0 ? Math.round((game.config.yuyutei / game.totalCards) * 100) : 0;
+                        return (
+                          <div className="bg-black/40 rounded-xl p-4 border border-white/5 relative overflow-hidden">
+                            <div className="flex justify-between items-start mb-4">
+                              <div>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <div className={`w-2 h-2 rounded-full ${hb?.isHealthy ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)] animate-pulse'}`} />
+                                  <h4 className="font-bold text-white">Yuyutei</h4>
+                                </div>
+                                <p className="text-xs text-zinc-500">Fast Parser</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Last Sync</p>
+                                <p className={`font-bold tabular-nums text-sm ${hb?.isHealthy ? 'text-emerald-400' : 'text-red-400'}`}>
+                                  {hb?.date ? formatDistanceToNow(hb.date, { addSuffix: true }) : 'Stalled'}
+                                </p>
+                              </div>
+                            </div>
+                            
+                            <div>
+                              <div className="flex justify-between items-end mb-1">
+                                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">URL Coverage</p>
+                                <p className="text-xs font-bold text-zinc-300 tabular-nums">{game.config.yuyutei.toLocaleString()} <span className="text-zinc-600">/ {game.totalCards.toLocaleString()} cards</span></p>
+                              </div>
+                              <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                                <div className="h-full bg-blue-500 rounded-full" style={{ width: `${coverage}%` }} />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Cardrush (DBFW only) */}
+                      {game.slug === 'dbfw' && (() => {
+                        const hb = game.heartbeats.find(h => h.source === 'cardrush');
+                        const coverage = game.totalCards > 0 ? Math.round((game.config.cardrush / game.totalCards) * 100) : 0;
+                        return (
+                          <div className="bg-black/40 rounded-xl p-4 border border-white/5 relative overflow-hidden">
+                            <div className="flex justify-between items-start mb-4">
+                              <div>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <div className={`w-2 h-2 rounded-full ${hb?.isHealthy ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)] animate-pulse'}`} />
+                                  <h4 className="font-bold text-white">Cardrush</h4>
+                                </div>
+                                <p className="text-xs text-zinc-500">Fast Parser</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Last Sync</p>
+                                <p className={`font-bold tabular-nums text-sm ${hb?.isHealthy ? 'text-emerald-400' : 'text-red-400'}`}>
+                                  {hb?.date ? formatDistanceToNow(hb.date, { addSuffix: true }) : 'Stalled'}
+                                </p>
+                              </div>
+                            </div>
+                            
+                            <div>
+                              <div className="flex justify-between items-end mb-1">
+                                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">URL Coverage</p>
+                                <p className="text-xs font-bold text-zinc-300 tabular-nums">{game.config.cardrush.toLocaleString()} <span className="text-zinc-600">/ {game.totalCards.toLocaleString()} cards</span></p>
+                              </div>
+                              <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                                <div className="h-full bg-blue-500 rounded-full" style={{ width: `${coverage}%` }} />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                )}
+
+                {/* English Market */}
+                <div className="bg-[#0b1329] border border-white/10 rounded-2xl p-6 shadow-xl">
+                  <div className="flex items-center gap-2 mb-6 pb-4 border-b border-white/10">
+                    <DollarSign className="w-5 h-5 text-indigo-400" />
+                    <h3 className="text-lg font-black text-white">English Market</h3>
+                  </div>
+                  
+                  <div className="space-y-6">
+                    
+                    {/* TCGPlayer */}
+                    {(() => {
+                      const hb = game.heartbeats.find(h => h.source === 'tcgplayer');
+                      const coverage = game.totalCards > 0 ? Math.round((game.config.tcgplayer / game.totalCards) * 100) : 0;
+                      return (
+                        <div className="bg-black/40 rounded-xl p-4 border border-white/5 relative overflow-hidden">
+                          <div className="flex justify-between items-start mb-4">
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <div className={`w-2 h-2 rounded-full ${hb?.isHealthy ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)] animate-pulse'}`} />
+                                <h4 className="font-bold text-white">TCGPlayer</h4>
+                              </div>
+                              <p className="text-xs text-zinc-500">API Integration</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Last Sync</p>
+                              <p className={`font-bold tabular-nums text-sm ${hb?.isHealthy ? 'text-emerald-400' : 'text-red-400'}`}>
+                                {hb?.date ? formatDistanceToNow(hb.date, { addSuffix: true }) : 'Stalled'}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <div className="flex justify-between items-end mb-1">
+                              <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">ID Coverage</p>
+                              <p className="text-xs font-bold text-zinc-300 tabular-nums">{game.config.tcgplayer.toLocaleString()} <span className="text-zinc-600">/ {game.totalCards.toLocaleString()} cards</span></p>
+                            </div>
+                            <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                              <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${coverage}%` }} />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                  </div>
+                </div>
+
               </div>
             </div>
-
-            {/* EN Scrapers */}
-            <div className="bg-[#0b1329] border border-white/10 rounded-2xl p-6 shadow-xl">
-              <div className="flex items-center gap-2 mb-6 pb-4 border-b border-white/10">
-                <DollarSign className="w-5 h-5 text-indigo-400" />
-                <h3 className="text-lg font-black text-white">English Market Scrapers</h3>
-              </div>
-              
-              <div className="space-y-6">
-                
-                {/* TCGPlayer */}
-                {(() => {
-                  const hb = getHeartbeat('tcgplayer');
-                  const coverage = totalCards && totalCards > 0 ? Math.round(((tcgPlayerConfigured || 0) / totalCards) * 100) : 0;
-                  return (
-                    <div className="bg-black/40 rounded-xl p-4 border border-white/5 relative overflow-hidden">
-                      <div className="flex justify-between items-start mb-4">
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <div className={`w-2 h-2 rounded-full ${hb?.isHealthy ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)] animate-pulse'}`} />
-                            <h4 className="font-bold text-white">TCGPlayer</h4>
-                          </div>
-                          <p className="text-xs text-zinc-500">OP / DBFW / Pokemon API</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Last Sync</p>
-                          <p className={`font-bold tabular-nums text-sm ${hb?.isHealthy ? 'text-emerald-400' : 'text-red-400'}`}>
-                            {hb?.date ? formatDistanceToNow(hb.date, { addSuffix: true }) : 'Stalled'}
-                          </p>
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <div className="flex justify-between items-end mb-1">
-                          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">ID Configuration</p>
-                          <p className="text-xs font-bold text-zinc-300 tabular-nums">{tcgPlayerConfigured?.toLocaleString()} <span className="text-zinc-600">cards mapped</span></p>
-                        </div>
-                        <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
-                          <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${coverage}%` }} />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })()}
-
-              </div>
-
-              <div className="mt-6 p-3 bg-white/5 border border-white/10 rounded-lg">
-                <p className="text-xs text-zinc-400 font-mono">Run: <span className="text-indigo-400">Inngest Dashboard -&gt; Sync Prices</span></p>
-              </div>
-            </div>
-
-          </div>
+          ))}
         </div>
 
       </div>
