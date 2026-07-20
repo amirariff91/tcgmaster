@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { CardImage } from '@/components/card/card-image';
 import { FormattedPrice } from '@/components/ui/formatted-price';
 import { CollectrChart } from '@/components/charts/collectr-chart';
-import { formatPrice, formatNumber, getRarityDisplay, formatDate, formatDisplayNumber, formatSetName } from '@/lib/utils';
+import { formatPrice, formatNumber, getRarityDisplay, formatDate, formatDisplayNumber, formatSetName, splitCardName } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/server';
 import { getCardWithPrices } from '@/lib/ppt/service';
 import { createServerClient } from '@/lib/supabase/client';
@@ -355,6 +355,8 @@ export default async function CardDetailPage({ params }: PageProps) {
     .map(([source, data]) => ({ source, price: data.price, date: data.date }))
     .sort((a, b) => a.price - b.price);
 
+  const { baseName: cleanName, variantInfo } = splitCardName(card.name);
+
   return (
     <div className="min-h-screen bg-[#060c18] pt-24 pb-20">
 
@@ -367,7 +369,7 @@ export default async function CardDetailPage({ params }: PageProps) {
           <ChevronRight className="h-3.5 w-3.5 opacity-50" />
           <Link href={`/${game}/${set}`} className="hover:text-white transition-colors truncate max-w-[200px]">{card.set.name}</Link>
           <ChevronRight className="h-3.5 w-3.5 opacity-50" />
-          <span className="text-white font-medium truncate max-w-[200px]">{card.name}</span>
+          <span className="text-white font-medium truncate max-w-[200px]">{cleanName}</span>
         </nav>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
@@ -375,10 +377,10 @@ export default async function CardDetailPage({ params }: PageProps) {
           {/* Column 1: Image Showcase (col-span-3) */}
           <div className="lg:col-span-3">
             <div className="lg:sticky lg:top-24 group perspective-[1000px]">
-              <div className="relative transition-transform duration-500 ease-out group-hover:scale-[1.02] group-hover:-rotate-y-2 group-hover:rotate-x-2">
+              <div className="relative max-w-[260px] sm:max-w-full mx-auto transition-transform duration-500 ease-out group-hover:scale-[1.02] group-hover:-rotate-y-2 group-hover:rotate-x-2">
                 <CardImage
                   src={card.local_image_url || card.image_url}
-                  alt={card.name}
+                  alt={cleanName}
                   size="hero"
                   priority
                   className="w-full h-auto drop-shadow-2xl rounded-2xl"
@@ -398,15 +400,20 @@ export default async function CardDetailPage({ params }: PageProps) {
           </div>
 
           {/* Column 2: Header, Price & Info (col-span-4) */}
-          <div className="lg:col-span-4 flex flex-col space-y-6">
+          <div className="lg:col-span-4 flex flex-col space-y-4">
             
             {/* Header */}
             <div>
-              <h1 className="text-[32px] sm:text-[32px] font-[800] text-white tracking-tight leading-tight mb-2 font-sans">
-                {card.name}
+              <h1 className="text-2xl sm:text-[32px] font-[800] text-white tracking-tight leading-tight mb-1 font-sans">
+                {cleanName}
               </h1>
+              {variantInfo && (
+                <div className="inline-block text-sm font-semibold tracking-wide text-zinc-400 mt-1 mb-1">
+                  {variantInfo}
+                </div>
+              )}
               {card.artist && (
-                <p className="text-zinc-400 font-medium">
+                <p className="text-zinc-400 font-medium mt-1">
                   Illustrated by <span className="text-zinc-300">{card.artist}</span>
                 </p>
               )}
@@ -426,7 +433,7 @@ export default async function CardDetailPage({ params }: PageProps) {
               <div className="flex items-baseline gap-4">
                 {featuredPrice ? (
                   <>
-                    <FormattedPrice price={featuredPrice} className="text-[36px] font-[800] text-orange-400 tracking-tight tabular-nums font-sans" />
+                    <FormattedPrice price={featuredPrice} className="text-3xl sm:text-[36px] font-[800] text-orange-400 tracking-tight tabular-nums font-sans" />
                     {priceChange24h !== null && (
                       <div className={`flex items-center px-3 py-1.5 rounded-full text-sm font-bold ${priceChange24h >= 0 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
                         {priceChange24h >= 0 ? '↑' : '↓'} {Math.abs(priceChange24h).toFixed(1)}%
@@ -434,7 +441,7 @@ export default async function CardDetailPage({ params }: PageProps) {
                     )}
                   </>
                 ) : (
-                  <span className="text-[36px] font-[800] text-zinc-600 tracking-tight font-sans">
+                  <span className="text-3xl sm:text-[36px] font-[800] text-zinc-600 tracking-tight font-sans">
                     No Data Yet
                   </span>
                 )}
@@ -469,7 +476,7 @@ export default async function CardDetailPage({ params }: PageProps) {
             </div>
 
             {/* Pulse / Quick Stats (Relocated here to replace Card Text) */}
-            <div className="grid grid-cols-3 divide-x divide-white/10 bg-[#0b1329]/80 backdrop-blur-sm rounded-2xl border border-white/10 py-6 px-2">
+            <div className="grid grid-cols-3 divide-x divide-white/10 bg-[#0b1329]/80 backdrop-blur-sm rounded-2xl border border-white/10 py-4 lg:py-6 px-2">
               <div className="px-4 flex flex-col items-center text-center">
                 <span className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest mb-2">PSA 10 Pop</span>
                 <span className="text-2xl font-black text-white tabular-nums">{psa10Pop > 0 ? formatNumber(psa10Pop) : '--'}</span>

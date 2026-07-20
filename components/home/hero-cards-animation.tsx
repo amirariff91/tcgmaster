@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 
@@ -14,18 +14,37 @@ const CARDS = [
 ];
 
 export function HeroCardsAnimation() {
-  const [activeCard, setActiveCard] = React.useState<number | null>(null);
+  const [activeCard, setActiveCard] = useState<number | null>(null);
+  const [scaleFactor, setScaleFactor] = useState(1);
+
+  useEffect(() => {
+    const handleResize = () => {
+      // Scale down card spread on smaller screens
+      if (window.innerWidth < 400) {
+        setScaleFactor(0.65);
+      } else if (window.innerWidth < 640) {
+        setScaleFactor(0.75);
+      } else {
+        setScaleFactor(1);
+      }
+    };
+    
+    // Initial check
+    handleResize();
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   return (
     <div 
-      className="relative w-full max-w-3xl mx-auto h-[340px] sm:h-[400px] flex items-center justify-center mt-6 perspective-[1200px]"
+      className="relative w-full max-w-3xl mx-auto h-[300px] sm:h-[400px] flex items-center justify-center mt-6 perspective-[1200px]"
     >
       {/* Glow effect behind cards */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70%] h-[70%] bg-orange-500/20 blur-[100px] rounded-full pointer-events-none" />
       
       {CARDS.map((card, idx) => {
         const isActive = activeCard === card.id;
-        const isOtherActive = activeCard !== null && !isActive;
 
         return (
           <motion.div
@@ -37,8 +56,8 @@ export function HeroCardsAnimation() {
             initial={{ opacity: 0, y: 150, scale: 0.85, rotate: 0 }}
             animate={{ 
               opacity: 1, 
-              y: isActive ? card.y - 40 : card.y, 
-              x: card.x, 
+              y: (isActive ? card.y - 40 : card.y) * scaleFactor, 
+              x: card.x * scaleFactor, 
               scale: isActive ? 1.08 : 1,
               rotate: isActive ? card.rot : card.rot,
               rotateX: isActive ? 0 : 10,
@@ -52,14 +71,14 @@ export function HeroCardsAnimation() {
               mass: isActive ? 0.5 : 1.2,
               delay: activeCard === null ? idx * 0.15 : 0
             }}
-            className="absolute cursor-pointer w-[120px] h-[165px] sm:w-[170px] sm:h-[240px] rounded-xl sm:rounded-2xl border border-white/20 overflow-hidden shadow-2xl transition-shadow bg-black/40 origin-bottom"
+            className="absolute cursor-pointer w-[90px] h-[125px] sm:w-[170px] sm:h-[240px] rounded-xl sm:rounded-2xl border border-white/20 overflow-hidden shadow-2xl transition-shadow bg-black/40 origin-bottom"
           >
             <Image 
               src={card.src} 
               alt={card.alt} 
               fill
               unoptimized={false}
-              sizes="(max-width: 640px) 120px, 170px"
+              sizes="(max-width: 640px) 90px, 170px"
               className="object-cover"
             />
             

@@ -9,9 +9,16 @@ export async function fetchSnkrdunkPrice(query: string, setName?: string): Promi
     await waitForSourceRateLimit('snkrdunk');
 
     let rawQuery = query;
+    const isUrl = rawQuery.startsWith('http');
+    const isVariant = rawQuery.includes('_');
+
+    if (isVariant && !isUrl) {
+      console.log(`[SnkrDunk] Refusing to guess variant for query: ${rawQuery}`);
+      return null;
+    }
 
     // If we're passed an exact SNKRDUNK product URL, go straight to it!
-    if (rawQuery.startsWith('http') && rawQuery.includes('/trading-cards/')) {
+    if (isUrl && rawQuery.includes('/trading-cards/')) {
       const browser = await getSharedBrowser();
       page = await browser.newPage();
       await page.setViewport({ width: 1280, height: 800 });

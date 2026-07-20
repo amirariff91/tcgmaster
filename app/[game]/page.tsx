@@ -5,7 +5,7 @@ import { ArrowRight, Search, TrendingUp } from 'lucide-react';
 import { SearchBar } from '@/components/search/search-bar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { formatDate, formatPrice, formatSetName } from '@/lib/utils';
+import { formatDate, formatPrice, formatSetName, splitCardName } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/server';
 import { Badge } from '@/components/ui/badge';
 
@@ -372,7 +372,7 @@ export default async function GamePage({ params }: PageProps) {
                     </span>
                     <div className="flex-1 min-w-0">
                       <p className="truncate font-medium text-zinc-900">
-                        {card.name}
+                        {splitCardName(card.name).baseName}
                       </p>
                       <p className="text-sm text-zinc-500">{card.set}</p>
                     </div>

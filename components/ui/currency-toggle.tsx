@@ -61,19 +61,18 @@ export function CurrencyToggle({ className }: CurrencyToggleProps) {
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          'flex items-center gap-1.5 px-3 py-2 rounded-lg',
-          'text-sm font-medium text-zinc-700',
-          'bg-zinc-100 hover:bg-zinc-200',
-          'transition-colors duration-150',
-          'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
+          'flex items-center gap-1.5 px-3 py-1.5 rounded-full',
+          'text-xs font-bold tracking-widest uppercase text-white',
+          'bg-white/10 hover:bg-white/20 border border-white/10',
+          'transition-all duration-300'
         )}
         aria-expanded={isOpen}
         aria-haspopup="listbox"
       >
-        <span className="font-semibold">{currency}</span>
+        <span>{currency}</span>
         <ChevronDown
           className={cn(
-            'h-4 w-4 text-zinc-500 transition-transform duration-150',
+            'h-3 w-3 text-zinc-400 transition-transform duration-300',
             isOpen && 'rotate-180'
           )}
         />
@@ -82,10 +81,10 @@ export function CurrencyToggle({ className }: CurrencyToggleProps) {
       {isOpen && (
         <div
           className={cn(
-            'absolute right-0 top-full mt-2 z-50',
-            'w-48 py-1 rounded-lg shadow-lg',
-            'bg-white border border-zinc-200',
-            'animate-in fade-in-0 zoom-in-95 duration-150'
+            'absolute right-0 top-full mt-3 z-50',
+            'w-48 p-2 rounded-2xl shadow-2xl backdrop-blur-md',
+            'border border-white/10 bg-[#0b1329]/95',
+            'animate-in fade-in zoom-in-95 duration-200'
           )}
           role="listbox"
           aria-label="Select currency"
@@ -100,45 +99,27 @@ export function CurrencyToggle({ className }: CurrencyToggleProps) {
                 type="button"
                 onClick={() => handleSelect(curr)}
                 className={cn(
-                  'w-full flex items-center gap-3 px-3 py-2',
-                  'text-sm text-left',
-                  'hover:bg-zinc-50',
-                  'transition-colors duration-150',
-                  isSelected && 'bg-blue-50 text-blue-700'
+                  'w-full flex items-center gap-3 rounded-xl px-3 py-2',
+                  'text-sm font-medium transition-colors',
+                  isSelected 
+                    ? 'bg-orange-500/10 text-orange-400' 
+                    : 'text-zinc-300 hover:bg-white/10 hover:text-white'
                 )}
                 role="option"
                 aria-selected={isSelected}
               >
-                <span className="w-8 font-semibold text-zinc-500">
+                <span className={cn("w-6 font-bold", isSelected ? "text-orange-500" : "text-zinc-500")}>
                   {currInfo.symbol}
                 </span>
-                <span className="flex-1">
-                  <span className="font-medium">{curr}</span>
-                  <span className="text-zinc-500 ml-1">- {currInfo.name}</span>
+                <span className="flex-1 text-left">
+                  <span className="tracking-wider">{curr}</span>
                 </span>
                 {isSelected && (
-                  <Check className="h-4 w-4 text-blue-600" />
+                  <Check className="h-4 w-4 text-orange-500" />
                 )}
               </button>
             );
           })}
-
-          {/* Status indicator */}
-          {rates && (
-            <div className="px-3 py-2 border-t border-zinc-100 mt-1">
-              <p className="text-xs text-zinc-400">
-                Rates updated: {rates.date}
-              </p>
-            </div>
-          )}
-
-          {!rates && !isLoading && (
-            <div className="px-3 py-2 border-t border-zinc-100 mt-1">
-              <p className="text-xs text-amber-600">
-                Using approximate rates
-              </p>
-            </div>
-          )}
         </div>
       )}
     </div>

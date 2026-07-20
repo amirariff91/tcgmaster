@@ -139,3 +139,1249 @@
 2026-07-16T10:42:03:   DATA_CLONE_ERR: 25,
 2026-07-16T10:42:03:   toString: [Function: toString],
 2026-07-16T10:42:03: }
+2026-07-16T17:42:08: AI Extraction error: 14108 |                 },
+2026-07-16T17:42:08: 14109 |             };
+2026-07-16T17:42:08: 14110 |         }
+2026-07-16T17:42:08: 14111 |         const errorMessage = JSON.stringify(errorBody);
+2026-07-16T17:42:08: 14112 |         if (status >= 400 && status < 600) {
+2026-07-16T17:42:08: 14113 |             const apiError = new ApiError({
+2026-07-16T17:42:08:                                      ^
+2026-07-16T17:42:08: ApiError: {"error":{"code":503,"message":"The service is currently unavailable.","status":"UNAVAILABLE"}}
+2026-07-16T17:42:08:  status: 503,
+2026-07-16T17:42:08: 
+2026-07-16T17:42:08:       at throwErrorIfNotOK (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:14113:30)
+2026-07-16T17:42:08:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:13813:19)
+2026-07-16T17:42:08: 
+2026-07-17T03:34:06: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-17T03:34:06: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-17T03:34:06: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-17T03:34:06: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-17T03:34:06: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-17T03:34:06: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-17T03:34:06:                                           ^
+2026-07-17T03:34:06: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-17T03:34:06:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-17T03:34:06:  errno: 0,
+2026-07-17T03:34:06:   code: "ECONNRESET"
+2026-07-17T03:34:06: 
+2026-07-17T03:34:06:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-17T03:34:06:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-17T03:34:06:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:116:28)
+2026-07-17T03:34:06: 
+2026-07-17T14:09:27: AI Extraction error: DOMException {
+2026-07-17T14:09:27:   stack: "",
+2026-07-17T14:09:27:   code: 23,
+2026-07-17T14:09:27:   name: "TimeoutError",
+2026-07-17T14:09:27:   message: "The operation timed out.",
+2026-07-17T14:09:27:   INDEX_SIZE_ERR: 1,
+2026-07-17T14:09:27:   DOMSTRING_SIZE_ERR: 2,
+2026-07-17T14:09:27:   HIERARCHY_REQUEST_ERR: 3,
+2026-07-17T14:09:27:   WRONG_DOCUMENT_ERR: 4,
+2026-07-17T14:09:27:   INVALID_CHARACTER_ERR: 5,
+2026-07-17T14:09:27:   NO_DATA_ALLOWED_ERR: 6,
+2026-07-17T14:09:27:   NO_MODIFICATION_ALLOWED_ERR: 7,
+2026-07-17T14:09:27:   NOT_FOUND_ERR: 8,
+2026-07-17T14:09:27:   NOT_SUPPORTED_ERR: 9,
+2026-07-17T14:09:27:   INUSE_ATTRIBUTE_ERR: 10,
+2026-07-17T14:09:27:   INVALID_STATE_ERR: 11,
+2026-07-17T14:09:27:   SYNTAX_ERR: 12,
+2026-07-17T14:09:27:   INVALID_MODIFICATION_ERR: 13,
+2026-07-17T14:09:27:   NAMESPACE_ERR: 14,
+2026-07-17T14:09:27:   INVALID_ACCESS_ERR: 15,
+2026-07-17T14:09:27:   VALIDATION_ERR: 16,
+2026-07-17T14:09:27:   TYPE_MISMATCH_ERR: 17,
+2026-07-17T14:09:27:   SECURITY_ERR: 18,
+2026-07-17T14:09:27:   NETWORK_ERR: 19,
+2026-07-17T14:09:27:   ABORT_ERR: 20,
+2026-07-17T14:09:27:   URL_MISMATCH_ERR: 21,
+2026-07-17T14:09:27:   QUOTA_EXCEEDED_ERR: 22,
+2026-07-17T14:09:27:   TIMEOUT_ERR: 23,
+2026-07-17T14:09:27:   INVALID_NODE_TYPE_ERR: 24,
+2026-07-17T14:09:27:   DATA_CLONE_ERR: 25,
+2026-07-17T14:09:27:   toString: [Function: toString],
+2026-07-17T14:09:27: }
+2026-07-17T14:33:36: AI Extraction error: 35 | 
+2026-07-17T14:33:36: 36 | async function extractArtist(imageUrl: string): Promise<string | null> {
+2026-07-17T14:33:36: 37 |   let retries = 3;
+2026-07-17T14:33:36: 38 |   while (retries > 0) {
+2026-07-17T14:33:36: 39 |     try {
+2026-07-17T14:33:36: 40 |       const res = await fetch(imageUrl);
+2026-07-17T14:33:36:                              ^
+2026-07-17T14:33:36: error: Unable to connect. Is the computer able to access the url?
+2026-07-17T14:33:36:   path: "https://en.onepiece-cardgame.com/images/cardlist/card/OP05-034_p1.png?260701",
+2026-07-17T14:33:36:  errno: 0,
+2026-07-17T14:33:36:   code: "ConnectionRefused"
+2026-07-17T14:33:36: 
+2026-07-17T14:33:36:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:40:25)
+2026-07-17T14:33:36:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:116:28)
+2026-07-17T14:33:36: 
+2026-07-17T15:06:52: Failed to fetch cards {
+2026-07-17T15:06:52:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T15:06:52:   details: "",
+2026-07-17T15:06:52:   hint: "",
+2026-07-17T15:06:52:   code: "",
+2026-07-17T15:06:52: }
+2026-07-17T15:23:16: Failed to fetch cards {
+2026-07-17T15:23:16:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T15:23:16:   details: "",
+2026-07-17T15:23:16:   hint: "",
+2026-07-17T15:23:16:   code: "",
+2026-07-17T15:23:16: }
+2026-07-17T15:38:29: Failed to fetch cards {
+2026-07-17T15:38:29:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T15:38:29:   details: "",
+2026-07-17T15:38:29:   hint: "",
+2026-07-17T15:38:29:   code: "",
+2026-07-17T15:38:29: }
+2026-07-17T15:55:44: Failed to fetch cards {
+2026-07-17T15:55:44:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T15:55:44:   details: "",
+2026-07-17T15:55:44:   hint: "",
+2026-07-17T15:55:44:   code: "",
+2026-07-17T15:55:44: }
+2026-07-17T16:13:36: Failed to fetch cards {
+2026-07-17T16:13:36:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T16:13:36:   details: "",
+2026-07-17T16:13:36:   hint: "",
+2026-07-17T16:13:36:   code: "",
+2026-07-17T16:13:36: }
+2026-07-17T16:24:16: Failed to fetch cards {
+2026-07-17T16:24:16:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T16:24:16:   details: "",
+2026-07-17T16:24:16:   hint: "",
+2026-07-17T16:24:16:   code: "",
+2026-07-17T16:24:16: }
+2026-07-17T16:41:02: Failed to fetch cards {
+2026-07-17T16:41:02:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T16:41:02:   details: "",
+2026-07-17T16:41:02:   hint: "",
+2026-07-17T16:41:02:   code: "",
+2026-07-17T16:41:02: }
+2026-07-17T16:47:49: Failed to fetch cards {
+2026-07-17T16:47:49:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T16:47:49:   details: "",
+2026-07-17T16:47:49:   hint: "",
+2026-07-17T16:47:49:   code: "",
+2026-07-17T16:47:49: }
+2026-07-17T16:47:59: Failed to fetch cards {
+2026-07-17T16:47:59:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T16:47:59:   details: "",
+2026-07-17T16:47:59:   hint: "",
+2026-07-17T16:47:59:   code: "",
+2026-07-17T16:47:59: }
+2026-07-17T16:48:10: Failed to fetch cards {
+2026-07-17T16:48:10:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T16:48:10:   details: "",
+2026-07-17T16:48:10:   hint: "",
+2026-07-17T16:48:10:   code: "",
+2026-07-17T16:48:10: }
+2026-07-17T16:48:20: Failed to fetch cards {
+2026-07-17T16:48:20:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T16:48:20:   details: "",
+2026-07-17T16:48:20:   hint: "",
+2026-07-17T16:48:20:   code: "",
+2026-07-17T16:48:20: }
+2026-07-17T16:48:30: Failed to fetch cards {
+2026-07-17T16:48:30:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T16:48:30:   details: "",
+2026-07-17T16:48:30:   hint: "",
+2026-07-17T16:48:30:   code: "",
+2026-07-17T16:48:30: }
+2026-07-17T16:48:40: Failed to fetch cards {
+2026-07-17T16:48:40:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T16:48:40:   details: "",
+2026-07-17T16:48:40:   hint: "",
+2026-07-17T16:48:40:   code: "",
+2026-07-17T16:48:40: }
+2026-07-17T16:48:50: Failed to fetch cards {
+2026-07-17T16:48:50:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T16:48:50:   details: "",
+2026-07-17T16:48:50:   hint: "",
+2026-07-17T16:48:50:   code: "",
+2026-07-17T16:48:50: }
+2026-07-17T16:49:00: Failed to fetch cards {
+2026-07-17T16:49:00:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T16:49:00:   details: "",
+2026-07-17T16:49:00:   hint: "",
+2026-07-17T16:49:00:   code: "",
+2026-07-17T16:49:00: }
+2026-07-17T16:49:10: Failed to fetch cards {
+2026-07-17T16:49:10:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T16:49:10:   details: "",
+2026-07-17T16:49:10:   hint: "",
+2026-07-17T16:49:10:   code: "",
+2026-07-17T16:49:10: }
+2026-07-17T16:49:20: Failed to fetch cards {
+2026-07-17T16:49:20:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T16:49:20:   details: "",
+2026-07-17T16:49:20:   hint: "",
+2026-07-17T16:49:20:   code: "",
+2026-07-17T16:49:20: }
+2026-07-17T16:49:30: Failed to fetch cards {
+2026-07-17T16:49:30:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T16:49:30:   details: "",
+2026-07-17T16:49:30:   hint: "",
+2026-07-17T16:49:30:   code: "",
+2026-07-17T16:49:30: }
+2026-07-17T16:49:40: Failed to fetch cards {
+2026-07-17T16:49:40:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T16:49:40:   details: "",
+2026-07-17T16:49:40:   hint: "",
+2026-07-17T16:49:40:   code: "",
+2026-07-17T16:49:40: }
+2026-07-17T16:49:50: Failed to fetch cards {
+2026-07-17T16:49:50:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T16:49:50:   details: "",
+2026-07-17T16:49:50:   hint: "",
+2026-07-17T16:49:50:   code: "",
+2026-07-17T16:49:50: }
+2026-07-17T16:50:01: Failed to fetch cards {
+2026-07-17T16:50:01:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T16:50:01:   details: "",
+2026-07-17T16:50:01:   hint: "",
+2026-07-17T16:50:01:   code: "",
+2026-07-17T16:50:01: }
+2026-07-17T19:26:48: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-17T19:26:48: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-17T19:26:48: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-17T19:26:48: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-17T19:26:48: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-17T19:26:48: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-17T19:26:48:                                           ^
+2026-07-17T19:26:48: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-17T19:26:48:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-17T19:26:48:  errno: 0,
+2026-07-17T19:26:48:   code: "ECONNRESET"
+2026-07-17T19:26:48: 
+2026-07-17T19:26:48:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-17T19:26:48:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-17T19:26:48:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:116:28)
+2026-07-17T19:26:48: 
+2026-07-17T20:00:06: Failed to fetch cards {
+2026-07-17T20:00:06:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T20:00:06:   details: "",
+2026-07-17T20:00:06:   hint: "",
+2026-07-17T20:00:06:   code: "",
+2026-07-17T20:00:06: }
+2026-07-17T20:17:17: Failed to fetch cards {
+2026-07-17T20:17:17:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T20:17:17:   details: "",
+2026-07-17T20:17:17:   hint: "",
+2026-07-17T20:17:17:   code: "",
+2026-07-17T20:17:17: }
+2026-07-17T20:23:52: Failed to fetch cards {
+2026-07-17T20:23:52:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T20:23:52:   details: "",
+2026-07-17T20:23:52:   hint: "",
+2026-07-17T20:23:52:   code: "",
+2026-07-17T20:23:52: }
+2026-07-17T20:40:44: Failed to fetch cards {
+2026-07-17T20:40:44:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T20:40:44:   details: "",
+2026-07-17T20:40:44:   hint: "",
+2026-07-17T20:40:44:   code: "",
+2026-07-17T20:40:44: }
+2026-07-17T20:57:02: Failed to fetch cards {
+2026-07-17T20:57:02:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T20:57:02:   details: "",
+2026-07-17T20:57:02:   hint: "",
+2026-07-17T20:57:02:   code: "",
+2026-07-17T20:57:02: }
+2026-07-17T21:13:54: Failed to fetch cards {
+2026-07-17T21:13:54:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T21:13:54:   details: "",
+2026-07-17T21:13:54:   hint: "",
+2026-07-17T21:13:54:   code: "",
+2026-07-17T21:13:54: }
+2026-07-17T21:24:52: Failed to fetch cards {
+2026-07-17T21:24:52:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T21:24:52:   details: "",
+2026-07-17T21:24:52:   hint: "",
+2026-07-17T21:24:52:   code: "",
+2026-07-17T21:24:52: }
+2026-07-17T21:25:02: Failed to fetch cards {
+2026-07-17T21:25:02:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T21:25:02:   details: "",
+2026-07-17T21:25:02:   hint: "",
+2026-07-17T21:25:02:   code: "",
+2026-07-17T21:25:02: }
+2026-07-17T21:42:30: Failed to fetch cards {
+2026-07-17T21:42:30:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T21:42:30:   details: "",
+2026-07-17T21:42:30:   hint: "",
+2026-07-17T21:42:30:   code: "",
+2026-07-17T21:42:30: }
+2026-07-17T21:59:15: Failed to fetch cards {
+2026-07-17T21:59:15:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T21:59:15:   details: "",
+2026-07-17T21:59:15:   hint: "",
+2026-07-17T21:59:15:   code: "",
+2026-07-17T21:59:15: }
+2026-07-17T22:16:03: Failed to fetch cards {
+2026-07-17T22:16:03:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T22:16:03:   details: "",
+2026-07-17T22:16:03:   hint: "",
+2026-07-17T22:16:03:   code: "",
+2026-07-17T22:16:03: }
+2026-07-17T22:25:52: Failed to fetch cards {
+2026-07-17T22:25:52:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T22:25:52:   details: "",
+2026-07-17T22:25:52:   hint: "",
+2026-07-17T22:25:52:   code: "",
+2026-07-17T22:25:52: }
+2026-07-17T22:42:26: Failed to fetch cards {
+2026-07-17T22:42:26:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T22:42:26:   details: "",
+2026-07-17T22:42:26:   hint: "",
+2026-07-17T22:42:26:   code: "",
+2026-07-17T22:42:26: }
+2026-07-17T22:59:32: Failed to fetch cards {
+2026-07-17T22:59:32:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T22:59:32:   details: "",
+2026-07-17T22:59:32:   hint: "",
+2026-07-17T22:59:32:   code: "",
+2026-07-17T22:59:32: }
+2026-07-17T23:17:22: Failed to fetch cards {
+2026-07-17T23:17:22:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T23:17:22:   details: "",
+2026-07-17T23:17:22:   hint: "",
+2026-07-17T23:17:22:   code: "",
+2026-07-17T23:17:22: }
+2026-07-17T23:26:51: Failed to fetch cards {
+2026-07-17T23:26:51:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T23:26:51:   details: "",
+2026-07-17T23:26:51:   hint: "",
+2026-07-17T23:26:51:   code: "",
+2026-07-17T23:26:51: }
+2026-07-17T23:44:36: Failed to fetch cards {
+2026-07-17T23:44:36:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T23:44:36:   details: "",
+2026-07-17T23:44:36:   hint: "",
+2026-07-17T23:44:36:   code: "",
+2026-07-17T23:44:36: }
+2026-07-17T23:45:20: Failed to fetch cards {
+2026-07-17T23:45:20:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T23:45:20:   details: "",
+2026-07-17T23:45:20:   hint: "",
+2026-07-17T23:45:20:   code: "",
+2026-07-17T23:45:20: }
+2026-07-18T00:27:55: Failed to fetch cards {
+2026-07-18T00:27:55:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-18T00:27:55:   details: "",
+2026-07-18T00:27:55:   hint: "",
+2026-07-18T00:27:55:   code: "",
+2026-07-18T00:27:55: }
+2026-07-18T01:28:52: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-18T01:28:52: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-18T01:28:52: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-18T01:28:52: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-18T01:28:52: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-18T01:28:52: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-18T01:28:52:                                           ^
+2026-07-18T01:28:52: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-18T01:28:52:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-18T01:28:52:  errno: 0,
+2026-07-18T01:28:52:   code: "ECONNRESET"
+2026-07-18T01:28:52: 
+2026-07-18T01:28:52:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-18T01:28:52:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-18T01:28:52:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:116:28)
+2026-07-18T01:28:52: 
+2026-07-18T02:47:13: Failed to update Emporio Energy Hormone {
+2026-07-18T02:47:13:   message: "Error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()",
+2026-07-18T02:47:13:   details: "",
+2026-07-18T02:47:13:   hint: "",
+2026-07-18T02:47:13:   code: "",
+2026-07-18T02:47:13: }
+2026-07-18T03:25:18: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-18T03:25:18: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-18T03:25:18: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-18T03:25:18: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-18T03:25:18: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-18T03:25:18: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-18T03:25:18:                                           ^
+2026-07-18T03:25:18: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-18T03:25:18:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-18T03:25:18:  errno: 0,
+2026-07-18T03:25:18:   code: "ECONNRESET"
+2026-07-18T03:25:18: 
+2026-07-18T03:25:18:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-18T03:25:18:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-18T03:25:18:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:116:28)
+2026-07-18T03:25:18: 
+2026-07-18T04:04:15: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-18T04:04:15: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-18T04:04:15: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-18T04:04:15: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-18T04:04:15: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-18T04:04:15: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-18T04:04:15:                                           ^
+2026-07-18T04:04:15: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-18T04:04:15:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-18T04:04:15:  errno: 0,
+2026-07-18T04:04:15:   code: "ECONNRESET"
+2026-07-18T04:04:15: 
+2026-07-18T04:04:15:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-18T04:04:15:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-18T04:04:15:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:116:28)
+2026-07-18T04:04:15: 
+2026-07-18T04:58:21: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-18T04:58:21: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-18T04:58:21: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-18T04:58:21: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-18T04:58:21: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-18T04:58:21: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-18T04:58:21:                                           ^
+2026-07-18T04:58:21: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-18T04:58:21:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-18T04:58:21:  errno: 0,
+2026-07-18T04:58:21:   code: "ECONNRESET"
+2026-07-18T04:58:21: 
+2026-07-18T04:58:21:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-18T04:58:21:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-18T04:58:21:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:116:28)
+2026-07-18T04:58:21: 
+2026-07-18T07:10:47: AI Extraction error: DOMException {
+2026-07-18T07:10:47:   stack: "",
+2026-07-18T07:10:47:   code: 23,
+2026-07-18T07:10:47:   name: "TimeoutError",
+2026-07-18T07:10:47:   message: "The operation timed out.",
+2026-07-18T07:10:47:   INDEX_SIZE_ERR: 1,
+2026-07-18T07:10:47:   DOMSTRING_SIZE_ERR: 2,
+2026-07-18T07:10:47:   HIERARCHY_REQUEST_ERR: 3,
+2026-07-18T07:10:47:   WRONG_DOCUMENT_ERR: 4,
+2026-07-18T07:10:47:   INVALID_CHARACTER_ERR: 5,
+2026-07-18T07:10:47:   NO_DATA_ALLOWED_ERR: 6,
+2026-07-18T07:10:47:   NO_MODIFICATION_ALLOWED_ERR: 7,
+2026-07-18T07:10:47:   NOT_FOUND_ERR: 8,
+2026-07-18T07:10:47:   NOT_SUPPORTED_ERR: 9,
+2026-07-18T07:10:47:   INUSE_ATTRIBUTE_ERR: 10,
+2026-07-18T07:10:47:   INVALID_STATE_ERR: 11,
+2026-07-18T07:10:47:   SYNTAX_ERR: 12,
+2026-07-18T07:10:47:   INVALID_MODIFICATION_ERR: 13,
+2026-07-18T07:10:47:   NAMESPACE_ERR: 14,
+2026-07-18T07:10:47:   INVALID_ACCESS_ERR: 15,
+2026-07-18T07:10:47:   VALIDATION_ERR: 16,
+2026-07-18T07:10:47:   TYPE_MISMATCH_ERR: 17,
+2026-07-18T07:10:47:   SECURITY_ERR: 18,
+2026-07-18T07:10:47:   NETWORK_ERR: 19,
+2026-07-18T07:10:47:   ABORT_ERR: 20,
+2026-07-18T07:10:47:   URL_MISMATCH_ERR: 21,
+2026-07-18T07:10:47:   QUOTA_EXCEEDED_ERR: 22,
+2026-07-18T07:10:47:   TIMEOUT_ERR: 23,
+2026-07-18T07:10:47:   INVALID_NODE_TYPE_ERR: 24,
+2026-07-18T07:10:47:   DATA_CLONE_ERR: 25,
+2026-07-18T07:10:47:   toString: [Function: toString],
+2026-07-18T07:10:47: }
+2026-07-18T09:13:46: AI Extraction error: DOMException {
+2026-07-18T09:13:46:   stack: "",
+2026-07-18T09:13:46:   code: 23,
+2026-07-18T09:13:46:   name: "TimeoutError",
+2026-07-18T09:13:46:   message: "The operation timed out.",
+2026-07-18T09:13:46:   INDEX_SIZE_ERR: 1,
+2026-07-18T09:13:46:   DOMSTRING_SIZE_ERR: 2,
+2026-07-18T09:13:46:   HIERARCHY_REQUEST_ERR: 3,
+2026-07-18T09:13:46:   WRONG_DOCUMENT_ERR: 4,
+2026-07-18T09:13:46:   INVALID_CHARACTER_ERR: 5,
+2026-07-18T09:13:46:   NO_DATA_ALLOWED_ERR: 6,
+2026-07-18T09:13:46:   NO_MODIFICATION_ALLOWED_ERR: 7,
+2026-07-18T09:13:46:   NOT_FOUND_ERR: 8,
+2026-07-18T09:13:46:   NOT_SUPPORTED_ERR: 9,
+2026-07-18T09:13:46:   INUSE_ATTRIBUTE_ERR: 10,
+2026-07-18T09:13:46:   INVALID_STATE_ERR: 11,
+2026-07-18T09:13:46:   SYNTAX_ERR: 12,
+2026-07-18T09:13:46:   INVALID_MODIFICATION_ERR: 13,
+2026-07-18T09:13:46:   NAMESPACE_ERR: 14,
+2026-07-18T09:13:46:   INVALID_ACCESS_ERR: 15,
+2026-07-18T09:13:46:   VALIDATION_ERR: 16,
+2026-07-18T09:13:46:   TYPE_MISMATCH_ERR: 17,
+2026-07-18T09:13:46:   SECURITY_ERR: 18,
+2026-07-18T09:13:46:   NETWORK_ERR: 19,
+2026-07-18T09:13:46:   ABORT_ERR: 20,
+2026-07-18T09:13:46:   URL_MISMATCH_ERR: 21,
+2026-07-18T09:13:46:   QUOTA_EXCEEDED_ERR: 22,
+2026-07-18T09:13:46:   TIMEOUT_ERR: 23,
+2026-07-18T09:13:46:   INVALID_NODE_TYPE_ERR: 24,
+2026-07-18T09:13:46:   DATA_CLONE_ERR: 25,
+2026-07-18T09:13:46:   toString: [Function: toString],
+2026-07-18T09:13:46: }
+2026-07-18T09:41:08: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-18T09:41:08: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-18T09:41:08: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-18T09:41:08: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-18T09:41:08: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-18T09:41:08: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-18T09:41:08:                                           ^
+2026-07-18T09:41:08: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-18T09:41:08:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-18T09:41:08:  errno: 0,
+2026-07-18T09:41:08:   code: "ECONNRESET"
+2026-07-18T09:41:08: 
+2026-07-18T09:41:08:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-18T09:41:08:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-18T09:41:08:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:116:28)
+2026-07-18T09:41:08: 
+2026-07-18T10:37:03: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-18T10:37:03: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-18T10:37:03: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-18T10:37:03: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-18T10:37:03: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-18T10:37:03: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-18T10:37:03:                                           ^
+2026-07-18T10:37:03: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-18T10:37:03:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-18T10:37:03:  errno: 0,
+2026-07-18T10:37:03:   code: "ECONNRESET"
+2026-07-18T10:37:03: 
+2026-07-18T10:37:03:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-18T10:37:03:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-18T10:37:03:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:116:28)
+2026-07-18T10:37:03: 
+2026-07-18T11:16:38: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-18T11:16:38: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-18T11:16:38: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-18T11:16:38: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-18T11:16:38: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-18T11:16:38: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-18T11:16:38:                                           ^
+2026-07-18T11:16:38: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-18T11:16:38:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-18T11:16:38:  errno: 0,
+2026-07-18T11:16:38:   code: "ECONNRESET"
+2026-07-18T11:16:38: 
+2026-07-18T11:16:38:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-18T11:16:38:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-18T11:16:38:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:116:28)
+2026-07-18T11:16:38: 
+2026-07-18T12:17:21: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-18T12:17:21: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-18T12:17:21: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-18T12:17:21: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-18T12:17:21: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-18T12:17:21: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-18T12:17:21:                                           ^
+2026-07-18T12:17:21: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-18T12:17:21:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-18T12:17:21:  errno: 0,
+2026-07-18T12:17:21:   code: "ECONNRESET"
+2026-07-18T12:17:21: 
+2026-07-18T12:17:21:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-18T12:17:21:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-18T12:17:21:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:116:28)
+2026-07-18T12:17:21: 
+2026-07-18T13:17:37: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-18T13:17:37: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-18T13:17:37: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-18T13:17:37: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-18T13:17:37: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-18T13:17:37: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-18T13:17:37:                                           ^
+2026-07-18T13:17:37: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-18T13:17:37:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-18T13:17:37:  errno: 0,
+2026-07-18T13:17:37:   code: "ECONNRESET"
+2026-07-18T13:17:37: 
+2026-07-18T13:17:37:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-18T13:17:37:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-18T13:17:37:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:116:28)
+2026-07-18T13:17:37: 
+2026-07-18T14:17:40: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-18T14:17:40: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-18T14:17:40: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-18T14:17:40: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-18T14:17:40: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-18T14:17:40: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-18T14:17:40:                                           ^
+2026-07-18T14:17:40: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-18T14:17:40:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-18T14:17:40:  errno: 0,
+2026-07-18T14:17:40:   code: "ECONNRESET"
+2026-07-18T14:17:40: 
+2026-07-18T14:17:40:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-18T14:17:40:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-18T14:17:40:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:116:28)
+2026-07-18T14:17:40: 
+2026-07-18T16:22:07: AI Extraction error: DOMException {
+2026-07-18T16:22:07:   stack: "",
+2026-07-18T16:22:07:   code: 23,
+2026-07-18T16:22:07:   name: "TimeoutError",
+2026-07-18T16:22:07:   message: "The operation timed out.",
+2026-07-18T16:22:07:   INDEX_SIZE_ERR: 1,
+2026-07-18T16:22:07:   DOMSTRING_SIZE_ERR: 2,
+2026-07-18T16:22:07:   HIERARCHY_REQUEST_ERR: 3,
+2026-07-18T16:22:07:   WRONG_DOCUMENT_ERR: 4,
+2026-07-18T16:22:07:   INVALID_CHARACTER_ERR: 5,
+2026-07-18T16:22:07:   NO_DATA_ALLOWED_ERR: 6,
+2026-07-18T16:22:07:   NO_MODIFICATION_ALLOWED_ERR: 7,
+2026-07-18T16:22:07:   NOT_FOUND_ERR: 8,
+2026-07-18T16:22:07:   NOT_SUPPORTED_ERR: 9,
+2026-07-18T16:22:07:   INUSE_ATTRIBUTE_ERR: 10,
+2026-07-18T16:22:07:   INVALID_STATE_ERR: 11,
+2026-07-18T16:22:07:   SYNTAX_ERR: 12,
+2026-07-18T16:22:07:   INVALID_MODIFICATION_ERR: 13,
+2026-07-18T16:22:07:   NAMESPACE_ERR: 14,
+2026-07-18T16:22:07:   INVALID_ACCESS_ERR: 15,
+2026-07-18T16:22:07:   VALIDATION_ERR: 16,
+2026-07-18T16:22:07:   TYPE_MISMATCH_ERR: 17,
+2026-07-18T16:22:07:   SECURITY_ERR: 18,
+2026-07-18T16:22:07:   NETWORK_ERR: 19,
+2026-07-18T16:22:07:   ABORT_ERR: 20,
+2026-07-18T16:22:07:   URL_MISMATCH_ERR: 21,
+2026-07-18T16:22:07:   QUOTA_EXCEEDED_ERR: 22,
+2026-07-18T16:22:07:   TIMEOUT_ERR: 23,
+2026-07-18T16:22:07:   INVALID_NODE_TYPE_ERR: 24,
+2026-07-18T16:22:07:   DATA_CLONE_ERR: 25,
+2026-07-18T16:22:07:   toString: [Function: toString],
+2026-07-18T16:22:07: }
+2026-07-18T18:25:16: AI Extraction error: DOMException {
+2026-07-18T18:25:16:   stack: "",
+2026-07-18T18:25:16:   code: 23,
+2026-07-18T18:25:16:   name: "TimeoutError",
+2026-07-18T18:25:16:   message: "The operation timed out.",
+2026-07-18T18:25:16:   INDEX_SIZE_ERR: 1,
+2026-07-18T18:25:16:   DOMSTRING_SIZE_ERR: 2,
+2026-07-18T18:25:16:   HIERARCHY_REQUEST_ERR: 3,
+2026-07-18T18:25:16:   WRONG_DOCUMENT_ERR: 4,
+2026-07-18T18:25:16:   INVALID_CHARACTER_ERR: 5,
+2026-07-18T18:25:16:   NO_DATA_ALLOWED_ERR: 6,
+2026-07-18T18:25:16:   NO_MODIFICATION_ALLOWED_ERR: 7,
+2026-07-18T18:25:16:   NOT_FOUND_ERR: 8,
+2026-07-18T18:25:16:   NOT_SUPPORTED_ERR: 9,
+2026-07-18T18:25:16:   INUSE_ATTRIBUTE_ERR: 10,
+2026-07-18T18:25:16:   INVALID_STATE_ERR: 11,
+2026-07-18T18:25:16:   SYNTAX_ERR: 12,
+2026-07-18T18:25:16:   INVALID_MODIFICATION_ERR: 13,
+2026-07-18T18:25:16:   NAMESPACE_ERR: 14,
+2026-07-18T18:25:16:   INVALID_ACCESS_ERR: 15,
+2026-07-18T18:25:16:   VALIDATION_ERR: 16,
+2026-07-18T18:25:16:   TYPE_MISMATCH_ERR: 17,
+2026-07-18T18:25:16:   SECURITY_ERR: 18,
+2026-07-18T18:25:16:   NETWORK_ERR: 19,
+2026-07-18T18:25:16:   ABORT_ERR: 20,
+2026-07-18T18:25:16:   URL_MISMATCH_ERR: 21,
+2026-07-18T18:25:16:   QUOTA_EXCEEDED_ERR: 22,
+2026-07-18T18:25:16:   TIMEOUT_ERR: 23,
+2026-07-18T18:25:16:   INVALID_NODE_TYPE_ERR: 24,
+2026-07-18T18:25:16:   DATA_CLONE_ERR: 25,
+2026-07-18T18:25:16:   toString: [Function: toString],
+2026-07-18T18:25:16: }
+2026-07-18T18:53:05: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-18T18:53:05: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-18T18:53:05: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-18T18:53:05: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-18T18:53:05: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-18T18:53:05: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-18T18:53:05:                                           ^
+2026-07-18T18:53:05: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-18T18:53:05:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-18T18:53:05:  errno: 0,
+2026-07-18T18:53:05:   code: "ECONNRESET"
+2026-07-18T18:53:05: 
+2026-07-18T18:53:05:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-18T18:53:05:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-18T18:53:05:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:116:28)
+2026-07-18T18:53:05: 
+2026-07-18T19:46:26: Failed to update Stick-Stickem Meteora {
+2026-07-18T19:46:26:   message: "Error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()",
+2026-07-18T19:46:26:   details: "",
+2026-07-18T19:46:26:   hint: "",
+2026-07-18T19:46:26:   code: "",
+2026-07-18T19:46:26: }
+2026-07-18T20:06:04: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-18T20:06:04: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-18T20:06:04: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-18T20:06:04: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-18T20:06:04: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-18T20:06:04: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-18T20:06:04:                                           ^
+2026-07-18T20:06:04: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-18T20:06:04:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-18T20:06:04:  errno: 0,
+2026-07-18T20:06:04:   code: "ECONNRESET"
+2026-07-18T20:06:04: 
+2026-07-18T20:06:04:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-18T20:06:04:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-18T20:06:04:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:116:28)
+2026-07-18T20:06:04: 
+2026-07-18T21:25:51: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-18T21:25:51: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-18T21:25:51: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-18T21:25:51: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-18T21:25:51: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-18T21:25:51: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-18T21:25:51:                                           ^
+2026-07-18T21:25:51: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-18T21:25:51:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-18T21:25:51:  errno: 0,
+2026-07-18T21:25:51:   code: "ECONNRESET"
+2026-07-18T21:25:51: 
+2026-07-18T21:25:51:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-18T21:25:51:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-18T21:25:51:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:116:28)
+2026-07-18T21:25:51: 
+2026-07-18T22:28:45: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-18T22:28:45: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-18T22:28:45: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-18T22:28:45: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-18T22:28:45: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-18T22:28:45: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-18T22:28:45:                                           ^
+2026-07-18T22:28:45: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-18T22:28:45:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-18T22:28:45:  errno: 0,
+2026-07-18T22:28:45:   code: "ECONNRESET"
+2026-07-18T22:28:45: 
+2026-07-18T22:28:45:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-18T22:28:45:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-18T22:28:45:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:116:28)
+2026-07-18T22:28:45: 
+2026-07-18T23:09:34: AI Extraction error: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-18T23:09:34:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-18T23:09:34:  errno: 0,
+2026-07-18T23:09:34:   code: "ECONNRESET"
+2026-07-18T23:09:34: 
+2026-07-18T23:09:34: 
+2026-07-18T23:59:15: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-18T23:59:15: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-18T23:59:15: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-18T23:59:15: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-18T23:59:15: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-18T23:59:15: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-18T23:59:15:                                           ^
+2026-07-18T23:59:15: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-18T23:59:15:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-18T23:59:15:  errno: 0,
+2026-07-18T23:59:15:   code: "ECONNRESET"
+2026-07-18T23:59:15: 
+2026-07-18T23:59:15:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-18T23:59:15:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-18T23:59:15:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:116:28)
+2026-07-18T23:59:15: 
+2026-07-19T01:12:40: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-19T01:12:40: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-19T01:12:40: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-19T01:12:40: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-19T01:12:40: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-19T01:12:40: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-19T01:12:40:                                           ^
+2026-07-19T01:12:40: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-19T01:12:40:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-19T01:12:40:  errno: 0,
+2026-07-19T01:12:40:   code: "ECONNRESET"
+2026-07-19T01:12:40: 
+2026-07-19T01:12:40:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-19T01:12:40:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-19T01:12:40:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:116:28)
+2026-07-19T01:12:40: 
+2026-07-19T02:11:33: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-19T02:11:33: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-19T02:11:33: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-19T02:11:33: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-19T02:11:33: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-19T02:11:33: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-19T02:11:33:                                           ^
+2026-07-19T02:11:33: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-19T02:11:33:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-19T02:11:33:  errno: 0,
+2026-07-19T02:11:33:   code: "ECONNRESET"
+2026-07-19T02:11:33: 
+2026-07-19T02:11:33:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-19T02:11:33:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-19T02:11:33:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:116:28)
+2026-07-19T02:11:33: 
+2026-07-19T02:53:59: Failed to update Stick-Stickem Meteora {
+2026-07-19T02:53:59:   message: "Error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()",
+2026-07-19T02:53:59:   details: "",
+2026-07-19T02:53:59:   hint: "",
+2026-07-19T02:53:59:   code: "",
+2026-07-19T02:53:59: }
+2026-07-19T03:24:37: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-19T03:24:37: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-19T03:24:37: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-19T03:24:37: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-19T03:24:37: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-19T03:24:37: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-19T03:24:37:                                           ^
+2026-07-19T03:24:37: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-19T03:24:37:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-19T03:24:37:  errno: 0,
+2026-07-19T03:24:37:   code: "ECONNRESET"
+2026-07-19T03:24:37: 
+2026-07-19T03:24:37:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-19T03:24:37:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-19T03:24:37:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:116:28)
+2026-07-19T03:24:37: 
+2026-07-19T04:18:35: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-19T04:18:35: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-19T04:18:35: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-19T04:18:35: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-19T04:18:35: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-19T04:18:35: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-19T04:18:35:                                           ^
+2026-07-19T04:18:35: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-19T04:18:35:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-19T04:18:35:  errno: 0,
+2026-07-19T04:18:35:   code: "ECONNRESET"
+2026-07-19T04:18:35: 
+2026-07-19T04:18:35:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-19T04:18:35:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-19T04:18:35:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:116:28)
+2026-07-19T04:18:35: 
+2026-07-19T05:31:43: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-19T05:31:43: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-19T05:31:43: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-19T05:31:43: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-19T05:31:43: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-19T05:31:43: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-19T05:31:43:                                           ^
+2026-07-19T05:31:43: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-19T05:31:43:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-19T05:31:43:  errno: 0,
+2026-07-19T05:31:43:   code: "ECONNRESET"
+2026-07-19T05:31:43: 
+2026-07-19T05:31:43:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-19T05:31:43:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-19T05:31:43:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:116:28)
+2026-07-19T05:31:43: 
+2026-07-19T06:27:06: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-19T06:27:06: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-19T06:27:06: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-19T06:27:06: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-19T06:27:06: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-19T06:27:06: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-19T06:27:06:                                           ^
+2026-07-19T06:27:06: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-19T06:27:06:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-19T06:27:06:  errno: 0,
+2026-07-19T06:27:06:   code: "ECONNRESET"
+2026-07-19T06:27:06: 
+2026-07-19T06:27:06:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-19T06:27:06:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-19T06:27:06:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:116:28)
+2026-07-19T06:27:06: 
+2026-07-19T07:40:47: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-19T07:40:47: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-19T07:40:47: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-19T07:40:47: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-19T07:40:47: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-19T07:40:47: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-19T07:40:47:                                           ^
+2026-07-19T07:40:47: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-19T07:40:47:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-19T07:40:47:  errno: 0,
+2026-07-19T07:40:47:   code: "ECONNRESET"
+2026-07-19T07:40:47: 
+2026-07-19T07:40:47:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-19T07:40:47:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-19T07:40:47:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:116:28)
+2026-07-19T07:40:47: 
+2026-07-19T08:27:57: Failed to update Stick-Stickem Meteora {
+2026-07-19T08:27:57:   message: "Error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()",
+2026-07-19T08:27:57:   details: "",
+2026-07-19T08:27:57:   hint: "",
+2026-07-19T08:27:57:   code: "",
+2026-07-19T08:27:57: }
+2026-07-19T08:46:44: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-19T08:46:44: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-19T08:46:44: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-19T08:46:44: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-19T08:46:44: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-19T08:46:44: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-19T08:46:44:                                           ^
+2026-07-19T08:46:44: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-19T08:46:44:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-19T08:46:44:  errno: 0,
+2026-07-19T08:46:44:   code: "ECONNRESET"
+2026-07-19T08:46:44: 
+2026-07-19T08:46:44:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-19T08:46:44:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-19T08:46:44:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:116:28)
+2026-07-19T08:46:44: 
+2026-07-19T09:43:31: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-19T09:43:31: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-19T09:43:31: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-19T09:43:31: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-19T09:43:31: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-19T09:43:31: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-19T09:43:31:                                           ^
+2026-07-19T09:43:31: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-19T09:43:31:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-19T09:43:31:  errno: 0,
+2026-07-19T09:43:31:   code: "ECONNRESET"
+2026-07-19T09:43:31: 
+2026-07-19T09:43:31:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-19T09:43:31:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-19T09:43:31:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:116:28)
+2026-07-19T09:43:31: 
+2026-07-19T10:43:57: Failed to update Stick-Stickem Meteora {
+2026-07-19T10:43:57:   message: "Error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()",
+2026-07-19T10:43:57:   details: "",
+2026-07-19T10:43:57:   hint: "",
+2026-07-19T10:43:57:   code: "",
+2026-07-19T10:43:57: }
+2026-07-19T11:46:30: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-19T11:46:30: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-19T11:46:30: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-19T11:46:30: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-19T11:46:30: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-19T11:46:30: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-19T11:46:30:                                           ^
+2026-07-19T11:46:30: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-19T11:46:30:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-19T11:46:30:  errno: 0,
+2026-07-19T11:46:30:   code: "ECONNRESET"
+2026-07-19T11:46:30: 
+2026-07-19T11:46:30:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-19T11:46:30:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-19T11:46:30:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:116:28)
+2026-07-19T11:46:30: 
+2026-07-19T12:25:43: Failed to update Stick-Stickem Meteora {
+2026-07-19T12:25:43:   message: "Error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()",
+2026-07-19T12:25:43:   details: "",
+2026-07-19T12:25:43:   hint: "",
+2026-07-19T12:25:43:   code: "",
+2026-07-19T12:25:43: }
+2026-07-19T13:06:05: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-19T13:06:05: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-19T13:06:05: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-19T13:06:05: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-19T13:06:05: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-19T13:06:05: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-19T13:06:05:                                           ^
+2026-07-19T13:06:05: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-19T13:06:05:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-19T13:06:05:  errno: 0,
+2026-07-19T13:06:05:   code: "ECONNRESET"
+2026-07-19T13:06:05: 
+2026-07-19T13:06:05:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-19T13:06:05:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-19T13:06:05:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:116:28)
+2026-07-19T13:06:05: 
+2026-07-19T14:09:10: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-19T14:09:10: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-19T14:09:10: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-19T14:09:10: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-19T14:09:10: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-19T14:09:10: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-19T14:09:10:                                           ^
+2026-07-19T14:09:10: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-19T14:09:10:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-19T14:09:10:  errno: 0,
+2026-07-19T14:09:10:   code: "ECONNRESET"
+2026-07-19T14:09:10: 
+2026-07-19T14:09:10:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-19T14:09:10:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-19T14:09:10:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:116:28)
+2026-07-19T14:09:10: 
+2026-07-19T15:22:45: Failed to update Stick-Stickem Meteora {
+2026-07-19T15:22:45:   message: "Error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()",
+2026-07-19T15:22:45:   details: "",
+2026-07-19T15:22:45:   hint: "",
+2026-07-19T15:22:45:   code: "",
+2026-07-19T15:22:45: }
+2026-07-19T16:05:54: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-19T16:05:54: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-19T16:05:54: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-19T16:05:54: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-19T16:05:54: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-19T16:05:54: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-19T16:05:54:                                           ^
+2026-07-19T16:05:54: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-19T16:05:54:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-19T16:05:54:  errno: 0,
+2026-07-19T16:05:54:   code: "ECONNRESET"
+2026-07-19T16:05:54: 
+2026-07-19T16:05:54:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-19T16:05:54:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-19T16:05:54:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:116:28)
+2026-07-19T16:05:54: 
+2026-07-19T17:12:22: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-19T17:12:22: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-19T17:12:22: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-19T17:12:22: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-19T17:12:22: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-19T17:12:22: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-19T17:12:22:                                           ^
+2026-07-19T17:12:22: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-19T17:12:22:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-19T17:12:22:  errno: 0,
+2026-07-19T17:12:22:   code: "ECONNRESET"
+2026-07-19T17:12:22: 
+2026-07-19T17:12:22:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-19T17:12:22: 
+2026-07-19T18:15:42: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-19T18:15:42: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-19T18:15:42: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-19T18:15:42: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-19T18:15:42: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-19T18:15:42: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-19T18:15:42:                                           ^
+2026-07-19T18:15:42: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-19T18:15:42:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-19T18:15:42:  errno: 0,
+2026-07-19T18:15:42:   code: "ECONNRESET"
+2026-07-19T18:15:42: 
+2026-07-19T18:15:42:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-19T18:15:42:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-19T18:15:42:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:116:28)
+2026-07-19T18:15:42: 
+2026-07-19T19:33:17: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-19T19:33:17: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-19T19:33:17: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-19T19:33:17: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-19T19:33:17: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-19T19:33:17: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-19T19:33:17:                                           ^
+2026-07-19T19:33:17: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-19T19:33:17:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-19T19:33:17:  errno: 0,
+2026-07-19T19:33:17:   code: "ECONNRESET"
+2026-07-19T19:33:17: 
+2026-07-19T19:33:17:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-19T19:33:17:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-19T19:33:17: 
+2026-07-19T20:35:37: Failed to update Benn.Beckman {
+2026-07-19T20:35:37:   message: "Error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()",
+2026-07-19T20:35:37:   details: "",
+2026-07-19T20:35:37:   hint: "",
+2026-07-19T20:35:37:   code: "",
+2026-07-19T20:35:37: }
+2026-07-19T20:53:55: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-19T20:53:55: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-19T20:53:55: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-19T20:53:55: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-19T20:53:55: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-19T20:53:55: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-19T20:53:55:                                           ^
+2026-07-19T20:53:55: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-19T20:53:55:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-19T20:53:55:  errno: 0,
+2026-07-19T20:53:55:   code: "ECONNRESET"
+2026-07-19T20:53:55: 
+2026-07-19T20:53:55:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-19T20:53:55:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-19T20:53:55: 
+2026-07-19T22:06:51: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-19T22:06:51: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-19T22:06:51: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-19T22:06:51: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-19T22:06:51: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-19T22:06:51: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-19T22:06:51:                                           ^
+2026-07-19T22:06:51: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-19T22:06:51:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-19T22:06:51:  errno: 0,
+2026-07-19T22:06:51:   code: "ECONNRESET"
+2026-07-19T22:06:51: 
+2026-07-19T22:06:51:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-19T22:06:51:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-19T22:06:51: 
+2026-07-19T22:30:22: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-19T22:30:22: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-19T22:30:22: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-19T22:30:22: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-19T22:30:22: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-19T22:30:22: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-19T22:30:22:                                           ^
+2026-07-19T22:30:22: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-19T22:30:22:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-19T22:30:22:  errno: 0,
+2026-07-19T22:30:22:   code: "ECONNRESET"
+2026-07-19T22:30:22: 
+2026-07-19T22:30:22:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-19T22:30:22:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-19T22:30:22:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:116:28)
+2026-07-19T22:30:22: 
+2026-07-19T22:55:33: Failed to update Stick-Stickem Meteora {
+2026-07-19T22:55:33:   message: "Error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()",
+2026-07-19T22:55:33:   details: "",
+2026-07-19T22:55:33:   hint: "",
+2026-07-19T22:55:33:   code: "",
+2026-07-19T22:55:33: }
+2026-07-19T23:02:23: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-19T23:02:23: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-19T23:02:23: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-19T23:02:23: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-19T23:02:23: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-19T23:02:23: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-19T23:02:23:                                           ^
+2026-07-19T23:02:23: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-19T23:02:23:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-19T23:02:23:  errno: 0,
+2026-07-19T23:02:23:   code: "ECONNRESET"
+2026-07-19T23:02:23: 
+2026-07-19T23:02:23:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-19T23:02:23:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-19T23:02:23:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:116:28)
+2026-07-19T23:02:23: 
+2026-07-19T23:41:26: AI Extraction error: 46 | 
+2026-07-19T23:41:26: 47 |       const arrayBuffer = await res.arrayBuffer();
+2026-07-19T23:41:26: 48 |       const buffer = Buffer.from(arrayBuffer);
+2026-07-19T23:41:26: 49 |       const base64Data = buffer.toString('base64');
+2026-07-19T23:41:26: 50 | 
+2026-07-19T23:41:26: 51 |       const response = await ai.models.generateContent({
+2026-07-19T23:41:26:                                             ^
+2026-07-19T23:41:26: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-19T23:41:26:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-19T23:41:26:  errno: 0,
+2026-07-19T23:41:26:   code: "ECONNRESET"
+2026-07-19T23:41:26: 
+2026-07-19T23:41:26:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-19T23:41:26: 
+2026-07-20T01:16:33: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-20T01:16:33: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-20T01:16:33: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-20T01:16:33: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-20T01:16:33: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-20T01:16:33: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-20T01:16:33:                                           ^
+2026-07-20T01:16:33: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-20T01:16:33:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-20T01:16:33:  errno: 0,
+2026-07-20T01:16:33:   code: "ECONNRESET"
+2026-07-20T01:16:33: 
+2026-07-20T01:16:33:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-20T01:16:33:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-20T01:16:33:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:116:28)
+2026-07-20T01:16:33: 
+2026-07-20T02:38:23: Failed to update Stick-Stickem Meteora {
+2026-07-20T02:38:23:   message: "Error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()",
+2026-07-20T02:38:23:   details: "",
+2026-07-20T02:38:23:   hint: "",
+2026-07-20T02:38:23:   code: "",
+2026-07-20T02:38:23: }
+2026-07-20T02:40:34: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-20T02:40:34: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-20T02:40:34: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-20T02:40:34: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-20T02:40:34: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-20T02:40:34: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-20T02:40:34:                                           ^
+2026-07-20T02:40:34: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-20T02:40:34:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-20T02:40:34:  errno: 0,
+2026-07-20T02:40:34:   code: "ECONNRESET"
+2026-07-20T02:40:34: 
+2026-07-20T02:40:34:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-20T02:40:34:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-20T02:40:34:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:116:28)
+2026-07-20T02:40:34: 
+2026-07-20T03:41:26: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-20T03:41:26: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-20T03:41:26: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-20T03:41:26: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-20T03:41:26: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-20T03:41:26: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-20T03:41:26:                                           ^
+2026-07-20T03:41:26: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-20T03:41:26:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-20T03:41:26:  errno: 0,
+2026-07-20T03:41:26:   code: "ECONNRESET"
+2026-07-20T03:41:26: 
+2026-07-20T03:41:26:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-20T03:41:26:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-20T03:41:26: 
+2026-07-20T05:13:16: AI Extraction error: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-20T05:13:16:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-20T05:13:16:  errno: 0,
+2026-07-20T05:13:16:   code: "ECONNRESET"
+2026-07-20T05:13:16: 
+2026-07-20T05:13:16: 
+2026-07-20T06:10:41: Failed to update Stick-Stickem Meteora {
+2026-07-20T06:10:41:   message: "Error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()",
+2026-07-20T06:10:41:   details: "",
+2026-07-20T06:10:41:   hint: "",
+2026-07-20T06:10:41:   code: "",
+2026-07-20T06:10:41: }
+2026-07-20T07:12:01: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-20T07:12:01: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-20T07:12:01: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-20T07:12:01: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-20T07:12:01: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-20T07:12:01: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-20T07:12:01:                                           ^
+2026-07-20T07:12:01: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-20T07:12:01:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-20T07:12:01:  errno: 0,
+2026-07-20T07:12:01:   code: "ECONNRESET"
+2026-07-20T07:12:01: 
+2026-07-20T07:12:01:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-20T07:12:01:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-20T07:12:01:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:116:28)
+2026-07-20T07:12:01: 
+2026-07-20T08:11:30: Failed to update Stick-Stickem Meteora {
+2026-07-20T08:11:30:   message: "Error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()",
+2026-07-20T08:11:30:   details: "",
+2026-07-20T08:11:30:   hint: "",
+2026-07-20T08:11:30:   code: "",
+2026-07-20T08:11:30: }
+2026-07-20T08:39:22: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-20T08:39:22: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-20T08:39:22: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-20T08:39:22: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-20T08:39:22: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-20T08:39:22: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-20T08:39:22:                                           ^
+2026-07-20T08:39:22: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-20T08:39:22:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-20T08:39:22:  errno: 0,
+2026-07-20T08:39:22:   code: "ECONNRESET"
+2026-07-20T08:39:22: 
+2026-07-20T08:39:22:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-20T08:39:22:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-20T08:39:22:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:116:28)
+2026-07-20T08:39:22: 
+2026-07-20T09:25:50: Failed to update Stick-Stickem Meteora {
+2026-07-20T09:25:50:   message: "Error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()",
+2026-07-20T09:25:50:   details: "",
+2026-07-20T09:25:50:   hint: "",
+2026-07-20T09:25:50:   code: "",
+2026-07-20T09:25:50: }
+2026-07-20T10:13:57: AI Extraction error: 15239 |         this.generateContent = async (params) => {
+2026-07-20T10:13:57: 15240 |             var _a, _b, _c, _d, _e;
+2026-07-20T10:13:57: 15241 |             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
+2026-07-20T10:13:57: 15242 |             this.maybeMoveToResponseJsonSchema(params);
+2026-07-20T10:13:57: 15243 |             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
+2026-07-20T10:13:57: 15244 |                 return await this.generateContentInternal(transformedParams);
+2026-07-20T10:13:57:                                           ^
+2026-07-20T10:13:57: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-20T10:13:57:   path: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+2026-07-20T10:13:57:  errno: 0,
+2026-07-20T10:13:57:   code: "ECONNRESET"
+2026-07-20T10:13:57: 
+2026-07-20T10:13:57:       at async <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/@google/genai/dist/node/index.mjs:15244:35)
+2026-07-20T10:13:57:       at async extractArtist (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:51:40)
+2026-07-20T10:13:57:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/extract-artists-gemini.ts:116:28)
+2026-07-20T10:13:57: 
+2026-07-20T14:34:26: AI Extraction error: DOMException {
+2026-07-20T14:34:26:   stack: "",
+2026-07-20T14:34:26:   code: 23,
+2026-07-20T14:34:26:   name: "TimeoutError",
+2026-07-20T14:34:26:   message: "The operation timed out.",
+2026-07-20T14:34:26:   INDEX_SIZE_ERR: 1,
+2026-07-20T14:34:26:   DOMSTRING_SIZE_ERR: 2,
+2026-07-20T14:34:26:   HIERARCHY_REQUEST_ERR: 3,
+2026-07-20T14:34:26:   WRONG_DOCUMENT_ERR: 4,
+2026-07-20T14:34:26:   INVALID_CHARACTER_ERR: 5,
+2026-07-20T14:34:26:   NO_DATA_ALLOWED_ERR: 6,
+2026-07-20T14:34:26:   NO_MODIFICATION_ALLOWED_ERR: 7,
+2026-07-20T14:34:26:   NOT_FOUND_ERR: 8,
+2026-07-20T14:34:26:   NOT_SUPPORTED_ERR: 9,
+2026-07-20T14:34:26:   INUSE_ATTRIBUTE_ERR: 10,
+2026-07-20T14:34:26:   INVALID_STATE_ERR: 11,
+2026-07-20T14:34:26:   SYNTAX_ERR: 12,
+2026-07-20T14:34:26:   INVALID_MODIFICATION_ERR: 13,
+2026-07-20T14:34:26:   NAMESPACE_ERR: 14,
+2026-07-20T14:34:26:   INVALID_ACCESS_ERR: 15,
+2026-07-20T14:34:26:   VALIDATION_ERR: 16,
+2026-07-20T14:34:26:   TYPE_MISMATCH_ERR: 17,
+2026-07-20T14:34:26:   SECURITY_ERR: 18,
+2026-07-20T14:34:26:   NETWORK_ERR: 19,
+2026-07-20T14:34:26:   ABORT_ERR: 20,
+2026-07-20T14:34:26:   URL_MISMATCH_ERR: 21,
+2026-07-20T14:34:26:   QUOTA_EXCEEDED_ERR: 22,
+2026-07-20T14:34:26:   TIMEOUT_ERR: 23,
+2026-07-20T14:34:26:   INVALID_NODE_TYPE_ERR: 24,
+2026-07-20T14:34:26:   DATA_CLONE_ERR: 25,
+2026-07-20T14:34:26:   toString: [Function: toString],
+2026-07-20T14:34:26: }

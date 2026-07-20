@@ -12,6 +12,7 @@ import {
   batchFetchImages,
   scheduledPokemonImageFetch,
   retryFailedImageFetches,
+  syncLimitlessTournaments,
 } from '@/inngest/functions';
 
 // Create an API that serves Inngest functions
@@ -25,6 +26,7 @@ export const { GET, POST, PUT } = serve({
     calculateTrending,
     scrapePopulationData,
     scrapeCardPopulation,
+    syncLimitlessTournaments,
     // Image fetchers: exported but never registered, so their crons never fired.
     fetchCardImage,
     batchFetchImages,

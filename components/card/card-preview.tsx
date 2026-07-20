@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { cn, getRarityDisplay } from '@/lib/utils';
+import { cn, getRarityDisplay, splitCardName } from '@/lib/utils';
 import { useCurrencyContext } from '@/lib/currency-context';
 import { CardImage } from './card-image';
 import { PriceChangeIndicator } from './price-display';
@@ -25,7 +25,7 @@ interface CardPreviewData {
   };
   current_price?: number;
   price_change_24h?: number;
-  confidence?: PriceConfidence;
+  price_confidence?: PriceConfidence | null;
 }
 
 interface CardPreviewProps {
@@ -38,15 +38,16 @@ interface CardPreviewProps {
 export function CardPreview({ card, gameSlug, variant = 'default', className }: CardPreviewProps) {
   const { format } = useCurrencyContext();
   const href = `/${gameSlug}/${card.set?.slug ?? 'unknown'}/${card.slug}`;
+  const { baseName: cleanName } = splitCardName(card.name);
 
   if (variant === 'list') {
     return (
       <Link href={href} className={cn('block', className)}>
         <div className="flex items-center gap-4 rounded-lg p-3 transition-all duration-200 hover:bg-white/5 hover:border-orange-500/30 border border-transparent">
-          <CardImage src={card.image_url} alt={card.name} size="sm" />
+          <CardImage src={card.image_url} alt={cleanName} size="sm" />
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-white truncate">
-              {card.name}
+              {cleanName}
             </h3>
             <p className="text-sm text-zinc-400 truncate">
               {card.set?.name} - #{card.number}
@@ -75,10 +76,10 @@ export function CardPreview({ card, gameSlug, variant = 'default', className }: 
     return (
       <Link href={href} className={cn('block', className)}>
         <div className="flex items-center gap-3 rounded-lg p-2 transition-all duration-200 hover:bg-white/5 border border-transparent hover:border-orange-500/30">
-          <CardImage src={card.image_url} alt={card.name} size="sm" />
+          <CardImage src={card.image_url} alt={cleanName} size="sm" />
           <div className="flex-1 min-w-0">
             <h3 className="font-medium text-white truncate text-sm">
-              {card.name}
+              {cleanName}
             </h3>
             {card.current_price !== undefined && (
               <p className="text-sm font-semibold text-orange-400">
@@ -91,15 +92,29 @@ export function CardPreview({ card, gameSlug, variant = 'default', className }: 
     );
   }
 
+
   return (
-    <Link href={href} className={cn('block h-full group', className)}>
-      <div className="flex flex-col h-full bg-[#0b1329]/80 backdrop-blur-sm rounded-xl border border-white/10 p-4 transition-all duration-300 hover:-translate-y-1 hover:border-orange-500/50 hover:shadow-[0_0_20px_rgba(249,115,22,0.15)]">
+    <Link href={`/${gameSlug}/${card.set?.slug || 'unknown'}/${card.slug}`}>
+      <div className={cn(
+        "group relative flex flex-col h-full bg-[#0a1120] rounded-[6px] border border-white/5 p-[10px]",
+        "hover:border-orange-500/30 hover:bg-[#0c1527] transition-all duration-300",
+        className
+      )}>
         
-        {/* Top: Card Image */}
-        <div className="relative w-full mx-auto max-w-[55%] flex justify-center items-center">
+        {/* Top: Image Area */}
+        <div className="relative w-[130px] mx-auto aspect-[5/7]">
+          {card.price_confidence && (
+            <Badge 
+              variant="outline" 
+              className="absolute -top-2 -left-2 z-10 scale-90 border-zinc-800 bg-zinc-900/90 text-[10px]"
+            >
+              {card.price_confidence.toUpperCase()}
+            </Badge>
+          )}
+          
           <CardImage 
             src={card.image_url} 
-            alt={card.name} 
+            alt={cleanName} 
             className="w-full h-auto object-contain drop-shadow-md aspect-[5/7] transition-transform duration-300 group-hover:scale-105"
           />
         </div>
@@ -109,7 +124,7 @@ export function CardPreview({ card, gameSlug, variant = 'default', className }: 
           {/* Card Info */}
           <div className="flex-1 min-w-0">
             <h3 className="font-bold text-white text-[13px] mb-[5px] leading-tight line-clamp-2">
-              {card.name}
+              {cleanName}
             </h3>
             <p className="text-[11px] text-zinc-400 mb-[5px] truncate">
               {card.set?.name}

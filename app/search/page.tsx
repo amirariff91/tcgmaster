@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { formatSetName } from '@/lib/utils';
+import { formatSetName, cn } from '@/lib/utils';
 
 type SearchCardResult = {
   id: string;
@@ -237,8 +237,72 @@ function SearchResults() {
 
   return (
     <>
-      {/* Results Header */}
-      <div className="mb-3 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      {/* ========================================= */}
+      {/* DESKTOP LAYOUT (Hidden on mobile)         */}
+      {/* ========================================= */}
+      <div className="hidden sm:block">
+        {/* Results Header */}
+        <div className="mb-3 flex flex-row items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-white">
+              {query ? `Results for "${query}"` : 'Market Overview'}
+            </h1>
+            <p className="text-sm text-zinc-400">
+              {totalCount || results.length} results found
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
+              <Select options={gameFilters} value={game} onChange={setGame} className="w-64" />
+              <Select 
+                options={game === 'all' ? [{ value: 'all', label: 'Language' }] : [{ value: 'all', label: 'All Languages' }, { value: 'en', label: 'English' }, { value: 'ja', label: 'Japanese' }]}
+                value={game === 'all' ? 'all' : lang}
+                onChange={game === 'all' ? () => {} : setLang}
+                className="w-40"
+                disabled={game === 'all'}
+              />
+              <Select 
+                options={game === 'all' ? [{ value: 'all', label: 'Sets' }] : setFilters}
+                value={game === 'all' ? 'all' : cardSet}
+                onChange={game === 'all' ? () => {} : setCardSet}
+                className="w-48"
+                disabled={game === 'all'}
+              />
+            </div>
+            <Select options={sortOptions} value={sort} onChange={setSort} className="w-44" />
+          </div>
+        </div>
+
+        {/* Active Filters & Search */}
+        <div className="mb-6 flex flex-row items-start justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-2 min-h-[32px]">
+            {activeFilters.length > 0 && (
+              <>
+                <span className="text-sm text-zinc-400">Active filters:</span>
+                {activeFilters.map((filter) => (
+                  <Badge key={filter} variant="secondary" className="gap-1 bg-white/10 text-white hover:bg-white/20 border-transparent">
+                    {filter}
+                    <button onClick={clearFilters}><X className="h-3 w-3" /></button>
+                  </Badge>
+                ))}
+                <button onClick={clearFilters} className="text-sm text-orange-400 hover:text-orange-300 hover:underline">
+                  Clear all
+                </button>
+              </>
+            )}
+          </div>
+          <div className="w-80 shrink-0">
+            <SearchBar size="sm" placeholder="Search any card..." />
+          </div>
+        </div>
+      </div>
+
+      {/* ========================================= */}
+      {/* MOBILE LAYOUT (Hidden on desktop)         */}
+      {/* ========================================= */}
+      <div className="flex flex-col sm:hidden gap-4 mb-6">
+        {/* Title */}
         <div>
           <h1 className="text-2xl font-bold text-white">
             {query ? `Results for "${query}"` : 'Market Overview'}
@@ -248,124 +312,76 @@ function SearchResults() {
           </p>
         </div>
 
+        {/* Search Bar */}
+        <div className="w-full shrink-0">
+          <SearchBar size="sm" placeholder="Search any card..." />
+        </div>
+
+        {/* Controls: Filter Icon & Sort Dropdown */}
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
+          <button
+            type="button"
             onClick={() => setShowFilters(!showFilters)}
-            className="sm:hidden bg-white/5 border-white/10 text-white hover:bg-white/10 hover:text-white"
+            className={cn(
+              "flex h-10 items-center justify-center rounded-lg border border-white/10 bg-[#0b1329]/80 backdrop-blur-sm px-3 text-sm ring-offset-[#060c18] transition-all hover:bg-white/5 hover:border-orange-500/30 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2",
+              showFilters && "ring-2 ring-orange-500 ring-offset-2 border-orange-500/50"
+            )}
           >
-            <SlidersHorizontal className="h-4 w-4" />
-            Filters
+            <SlidersHorizontal className={cn("h-4 w-4 transition-colors", showFilters ? "text-orange-400" : "text-zinc-400")} />
             {activeFilters.length > 0 && (
-              <Badge variant="default" className="ml-1 h-5 w-5 rounded-full p-0">
+              <Badge variant="default" className="ml-1.5 h-5 w-5 rounded-full p-0 flex items-center justify-center">
                 {activeFilters.length}
               </Badge>
             )}
-          </Button>
+          </button>
 
-          <div className="hidden items-center gap-2 sm:flex">
-            <Select
-              options={gameFilters}
-              value={game}
-              onChange={setGame}
-              className="w-64"
-            />
-            <Select
-              options={game === 'all' ? [{ value: 'all', label: 'Language' }] : [
-                { value: 'all', label: 'All Languages' },
-                { value: 'en', label: 'English' },
-                { value: 'ja', label: 'Japanese' }
-              ]}
-              value={game === 'all' ? 'all' : lang}
-              onChange={game === 'all' ? () => {} : setLang}
-              className="w-40"
-              disabled={game === 'all'}
-            />
-            <Select
-              options={game === 'all' ? [{ value: 'all', label: 'Sets' }] : setFilters}
-              value={game === 'all' ? 'all' : cardSet}
-              onChange={game === 'all' ? () => {} : setCardSet}
-              className="w-48"
-              disabled={game === 'all'}
-            />
-          </div>
-
-          <Select
-            options={sortOptions}
-            value={sort}
-            onChange={setSort}
-            className="w-44"
-          />
+          <Select options={sortOptions} value={sort} onChange={setSort} className="w-52" />
         </div>
-      </div>
 
-      {/* Mobile Filters */}
-      {showFilters && (
-        <div className="mb-6 rounded-lg border border-white/10 bg-[#0b1329]/80 backdrop-blur-sm p-4 sm:hidden">
-          <div className="space-y-4">
-            <div>
-              <label className="mb-2 block text-sm font-medium text-zinc-300">
-                Game
-              </label>
-              <Select options={gameFilters} value={game} onChange={setGame} />
-            </div>
-            <div>
-              <label className="mb-2 block text-sm font-medium text-zinc-300">
-                Language
-              </label>
-              <Select 
-                options={game === 'all' ? [{ value: 'all', label: 'Language' }] : [
-                  { value: 'all', label: 'All Languages' },
-                  { value: 'en', label: 'English' },
-                  { value: 'ja', label: 'Japanese' }
-                ]} 
-                value={game === 'all' ? 'all' : lang} 
-                onChange={game === 'all' ? () => {} : setLang} 
-                disabled={game === 'all'}
-              />
-            </div>
-            <div>
-              <label className="mb-2 block text-sm font-medium text-zinc-300">
-                Set
-              </label>
-              <Select 
-                options={game === 'all' ? [{ value: 'all', label: 'Sets' }] : setFilters} 
-                value={game === 'all' ? 'all' : cardSet} 
-                onChange={game === 'all' ? () => {} : setCardSet} 
-                disabled={game === 'all'}
-              />
+        {/* Expansion Panel (Mobile Filters) */}
+        {showFilters && (
+          <div className="rounded-lg border border-white/10 bg-[#0b1329]/80 backdrop-blur-sm p-4">
+            <div className="space-y-4">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-zinc-300">Game</label>
+                <Select options={gameFilters} value={game} onChange={setGame} />
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-medium text-zinc-300">Language</label>
+                <Select 
+                  options={game === 'all' ? [{ value: 'all', label: 'Language' }] : [{ value: 'all', label: 'All Languages' }, { value: 'en', label: 'English' }, { value: 'ja', label: 'Japanese' }]} 
+                  value={game === 'all' ? 'all' : lang} 
+                  onChange={game === 'all' ? () => {} : setLang} 
+                  disabled={game === 'all'}
+                />
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-medium text-zinc-300">Set</label>
+                <Select 
+                  options={game === 'all' ? [{ value: 'all', label: 'Sets' }] : setFilters} 
+                  value={game === 'all' ? 'all' : cardSet} 
+                  onChange={game === 'all' ? () => {} : setCardSet} 
+                  disabled={game === 'all'}
+                />
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Active Filters & Search */}
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-2 min-h-[32px]">
-          {activeFilters.length > 0 && (
-            <>
-              <span className="text-sm text-zinc-400">Active filters:</span>
-              {activeFilters.map((filter) => (
-                <Badge key={filter} variant="secondary" className="gap-1 bg-white/10 text-white hover:bg-white/20 border-transparent">
-                  {filter}
-                  <button onClick={clearFilters}>
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
-              ))}
-              <button
-                onClick={clearFilters}
-                className="text-sm text-orange-400 hover:text-orange-300 hover:underline"
-              >
-                Clear all
-              </button>
-            </>
-          )}
-        </div>
-        <div className="w-full sm:w-80 shrink-0">
-          <SearchBar size="sm" placeholder="Search any card..." />
-        </div>
+        {/* Active Filters */}
+        {activeFilters.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            {activeFilters.map((filter) => (
+              <Badge key={filter} variant="secondary" className="gap-1 bg-white/10 text-white hover:bg-white/20 border-transparent">
+                {filter}
+                <button onClick={clearFilters}><X className="h-3 w-3" /></button>
+              </Badge>
+            ))}
+            <button onClick={clearFilters} className="text-sm text-orange-400 hover:text-orange-300 hover:underline">
+              Clear all
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Results */}

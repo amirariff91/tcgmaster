@@ -24099,3 +24099,231 @@
 2026-07-16T03:00:20:       at run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-english-op.ts:60:11)
 2026-07-16T03:00:20: 
 2026-07-16T03:00:20: Bun v1.3.14 (macOS arm64)
+2026-07-17T14:33:33: Failed to fetch queue {
+2026-07-17T14:33:33:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T14:33:33:   details: "",
+2026-07-17T14:33:33:   hint: "",
+2026-07-17T14:33:33:   code: "",
+2026-07-17T14:33:33: }
+2026-07-17T14:49:50: Failed to fetch queue {
+2026-07-17T14:49:50:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T14:49:50:   details: "",
+2026-07-17T14:49:50:   hint: "",
+2026-07-17T14:49:50:   code: "",
+2026-07-17T14:49:50: }
+2026-07-17T15:06:51: Failed to fetch queue {
+2026-07-17T15:06:51:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T15:06:51:   details: "",
+2026-07-17T15:06:51:   hint: "",
+2026-07-17T15:06:51:   code: "",
+2026-07-17T15:06:51: }
+2026-07-17T15:23:16: Failed to fetch queue {
+2026-07-17T15:23:16:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T15:23:16:   details: "",
+2026-07-17T15:23:16:   hint: "",
+2026-07-17T15:23:16:   code: "",
+2026-07-17T15:23:16: }
+2026-07-17T15:38:30: Failed to fetch queue {
+2026-07-17T15:38:30:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T15:38:30:   details: "",
+2026-07-17T15:38:30:   hint: "",
+2026-07-17T15:38:30:   code: "",
+2026-07-17T15:38:30: }
+2026-07-17T16:24:18: Failed to fetch queue {
+2026-07-17T16:24:18:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T16:24:18:   details: "",
+2026-07-17T16:24:18:   hint: "",
+2026-07-17T16:24:18:   code: "",
+2026-07-17T16:24:18: }
+2026-07-17T16:47:51: Failed to fetch queue {
+2026-07-17T16:47:51:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T16:47:51:   details: "",
+2026-07-17T16:47:51:   hint: "",
+2026-07-17T16:47:51:   code: "",
+2026-07-17T16:47:51: }
+2026-07-17T16:48:08: Failed to fetch queue {
+2026-07-17T16:48:08:   message: "Error: Was there a typo in the url or port?",
+2026-07-17T16:48:08:   details: "",
+2026-07-17T16:48:08:   hint: "",
+2026-07-17T16:48:08:   code: "",
+2026-07-17T16:48:08: }
+2026-07-17T16:48:25: Failed to fetch queue {
+2026-07-17T16:48:25:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T16:48:25:   details: "",
+2026-07-17T16:48:25:   hint: "",
+2026-07-17T16:48:25:   code: "",
+2026-07-17T16:48:25: }
+2026-07-17T16:48:42: Failed to fetch queue {
+2026-07-17T16:48:42:   message: "Error: Was there a typo in the url or port?",
+2026-07-17T16:48:42:   details: "",
+2026-07-17T16:48:42:   hint: "",
+2026-07-17T16:48:42:   code: "",
+2026-07-17T16:48:42: }
+2026-07-17T16:48:59: Failed to fetch queue {
+2026-07-17T16:48:59:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T16:48:59:   details: "",
+2026-07-17T16:48:59:   hint: "",
+2026-07-17T16:48:59:   code: "",
+2026-07-17T16:48:59: }
+2026-07-17T16:49:16: Failed to fetch queue {
+2026-07-17T16:49:16:   message: "Error: Was there a typo in the url or port?",
+2026-07-17T16:49:16:   details: "",
+2026-07-17T16:49:16:   hint: "",
+2026-07-17T16:49:16:   code: "",
+2026-07-17T16:49:16: }
+2026-07-17T16:49:33: Failed to fetch queue {
+2026-07-17T16:49:33:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T16:49:33:   details: "",
+2026-07-17T16:49:33:   hint: "",
+2026-07-17T16:49:33:   code: "",
+2026-07-17T16:49:33: }
+2026-07-17T16:49:50: Failed to fetch queue {
+2026-07-17T16:49:50:   message: "Error: Was there a typo in the url or port?",
+2026-07-17T16:49:50:   details: "",
+2026-07-17T16:49:50:   hint: "",
+2026-07-17T16:49:50:   code: "",
+2026-07-17T16:49:50: }
+2026-07-17T16:50:07: Failed to fetch queue {
+2026-07-17T16:50:07:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T16:50:07:   details: "",
+2026-07-17T16:50:07:   hint: "",
+2026-07-17T16:50:07:   code: "",
+2026-07-17T16:50:07: }
+2026-07-17T16:50:24: Failed to fetch queue {
+2026-07-17T16:50:24:   message: "Error: Was there a typo in the url or port?",
+2026-07-17T16:50:24:   details: "",
+2026-07-17T16:50:24:   hint: "",
+2026-07-17T16:50:24:   code: "",
+2026-07-17T16:50:24: }
+2026-07-17T17:35:18: Failed to fetch queue {
+2026-07-17T17:35:18:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T17:35:18:   details: "",
+2026-07-17T17:35:18:   hint: "",
+2026-07-17T17:35:18:   code: "",
+2026-07-17T17:35:18: }
+2026-07-17T17:50:39: Failed to fetch queue {
+2026-07-17T17:50:39:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T17:50:39:   details: "",
+2026-07-17T17:50:39:   hint: "",
+2026-07-17T17:50:39:   code: "",
+2026-07-17T17:50:39: }
+2026-07-17T18:07:17: Failed to fetch queue {
+2026-07-17T18:07:17:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T18:07:17:   details: "",
+2026-07-17T18:07:17:   hint: "",
+2026-07-17T18:07:17:   code: "",
+2026-07-17T18:07:17: }
+2026-07-17T18:14:04: Failed to fetch queue {
+2026-07-17T18:14:04:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T18:14:04:   details: "",
+2026-07-17T18:14:04:   hint: "",
+2026-07-17T18:14:04:   code: "",
+2026-07-17T18:14:04: }
+2026-07-17T18:22:36: Failed to fetch queue {
+2026-07-17T18:22:36:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T18:22:36:   details: "",
+2026-07-17T18:22:36:   hint: "",
+2026-07-17T18:22:36:   code: "",
+2026-07-17T18:22:36: }
+2026-07-17T18:22:53: Failed to fetch queue {
+2026-07-17T18:22:53:   message: "Error: Was there a typo in the url or port?",
+2026-07-17T18:22:53:   details: "",
+2026-07-17T18:22:53:   hint: "",
+2026-07-17T18:22:53:   code: "",
+2026-07-17T18:22:53: }
+2026-07-17T18:54:14: Failed to fetch queue {
+2026-07-17T18:54:14:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T18:54:14:   details: "",
+2026-07-17T18:54:14:   hint: "",
+2026-07-17T18:54:14:   code: "",
+2026-07-17T18:54:14: }
+2026-07-17T19:26:50: Failed to fetch queue {
+2026-07-17T19:26:50:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T19:26:50:   details: "",
+2026-07-17T19:26:50:   hint: "",
+2026-07-17T19:26:50:   code: "",
+2026-07-17T19:26:50: }
+2026-07-17T19:43:20: Failed to fetch queue {
+2026-07-17T19:43:20:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T19:43:20:   details: "",
+2026-07-17T19:43:20:   hint: "",
+2026-07-17T19:43:20:   code: "",
+2026-07-17T19:43:20: }
+2026-07-17T20:00:03: Failed to fetch queue {
+2026-07-17T20:00:03:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T20:00:03:   details: "",
+2026-07-17T20:00:03:   hint: "",
+2026-07-17T20:00:03:   code: "",
+2026-07-17T20:00:03: }
+2026-07-17T20:17:17: Failed to fetch queue {
+2026-07-17T20:17:17:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T20:17:17:   details: "",
+2026-07-17T20:17:17:   hint: "",
+2026-07-17T20:17:17:   code: "",
+2026-07-17T20:17:17: }
+2026-07-17T20:23:52: Failed to fetch queue {
+2026-07-17T20:23:52:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T20:23:52:   details: "",
+2026-07-17T20:23:52:   hint: "",
+2026-07-17T20:23:52:   code: "",
+2026-07-17T20:23:52: }
+2026-07-17T20:40:44: Failed to fetch queue {
+2026-07-17T20:40:44:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T20:40:44:   details: "",
+2026-07-17T20:40:44:   hint: "",
+2026-07-17T20:40:44:   code: "",
+2026-07-17T20:40:44: }
+2026-07-17T20:57:02: Failed to fetch queue {
+2026-07-17T20:57:02:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T20:57:02:   details: "",
+2026-07-17T20:57:02:   hint: "",
+2026-07-17T20:57:02:   code: "",
+2026-07-17T20:57:02: }
+2026-07-17T21:24:58: Failed to fetch queue {
+2026-07-17T21:24:58:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T21:24:58:   details: "",
+2026-07-17T21:24:58:   hint: "",
+2026-07-17T21:24:58:   code: "",
+2026-07-17T21:24:58: }
+2026-07-17T21:59:17: Failed to fetch queue {
+2026-07-17T21:59:17:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T21:59:17:   details: "",
+2026-07-17T21:59:17:   hint: "",
+2026-07-17T21:59:17:   code: "",
+2026-07-17T21:59:17: }
+2026-07-17T22:16:03: Failed to fetch queue {
+2026-07-17T22:16:03:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T22:16:03:   details: "",
+2026-07-17T22:16:03:   hint: "",
+2026-07-17T22:16:03:   code: "",
+2026-07-17T22:16:03: }
+2026-07-17T22:25:52: Failed to fetch queue {
+2026-07-17T22:25:52:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T22:25:52:   details: "",
+2026-07-17T22:25:52:   hint: "",
+2026-07-17T22:25:52:   code: "",
+2026-07-17T22:25:52: }
+2026-07-17T22:42:26: Failed to fetch queue {
+2026-07-17T22:42:26:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T22:42:26:   details: "",
+2026-07-17T22:42:26:   hint: "",
+2026-07-17T22:42:26:   code: "",
+2026-07-17T22:42:26: }
+2026-07-17T22:59:31: Failed to fetch queue {
+2026-07-17T22:59:31:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T22:59:31:   details: "",
+2026-07-17T22:59:31:   hint: "",
+2026-07-17T22:59:31:   code: "",
+2026-07-17T22:59:31: }
+2026-07-17T23:17:22: Failed to fetch queue {
+2026-07-17T23:17:22:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T23:17:22:   details: "",
+2026-07-17T23:17:22:   hint: "",
+2026-07-17T23:17:22:   code: "",
+2026-07-17T23:17:22: }
+2026-07-17T23:26:52: Failed to fetch queue {
+2026-07-17T23:26:52:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T23:26:52:   details: "",
+2026-07-17T23:26:52:   hint: "",
+2026-07-17T23:26:52:   code: "",
+2026-07-17T23:26:52: }

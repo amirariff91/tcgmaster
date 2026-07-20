@@ -7,7 +7,7 @@ const supabase = createClient(
 );
 
 async function run() {
-  const { data, error } = await supabase.from('cards').select('*').eq('number', 'FB01-002').limit(1);
+  const { data, error } = await supabase.from('games').select('*');
   console.log(data);
 }
 run();

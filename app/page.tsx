@@ -76,13 +76,13 @@ export default async function HomePage() {
         <div className="absolute top-[-96px] left-1/2 -translate-x-1/2 w-full max-w-7xl h-[800px] bg-radial-gradient from-orange-500/10 to-transparent blur-[120px] pointer-events-none z-0" />
         
         <div className="relative z-10 text-center flex flex-col items-center">
-          <h2 className="text-white text-[25px] md:text-[41px] font-black tracking-widest uppercase mb-[-10px] md:mb-[-15px] z-20 drop-shadow-xl" style={{ WebkitTextStroke: '1px rgba(255,255,255,0.8)' }}>
+          <h2 className="text-white text-[20px] sm:text-[25px] md:text-[41px] font-black tracking-widest uppercase mb-[-10px] md:mb-[-15px] z-20 drop-shadow-xl" style={{ WebkitTextStroke: '1px rgba(255,255,255,0.8)' }}>
             BECOME
           </h2>
-          <h1 className="text-transparent bg-clip-text bg-gradient-to-b from-orange-400 to-orange-600 text-[68px] md:text-[102px] font-black tracking-tighter uppercase leading-none z-10 drop-shadow-2xl whitespace-nowrap">
+          <h1 className="text-transparent bg-clip-text bg-gradient-to-b from-orange-400 to-orange-600 text-[48px] sm:text-[68px] md:text-[102px] font-black tracking-tighter uppercase leading-none z-10 drop-shadow-2xl whitespace-nowrap">
             TCG MASTER
           </h1>
-          <p className="mt-2 relative -top-2.5 text-white font-bold tracking-[0.2em] text-[12px] md:text-[14px] uppercase max-w-xl mx-auto drop-shadow-md">
+          <p className="mt-2 relative -top-2.5 text-white font-bold tracking-[0.2em] text-[10px] sm:text-[12px] md:text-[14px] uppercase max-w-xl mx-auto drop-shadow-md">
             Track prices. Build decks. Stay informed.
           </p>
         </div>

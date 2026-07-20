@@ -9,9 +9,16 @@ export async function fetchJapanesePrice(query: string, setName?: string): Promi
     await waitForSourceRateLimit('yuyutei');
 
     let rawQuery = query;
+    const isUrl = rawQuery.startsWith('http');
+    const isVariant = rawQuery.includes('_');
+
+    if (isVariant && !isUrl) {
+      console.log(`[Yuyutei] Refusing to guess variant for query: ${rawQuery}`);
+      return null;
+    }
 
     // If we're passed an exact Yuyutei product URL, go straight to it!
-    if (rawQuery.startsWith('http') && rawQuery.includes('/sell/opc/card/')) {
+    if (isUrl && rawQuery.includes('/sell/opc/card/')) {
       const response = await fetch(rawQuery, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)'

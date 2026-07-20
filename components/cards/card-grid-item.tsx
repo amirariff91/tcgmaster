@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { Check } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, splitCardName } from '@/lib/utils';
 import { type MockCard, pokemonTypeColors, rarityColors } from '@/lib/mock-data';
 import { QuickAddDropdown } from './quick-add-dropdown';
 import { useCurrencyContext } from '@/lib/currency-context';
@@ -30,6 +30,7 @@ export function CardGridItem({
 }: CardGridItemProps) {
   const { format } = useCurrencyContext();
   const href = `/${gameSlug}/${setSlug}/${card.slug}`;
+  const { baseName: cleanName } = splitCardName(card.name);
 
   // Get placeholder color based on type (Pokemon) or rarity
   const getPlaceholderColor = () => {
@@ -76,7 +77,7 @@ export function CardGridItem({
           {card.image_url ? (
             <Image
               src={card.image_url}
-              alt={card.name}
+              alt={cleanName}
               width={80}
               height={112}
               className="w-20 h-28 object-cover rounded"
@@ -91,7 +92,7 @@ export function CardGridItem({
               )}
             >
               <span className="text-2xl font-bold text-white/80">
-                {card.name.charAt(0)}
+                {cleanName.charAt(0)}
               </span>
             </div>
           )}
@@ -120,7 +121,7 @@ export function CardGridItem({
                 {card.number}
               </p>
               <h3 className="font-semibold text-white truncate">
-                {card.name}
+                {cleanName}
               </h3>
               <p className="text-xs text-zinc-400">
                 {rarityDisplay[card.rarity] || card.rarity}

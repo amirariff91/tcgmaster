@@ -75,8 +75,11 @@ export async function fetchEnglishPrice(query: string, setName?: string, existin
       try {
         const dictPath = require('path').resolve(process.cwd(), 'lib/price-engine/mapping-dictionary.json');
         const dict = JSON.parse(require('fs').readFileSync(dictPath, 'utf8'));
+        const slugKey = query.toLowerCase().startsWith('op-') ? query.toLowerCase() : `op-${query.toLowerCase()}`;
         if (dict[query]) {
           mappedTcgId = String(dict[query]);
+        } else if (dict[slugKey]) {
+          mappedTcgId = String(dict[slugKey]);
         }
       } catch(e) {
         // ignore if not exists

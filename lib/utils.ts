@@ -173,3 +173,27 @@ export function formatSetName(name: string | null | undefined): string {
   });
   return formatted;
 }
+
+const KNOWN_VARIANT_TAGS = [
+  'Alternate Art',
+  'Manga Alternate Art',
+  'Serialized Card',
+  'Special Card',
+  'Reprint'
+];
+
+export function splitCardName(fullName: string): { baseName: string; variantInfo: string | null } {
+  if (!fullName) return { baseName: '', variantInfo: null };
+  
+  for (const tag of KNOWN_VARIANT_TAGS) {
+    const suffix = ` (${tag})`;
+    if (fullName.endsWith(suffix)) {
+      return {
+        baseName: fullName.slice(0, -suffix.length),
+        variantInfo: tag
+      };
+    }
+  }
+  
+  return { baseName: fullName, variantInfo: null };
+}

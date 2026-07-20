@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
 import { createClient } from '@/lib/supabase/browser';
+import { CurrencyToggle } from '@/components/ui/currency-toggle';
 
 interface NavItem {
   label: string;
@@ -18,7 +19,6 @@ interface NavItem {
 const mainNavItems: NavItem[] = [
   { label: 'Prices', href: '/search' },
   { label: 'Decks', href: '/decks' },
-  { label: 'Pokémon', href: '/pokemon' },
 ];
 
 const userMenuItems = [
@@ -201,75 +201,79 @@ export function Header() {
 
           {/* Actions */}
           <div className="flex items-center gap-3">
-            {isAuthLoading ? (
-              <div className="h-10 w-10" aria-hidden="true" />
-            ) : user ? (
-              <div className="relative">
-                <Button
-                  ref={userMenuToggleRef}
-                  variant="ghost"
-                  size="icon"
-                  type="button"
-                  className="rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/10"
-                  onClick={() => setIsUserMenuOpen((isOpen) => !isOpen)}
-                  aria-label={isUserMenuOpen ? 'Close account menu' : 'Open account menu'}
-                  aria-expanded={isUserMenuOpen}
-                  aria-controls="account-menu"
-                >
-                  <Avatar
-                    src={user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null}
-                    alt={user.user_metadata?.full_name ?? user.email ?? 'User'}
-                    fallback={user.user_metadata?.full_name ?? user.email ?? 'User'}
-                    size="sm"
-                  />
-                </Button>
-
-                {isUserMenuOpen && (
-                  <div
-                    ref={userMenuRef}
-                    id="account-menu"
-                    className="absolute right-0 top-12 w-56 rounded-2xl border border-white/10 bg-[#0b1329]/95 p-2 shadow-2xl backdrop-blur-md"
+            <div className="hidden md:flex items-center gap-3">
+              <CurrencyToggle />
+              
+              {isAuthLoading ? (
+                <div className="h-10 w-10" aria-hidden="true" />
+              ) : user ? (
+                <div className="relative">
+                  <Button
+                    ref={userMenuToggleRef}
+                    variant="ghost"
+                    size="icon"
+                    type="button"
+                    className="rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/10"
+                    onClick={() => setIsUserMenuOpen((isOpen) => !isOpen)}
+                    aria-label={isUserMenuOpen ? 'Close account menu' : 'Open account menu'}
+                    aria-expanded={isUserMenuOpen}
+                    aria-controls="account-menu"
                   >
-                    <div className="border-b border-white/10 px-3 py-2 text-xs text-zinc-400 truncate">
-                      {user.email}
+                    <Avatar
+                      src={user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null}
+                      alt={user.user_metadata?.full_name ?? user.email ?? 'User'}
+                      fallback={user.user_metadata?.full_name ?? user.email ?? 'User'}
+                      size="sm"
+                    />
+                  </Button>
+
+                  {isUserMenuOpen && (
+                    <div
+                      ref={userMenuRef}
+                      id="account-menu"
+                      className="absolute right-0 top-12 w-56 rounded-2xl border border-white/10 bg-[#0b1329]/95 p-2 shadow-2xl backdrop-blur-md"
+                    >
+                      <div className="border-b border-white/10 px-3 py-2 text-xs text-zinc-400 truncate">
+                        {user.email}
+                      </div>
+                      <div className="py-1">
+                        {userMenuItems.map((item) => {
+                          const Icon = item.icon;
+                          return (
+                            <Link
+                              key={item.href}
+                              href={item.href}
+                              onClick={() => setIsUserMenuOpen(false)}
+                              className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-zinc-300 transition-colors hover:bg-white/10 hover:text-white"
+                            >
+                              <Icon className="h-4 w-4" aria-hidden="true" />
+                              {item.label}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                      <div className="border-t border-white/10 pt-1">
+                        <Button
+                          variant="ghost"
+                          type="button"
+                          onClick={handleSignOut}
+                          className="w-full justify-start rounded-xl px-3 py-2 text-sm font-medium text-zinc-300 hover:bg-white/10 hover:text-white"
+                        >
+                          <LogOut className="h-4 w-4" aria-hidden="true" />
+                          Sign Out
+                        </Button>
+                      </div>
                     </div>
-                    <div className="py-1">
-                      {userMenuItems.map((item) => {
-                        const Icon = item.icon;
-                        return (
-                          <Link
-                            key={item.href}
-                            href={item.href}
-                            onClick={() => setIsUserMenuOpen(false)}
-                            className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-zinc-300 transition-colors hover:bg-white/10 hover:text-white"
-                          >
-                            <Icon className="h-4 w-4" aria-hidden="true" />
-                            {item.label}
-                          </Link>
-                        );
-                      })}
-                    </div>
-                    <div className="border-t border-white/10 pt-1">
-                      <Button
-                        variant="ghost"
-                        type="button"
-                        onClick={handleSignOut}
-                        className="w-full justify-start rounded-xl px-3 py-2 text-sm font-medium text-zinc-300 hover:bg-white/10 hover:text-white"
-                      >
-                        <LogOut className="h-4 w-4" aria-hidden="true" />
-                        Sign Out
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <Link href="/login">
-                <Button size="sm" className="rounded-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-white font-bold tracking-wide shadow-[0_0_15px_rgba(249,115,22,0.4)] border-none px-6">
-                  Sign In
-                </Button>
-              </Link>
-            )}
+                  )}
+                </div>
+              ) : (
+                <Link href="/login">
+                  <Button size="sm" className="rounded-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-white font-bold tracking-wide shadow-[0_0_15px_rgba(249,115,22,0.4)] border-none px-6">
+                    Sign In
+                  </Button>
+                </Link>
+              )}
+            </div>
 
             {/* Mobile Menu Toggle */}
             <Button
@@ -293,26 +297,68 @@ export function Header() {
       {isMobileMenuOpen && (
         <div
           id="mobile-navigation-menu"
-          className="fixed inset-0 z-40 bg-black/80 backdrop-blur-md pt-24 px-6 md:hidden"
+          className="fixed inset-0 z-40 bg-black/80 backdrop-blur-md pt-24 px-6 md:hidden overflow-y-auto"
         >
-          <nav ref={mobileMenuRef} className="flex flex-col gap-4">
-            {mainNavItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="text-2xl font-bold text-white hover:text-orange-400 transition-colors"
-              >
-                {item.label}
-              </Link>
-            ))}
-            <Link
-              href="/cert"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="text-2xl font-bold text-zinc-400 hover:text-white transition-colors mt-4 pt-4 border-t border-white/10"
-            >
-              Cert Lookup
-            </Link>
+          <nav ref={mobileMenuRef} className="flex flex-col items-end gap-6 text-right pb-12">
+            
+            <div className="flex flex-col items-end gap-4">
+              {mainNavItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="text-2xl font-bold text-white hover:text-orange-400 transition-colors"
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+
+            <div className="w-16 h-px bg-white/10 my-2" />
+
+            {/* User & Settings */}
+            <div className="flex flex-col items-end gap-5 w-full">
+              <CurrencyToggle />
+
+              {!isAuthLoading && (
+                user ? (
+                  <>
+                    <div className="text-sm text-zinc-500 mb-2 truncate max-w-full">{user.email}</div>
+                    {userMenuItems.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className="flex items-center justify-end gap-3 text-lg font-medium text-zinc-300 transition-colors hover:text-white w-full"
+                        >
+                          {item.label}
+                          <Icon className="h-5 w-5" aria-hidden="true" />
+                        </Link>
+                      );
+                    })}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleSignOut();
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className="flex items-center justify-end gap-3 text-lg font-medium text-zinc-300 transition-colors hover:text-white mt-2 w-full"
+                    >
+                      Sign Out
+                      <LogOut className="h-5 w-5" aria-hidden="true" />
+                    </button>
+                  </>
+                ) : (
+                  <Link href="/login" onClick={() => setIsMobileMenuOpen(false)} className="mt-4 w-full flex justify-end">
+                    <Button size="lg" className="rounded-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-white font-bold tracking-wide shadow-[0_0_15px_rgba(249,115,22,0.4)] border-none px-8">
+                      Sign In
+                    </Button>
+                  </Link>
+                )
+              )}
+            </div>
           </nav>
         </div>
       )}

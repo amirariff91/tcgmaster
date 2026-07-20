@@ -7,3 +7,460 @@
 2026-07-16T08:26:01:       at async fetchCardrushPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/cardrush.ts:58:34)
 2026-07-16T08:26:01:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-dbfw.ts:27:46)
 2026-07-16T08:26:01: 
+2026-07-17T14:10:33: [DBFW] Failed to insert cardrush price for FB03-089-p1: {
+2026-07-17T14:10:33:   message: "TimeoutError: The operation timed out.",
+2026-07-17T14:10:33:   details: "",
+2026-07-17T14:10:33:   hint: "",
+2026-07-17T14:10:33:   code: "",
+2026-07-17T14:10:33: }
+2026-07-17T14:33:34: Failed to fetch queue {
+2026-07-17T14:33:34:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T14:33:34:   details: "",
+2026-07-17T14:33:34:   hint: "",
+2026-07-17T14:33:34:   code: "",
+2026-07-17T14:33:34: }
+2026-07-17T14:49:50: Failed to fetch queue {
+2026-07-17T14:49:50:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T14:49:50:   details: "",
+2026-07-17T14:49:50:   hint: "",
+2026-07-17T14:49:50:   code: "",
+2026-07-17T14:49:50: }
+2026-07-17T15:06:51: Failed to fetch queue {
+2026-07-17T15:06:51:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T15:06:51:   details: "",
+2026-07-17T15:06:51:   hint: "",
+2026-07-17T15:06:51:   code: "",
+2026-07-17T15:06:51: }
+2026-07-17T15:23:16: Failed to fetch queue {
+2026-07-17T15:23:16:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T15:23:16:   details: "",
+2026-07-17T15:23:16:   hint: "",
+2026-07-17T15:23:16:   code: "",
+2026-07-17T15:23:16: }
+2026-07-17T15:38:29: Failed to fetch queue {
+2026-07-17T15:38:29:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T15:38:29:   details: "",
+2026-07-17T15:38:29:   hint: "",
+2026-07-17T15:38:29:   code: "",
+2026-07-17T15:38:29: }
+2026-07-17T15:55:45: Failed to fetch queue {
+2026-07-17T15:55:45:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T15:55:45:   details: "",
+2026-07-17T15:55:45:   hint: "",
+2026-07-17T15:55:45:   code: "",
+2026-07-17T15:55:45: }
+2026-07-17T16:13:36: Failed to fetch queue {
+2026-07-17T16:13:36:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T16:13:36:   details: "",
+2026-07-17T16:13:36:   hint: "",
+2026-07-17T16:13:36:   code: "",
+2026-07-17T16:13:36: }
+2026-07-17T16:24:16: Failed to fetch queue {
+2026-07-17T16:24:16:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T16:24:16:   details: "",
+2026-07-17T16:24:16:   hint: "",
+2026-07-17T16:24:16:   code: "",
+2026-07-17T16:24:16: }
+2026-07-17T16:41:02: Failed to fetch queue {
+2026-07-17T16:41:02:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T16:41:02:   details: "",
+2026-07-17T16:41:02:   hint: "",
+2026-07-17T16:41:02:   code: "",
+2026-07-17T16:41:02: }
+2026-07-17T16:47:49: Failed to fetch queue {
+2026-07-17T16:47:49:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T16:47:49:   details: "",
+2026-07-17T16:47:49:   hint: "",
+2026-07-17T16:47:49:   code: "",
+2026-07-17T16:47:49: }
+2026-07-17T16:48:06: Failed to fetch queue {
+2026-07-17T16:48:06:   message: "Error: Was there a typo in the url or port?",
+2026-07-17T16:48:06:   details: "",
+2026-07-17T16:48:06:   hint: "",
+2026-07-17T16:48:06:   code: "",
+2026-07-17T16:48:06: }
+2026-07-17T16:48:23: Failed to fetch queue {
+2026-07-17T16:48:23:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T16:48:23:   details: "",
+2026-07-17T16:48:23:   hint: "",
+2026-07-17T16:48:23:   code: "",
+2026-07-17T16:48:23: }
+2026-07-17T16:48:40: Failed to fetch queue {
+2026-07-17T16:48:40:   message: "Error: Was there a typo in the url or port?",
+2026-07-17T16:48:40:   details: "",
+2026-07-17T16:48:40:   hint: "",
+2026-07-17T16:48:40:   code: "",
+2026-07-17T16:48:40: }
+2026-07-17T16:48:57: Failed to fetch queue {
+2026-07-17T16:48:57:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T16:48:57:   details: "",
+2026-07-17T16:48:57:   hint: "",
+2026-07-17T16:48:57:   code: "",
+2026-07-17T16:48:57: }
+2026-07-17T16:49:14: Failed to fetch queue {
+2026-07-17T16:49:14:   message: "Error: Was there a typo in the url or port?",
+2026-07-17T16:49:14:   details: "",
+2026-07-17T16:49:14:   hint: "",
+2026-07-17T16:49:14:   code: "",
+2026-07-17T16:49:14: }
+2026-07-17T16:49:31: Failed to fetch queue {
+2026-07-17T16:49:31:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T16:49:31:   details: "",
+2026-07-17T16:49:31:   hint: "",
+2026-07-17T16:49:31:   code: "",
+2026-07-17T16:49:31: }
+2026-07-17T16:49:48: Failed to fetch queue {
+2026-07-17T16:49:48:   message: "Error: Was there a typo in the url or port?",
+2026-07-17T16:49:48:   details: "",
+2026-07-17T16:49:48:   hint: "",
+2026-07-17T16:49:48:   code: "",
+2026-07-17T16:49:48: }
+2026-07-17T16:50:05: Failed to fetch queue {
+2026-07-17T16:50:05:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T16:50:05:   details: "",
+2026-07-17T16:50:05:   hint: "",
+2026-07-17T16:50:05:   code: "",
+2026-07-17T16:50:05: }
+2026-07-17T16:50:22: Failed to fetch queue {
+2026-07-17T16:50:22:   message: "Error: Was there a typo in the url or port?",
+2026-07-17T16:50:22:   details: "",
+2026-07-17T16:50:22:   hint: "",
+2026-07-17T16:50:22:   code: "",
+2026-07-17T16:50:22: }
+2026-07-17T18:14:05: Failed to fetch queue {
+2026-07-17T18:14:05:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T18:14:05:   details: "",
+2026-07-17T18:14:05:   hint: "",
+2026-07-17T18:14:05:   code: "",
+2026-07-17T18:14:05: }
+2026-07-17T18:22:37: Failed to fetch queue {
+2026-07-17T18:22:37:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T18:22:37:   details: "",
+2026-07-17T18:22:37:   hint: "",
+2026-07-17T18:22:37:   code: "",
+2026-07-17T18:22:37: }
+2026-07-17T18:22:54: Failed to fetch queue {
+2026-07-17T18:22:54:   message: "Error: Was there a typo in the url or port?",
+2026-07-17T18:22:54:   details: "",
+2026-07-17T18:22:54:   hint: "",
+2026-07-17T18:22:54:   code: "",
+2026-07-17T18:22:54: }
+2026-07-17T18:38:29: Failed to fetch queue {
+2026-07-17T18:38:29:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T18:38:29:   details: "",
+2026-07-17T18:38:29:   hint: "",
+2026-07-17T18:38:29:   code: "",
+2026-07-17T18:38:29: }
+2026-07-17T18:54:13: Failed to fetch queue {
+2026-07-17T18:54:13:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T18:54:13:   details: "",
+2026-07-17T18:54:13:   hint: "",
+2026-07-17T18:54:13:   code: "",
+2026-07-17T18:54:13: }
+2026-07-17T19:11:28: Failed to fetch queue {
+2026-07-17T19:11:28:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T19:11:28:   details: "",
+2026-07-17T19:11:28:   hint: "",
+2026-07-17T19:11:28:   code: "",
+2026-07-17T19:11:28: }
+2026-07-17T19:26:48: Failed to fetch queue {
+2026-07-17T19:26:48:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T19:26:48:   details: "",
+2026-07-17T19:26:48:   hint: "",
+2026-07-17T19:26:48:   code: "",
+2026-07-17T19:26:48: }
+2026-07-17T19:43:20: Failed to fetch queue {
+2026-07-17T19:43:20:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T19:43:20:   details: "",
+2026-07-17T19:43:20:   hint: "",
+2026-07-17T19:43:20:   code: "",
+2026-07-17T19:43:20: }
+2026-07-17T20:00:03: Failed to fetch queue {
+2026-07-17T20:00:03:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T20:00:03:   details: "",
+2026-07-17T20:00:03:   hint: "",
+2026-07-17T20:00:03:   code: "",
+2026-07-17T20:00:03: }
+2026-07-17T20:17:17: Failed to fetch queue {
+2026-07-17T20:17:17:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T20:17:17:   details: "",
+2026-07-17T20:17:17:   hint: "",
+2026-07-17T20:17:17:   code: "",
+2026-07-17T20:17:17: }
+2026-07-17T20:23:52: Failed to fetch queue {
+2026-07-17T20:23:52:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T20:23:52:   details: "",
+2026-07-17T20:23:52:   hint: "",
+2026-07-17T20:23:52:   code: "",
+2026-07-17T20:23:52: }
+2026-07-17T20:57:06: Failed to fetch queue {
+2026-07-17T20:57:06:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T20:57:06:   details: "",
+2026-07-17T20:57:06:   hint: "",
+2026-07-17T20:57:06:   code: "",
+2026-07-17T20:57:06: }
+2026-07-17T21:13:54: Failed to fetch queue {
+2026-07-17T21:13:54:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T21:13:54:   details: "",
+2026-07-17T21:13:54:   hint: "",
+2026-07-17T21:13:54:   code: "",
+2026-07-17T21:13:54: }
+2026-07-17T21:24:52: Failed to fetch queue {
+2026-07-17T21:24:52:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T21:24:52:   details: "",
+2026-07-17T21:24:52:   hint: "",
+2026-07-17T21:24:52:   code: "",
+2026-07-17T21:24:52: }
+2026-07-17T21:42:30: Failed to fetch queue {
+2026-07-17T21:42:30:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T21:42:30:   details: "",
+2026-07-17T21:42:30:   hint: "",
+2026-07-17T21:42:30:   code: "",
+2026-07-17T21:42:30: }
+2026-07-17T21:59:15: Failed to fetch queue {
+2026-07-17T21:59:15:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T21:59:15:   details: "",
+2026-07-17T21:59:15:   hint: "",
+2026-07-17T21:59:15:   code: "",
+2026-07-17T21:59:15: }
+2026-07-17T22:16:03: Failed to fetch queue {
+2026-07-17T22:16:03:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T22:16:03:   details: "",
+2026-07-17T22:16:03:   hint: "",
+2026-07-17T22:16:03:   code: "",
+2026-07-17T22:16:03: }
+2026-07-17T22:25:51: Failed to fetch queue {
+2026-07-17T22:25:51:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T22:25:51:   details: "",
+2026-07-17T22:25:51:   hint: "",
+2026-07-17T22:25:51:   code: "",
+2026-07-17T22:25:51: }
+2026-07-17T22:42:25: Failed to fetch queue {
+2026-07-17T22:42:25:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T22:42:25:   details: "",
+2026-07-17T22:42:25:   hint: "",
+2026-07-17T22:42:25:   code: "",
+2026-07-17T22:42:25: }
+2026-07-17T22:59:32: Failed to fetch queue {
+2026-07-17T22:59:32:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T22:59:32:   details: "",
+2026-07-17T22:59:32:   hint: "",
+2026-07-17T22:59:32:   code: "",
+2026-07-17T22:59:32: }
+2026-07-17T23:17:22: Failed to fetch queue {
+2026-07-17T23:17:22:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T23:17:22:   details: "",
+2026-07-17T23:17:22:   hint: "",
+2026-07-17T23:17:22:   code: "",
+2026-07-17T23:17:22: }
+2026-07-17T23:45:21: Failed to fetch queue {
+2026-07-17T23:45:21:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-17T23:45:21:   details: "",
+2026-07-17T23:45:21:   hint: "",
+2026-07-17T23:45:21:   code: "",
+2026-07-17T23:45:21: }
+2026-07-18T00:45:29: Cardrush fetch error for FS01-06-p2: error: Unable to connect. Is the computer able to access the url?
+2026-07-18T00:45:29:   path: "https://www.cardrush-db.jp/product-list?keyword=FS01-06",
+2026-07-18T00:45:29:  errno: 0,
+2026-07-18T00:45:29:   code: "ConnectionRefused"
+2026-07-18T00:45:29: 
+2026-07-18T00:45:29:       at async fetchCardrushData (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/cardrush.ts:5:319)
+2026-07-18T00:45:29:       at async fetchCardrushPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/cardrush.ts:58:34)
+2026-07-18T00:45:29:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-dbfw.ts:27:46)
+2026-07-18T00:45:29: 
+2026-07-18T08:38:08: Cardrush fetch error for FB01-125: DOMException {
+2026-07-18T08:38:08:   stack: "",
+2026-07-18T08:38:08:   code: 23,
+2026-07-18T08:38:08:   name: "TimeoutError",
+2026-07-18T08:38:08:   message: "The operation timed out.",
+2026-07-18T08:38:08:   INDEX_SIZE_ERR: 1,
+2026-07-18T08:38:08:   DOMSTRING_SIZE_ERR: 2,
+2026-07-18T08:38:08:   HIERARCHY_REQUEST_ERR: 3,
+2026-07-18T08:38:08:   WRONG_DOCUMENT_ERR: 4,
+2026-07-18T08:38:08:   INVALID_CHARACTER_ERR: 5,
+2026-07-18T08:38:08:   NO_DATA_ALLOWED_ERR: 6,
+2026-07-18T08:38:08:   NO_MODIFICATION_ALLOWED_ERR: 7,
+2026-07-18T08:38:08:   NOT_FOUND_ERR: 8,
+2026-07-18T08:38:08:   NOT_SUPPORTED_ERR: 9,
+2026-07-18T08:38:08:   INUSE_ATTRIBUTE_ERR: 10,
+2026-07-18T08:38:08:   INVALID_STATE_ERR: 11,
+2026-07-18T08:38:08:   SYNTAX_ERR: 12,
+2026-07-18T08:38:08:   INVALID_MODIFICATION_ERR: 13,
+2026-07-18T08:38:08:   NAMESPACE_ERR: 14,
+2026-07-18T08:38:08:   INVALID_ACCESS_ERR: 15,
+2026-07-18T08:38:08:   VALIDATION_ERR: 16,
+2026-07-18T08:38:08:   TYPE_MISMATCH_ERR: 17,
+2026-07-18T08:38:08:   SECURITY_ERR: 18,
+2026-07-18T08:38:08:   NETWORK_ERR: 19,
+2026-07-18T08:38:08:   ABORT_ERR: 20,
+2026-07-18T08:38:08:   URL_MISMATCH_ERR: 21,
+2026-07-18T08:38:08:   QUOTA_EXCEEDED_ERR: 22,
+2026-07-18T08:38:08:   TIMEOUT_ERR: 23,
+2026-07-18T08:38:08:   INVALID_NODE_TYPE_ERR: 24,
+2026-07-18T08:38:08:   DATA_CLONE_ERR: 25,
+2026-07-18T08:38:08:   toString: [Function: toString],
+2026-07-18T08:38:08: }
+2026-07-18T09:21:02: Cardrush fetch error for FB04-057: error: The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()
+2026-07-18T09:21:02:   path: "https://www.cardrush-db.jp/product-list?keyword=FB04-057",
+2026-07-18T09:21:02:  errno: 0,
+2026-07-18T09:21:02:   code: "ECONNRESET"
+2026-07-18T09:21:02: 
+2026-07-18T09:21:02:       at async fetchCardrushData (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/cardrush.ts:5:319)
+2026-07-18T09:21:02:       at async fetchCardrushPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/cardrush.ts:58:34)
+2026-07-18T09:21:02:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-dbfw.ts:27:46)
+2026-07-18T09:21:02: 
+2026-07-18T11:39:31: Cardrush fetch error for FB02-048: DOMException {
+2026-07-18T11:39:31:   stack: "",
+2026-07-18T11:39:31:   code: 23,
+2026-07-18T11:39:31:   name: "TimeoutError",
+2026-07-18T11:39:31:   message: "The operation timed out.",
+2026-07-18T11:39:31:   INDEX_SIZE_ERR: 1,
+2026-07-18T11:39:31:   DOMSTRING_SIZE_ERR: 2,
+2026-07-18T11:39:31:   HIERARCHY_REQUEST_ERR: 3,
+2026-07-18T11:39:31:   WRONG_DOCUMENT_ERR: 4,
+2026-07-18T11:39:31:   INVALID_CHARACTER_ERR: 5,
+2026-07-18T11:39:31:   NO_DATA_ALLOWED_ERR: 6,
+2026-07-18T11:39:31:   NO_MODIFICATION_ALLOWED_ERR: 7,
+2026-07-18T11:39:31:   NOT_FOUND_ERR: 8,
+2026-07-18T11:39:31:   NOT_SUPPORTED_ERR: 9,
+2026-07-18T11:39:31:   INUSE_ATTRIBUTE_ERR: 10,
+2026-07-18T11:39:31:   INVALID_STATE_ERR: 11,
+2026-07-18T11:39:31:   SYNTAX_ERR: 12,
+2026-07-18T11:39:31:   INVALID_MODIFICATION_ERR: 13,
+2026-07-18T11:39:31:   NAMESPACE_ERR: 14,
+2026-07-18T11:39:31:   INVALID_ACCESS_ERR: 15,
+2026-07-18T11:39:31:   VALIDATION_ERR: 16,
+2026-07-18T11:39:31:   TYPE_MISMATCH_ERR: 17,
+2026-07-18T11:39:31:   SECURITY_ERR: 18,
+2026-07-18T11:39:31:   NETWORK_ERR: 19,
+2026-07-18T11:39:31:   ABORT_ERR: 20,
+2026-07-18T11:39:31:   URL_MISMATCH_ERR: 21,
+2026-07-18T11:39:31:   QUOTA_EXCEEDED_ERR: 22,
+2026-07-18T11:39:31:   TIMEOUT_ERR: 23,
+2026-07-18T11:39:31:   INVALID_NODE_TYPE_ERR: 24,
+2026-07-18T11:39:31:   DATA_CLONE_ERR: 25,
+2026-07-18T11:39:31:   toString: [Function: toString],
+2026-07-18T11:39:31: }
+2026-07-18T14:44:48: [DBFW] Failed to insert cardrush price for FP-033: {
+2026-07-18T14:44:48:   message: "TimeoutError: The operation timed out.",
+2026-07-18T14:44:48:   details: "",
+2026-07-18T14:44:48:   hint: "",
+2026-07-18T14:44:48:   code: "",
+2026-07-18T14:44:48: }
+2026-07-19T11:47:37: Cardrush fetch error for FB04-072-p4: DOMException {
+2026-07-19T11:47:37:   stack: "",
+2026-07-19T11:47:37:   code: 23,
+2026-07-19T11:47:37:   name: "TimeoutError",
+2026-07-19T11:47:37:   message: "The operation timed out.",
+2026-07-19T11:47:37:   INDEX_SIZE_ERR: 1,
+2026-07-19T11:47:37:   DOMSTRING_SIZE_ERR: 2,
+2026-07-19T11:47:37:   HIERARCHY_REQUEST_ERR: 3,
+2026-07-19T11:47:37:   WRONG_DOCUMENT_ERR: 4,
+2026-07-19T11:47:37:   INVALID_CHARACTER_ERR: 5,
+2026-07-19T11:47:37:   NO_DATA_ALLOWED_ERR: 6,
+2026-07-19T11:47:37:   NO_MODIFICATION_ALLOWED_ERR: 7,
+2026-07-19T11:47:37:   NOT_FOUND_ERR: 8,
+2026-07-19T11:47:37:   NOT_SUPPORTED_ERR: 9,
+2026-07-19T11:47:37:   INUSE_ATTRIBUTE_ERR: 10,
+2026-07-19T11:47:37:   INVALID_STATE_ERR: 11,
+2026-07-19T11:47:37:   SYNTAX_ERR: 12,
+2026-07-19T11:47:37:   INVALID_MODIFICATION_ERR: 13,
+2026-07-19T11:47:37:   NAMESPACE_ERR: 14,
+2026-07-19T11:47:37:   INVALID_ACCESS_ERR: 15,
+2026-07-19T11:47:37:   VALIDATION_ERR: 16,
+2026-07-19T11:47:37:   TYPE_MISMATCH_ERR: 17,
+2026-07-19T11:47:37:   SECURITY_ERR: 18,
+2026-07-19T11:47:37:   NETWORK_ERR: 19,
+2026-07-19T11:47:37:   ABORT_ERR: 20,
+2026-07-19T11:47:37:   URL_MISMATCH_ERR: 21,
+2026-07-19T11:47:37:   QUOTA_EXCEEDED_ERR: 22,
+2026-07-19T11:47:37:   TIMEOUT_ERR: 23,
+2026-07-19T11:47:37:   INVALID_NODE_TYPE_ERR: 24,
+2026-07-19T11:47:37:   DATA_CLONE_ERR: 25,
+2026-07-19T11:47:37:   toString: [Function: toString],
+2026-07-19T11:47:37: }
+2026-07-19T20:54:04: Cardrush fetch error for FB03-050: DOMException {
+2026-07-19T20:54:04:   stack: "",
+2026-07-19T20:54:04:   code: 23,
+2026-07-19T20:54:04:   name: "TimeoutError",
+2026-07-19T20:54:04:   message: "The operation timed out.",
+2026-07-19T20:54:04:   INDEX_SIZE_ERR: 1,
+2026-07-19T20:54:04:   DOMSTRING_SIZE_ERR: 2,
+2026-07-19T20:54:04:   HIERARCHY_REQUEST_ERR: 3,
+2026-07-19T20:54:04:   WRONG_DOCUMENT_ERR: 4,
+2026-07-19T20:54:04:   INVALID_CHARACTER_ERR: 5,
+2026-07-19T20:54:04:   NO_DATA_ALLOWED_ERR: 6,
+2026-07-19T20:54:04:   NO_MODIFICATION_ALLOWED_ERR: 7,
+2026-07-19T20:54:04:   NOT_FOUND_ERR: 8,
+2026-07-19T20:54:04:   NOT_SUPPORTED_ERR: 9,
+2026-07-19T20:54:04:   INUSE_ATTRIBUTE_ERR: 10,
+2026-07-19T20:54:04:   INVALID_STATE_ERR: 11,
+2026-07-19T20:54:04:   SYNTAX_ERR: 12,
+2026-07-19T20:54:04:   INVALID_MODIFICATION_ERR: 13,
+2026-07-19T20:54:04:   NAMESPACE_ERR: 14,
+2026-07-19T20:54:04:   INVALID_ACCESS_ERR: 15,
+2026-07-19T20:54:04:   VALIDATION_ERR: 16,
+2026-07-19T20:54:04:   TYPE_MISMATCH_ERR: 17,
+2026-07-19T20:54:04:   SECURITY_ERR: 18,
+2026-07-19T20:54:04:   NETWORK_ERR: 19,
+2026-07-19T20:54:04:   ABORT_ERR: 20,
+2026-07-19T20:54:04:   URL_MISMATCH_ERR: 21,
+2026-07-19T20:54:04:   QUOTA_EXCEEDED_ERR: 22,
+2026-07-19T20:54:04:   TIMEOUT_ERR: 23,
+2026-07-19T20:54:04:   INVALID_NODE_TYPE_ERR: 24,
+2026-07-19T20:54:04:   DATA_CLONE_ERR: 25,
+2026-07-19T20:54:04:   toString: [Function: toString],
+2026-07-19T20:54:04: }
+2026-07-19T22:06:52: Failed to fetch queue {
+2026-07-19T22:06:52:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-19T22:06:52:   details: "",
+2026-07-19T22:06:52:   hint: "",
+2026-07-19T22:06:52:   code: "",
+2026-07-19T22:06:52: }
+2026-07-19T22:24:09: Cardrush fetch error for FB02-055: error: Unable to connect. Is the computer able to access the url?
+2026-07-19T22:24:09:   path: "https://www.cardrush-db.jp/product-list?keyword=FB02-055",
+2026-07-19T22:24:09:  errno: 0,
+2026-07-19T22:24:09:   code: "ConnectionRefused"
+2026-07-19T22:24:09: 
+2026-07-19T22:24:09:       at async fetchCardrushData (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/cardrush.ts:5:319)
+2026-07-19T22:24:09:       at async fetchCardrushPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/cardrush.ts:58:34)
+2026-07-19T22:24:09:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-dbfw.ts:27:46)
+2026-07-19T22:24:09: 
+2026-07-20T00:16:12: Cardrush fetch error for E-01: DOMException {
+2026-07-20T00:16:12:   stack: "",
+2026-07-20T00:16:12:   code: 23,
+2026-07-20T00:16:12:   name: "TimeoutError",
+2026-07-20T00:16:12:   message: "The operation timed out.",
+2026-07-20T00:16:12:   INDEX_SIZE_ERR: 1,
+2026-07-20T00:16:12:   DOMSTRING_SIZE_ERR: 2,
+2026-07-20T00:16:12:   HIERARCHY_REQUEST_ERR: 3,
+2026-07-20T00:16:12:   WRONG_DOCUMENT_ERR: 4,
+2026-07-20T00:16:12:   INVALID_CHARACTER_ERR: 5,
+2026-07-20T00:16:12:   NO_DATA_ALLOWED_ERR: 6,
+2026-07-20T00:16:12:   NO_MODIFICATION_ALLOWED_ERR: 7,
+2026-07-20T00:16:12:   NOT_FOUND_ERR: 8,
+2026-07-20T00:16:12:   NOT_SUPPORTED_ERR: 9,
+2026-07-20T00:16:12:   INUSE_ATTRIBUTE_ERR: 10,
+2026-07-20T00:16:12:   INVALID_STATE_ERR: 11,
+2026-07-20T00:16:12:   SYNTAX_ERR: 12,
+2026-07-20T00:16:12:   INVALID_MODIFICATION_ERR: 13,
+2026-07-20T00:16:12:   NAMESPACE_ERR: 14,
+2026-07-20T00:16:12:   INVALID_ACCESS_ERR: 15,
+2026-07-20T00:16:12:   VALIDATION_ERR: 16,
+2026-07-20T00:16:12:   TYPE_MISMATCH_ERR: 17,
+2026-07-20T00:16:12:   SECURITY_ERR: 18,
+2026-07-20T00:16:12:   NETWORK_ERR: 19,
+2026-07-20T00:16:12:   ABORT_ERR: 20,
+2026-07-20T00:16:12:   URL_MISMATCH_ERR: 21,
+2026-07-20T00:16:12:   QUOTA_EXCEEDED_ERR: 22,
+2026-07-20T00:16:12:   TIMEOUT_ERR: 23,
+2026-07-20T00:16:12:   INVALID_NODE_TYPE_ERR: 24,
+2026-07-20T00:16:12:   DATA_CLONE_ERR: 25,
+2026-07-20T00:16:12:   toString: [Function: toString],
+2026-07-20T00:16:12: }
+2026-07-20T14:33:10: Failed to fetch queue {
+2026-07-20T14:33:10:   message: "TimeoutError: The operation timed out.",
+2026-07-20T14:33:10:   details: "",
+2026-07-20T14:33:10:   hint: "",
+2026-07-20T14:33:10:   code: "",
+2026-07-20T14:33:10: }
