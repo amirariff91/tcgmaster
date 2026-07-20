@@ -70,7 +70,34 @@ async function run() {
         .from('cards')
         .update(updatePayload)
         .eq('id', card.id);
-        
+
+      // Also update price_cache table for fast reads
+      const cacheRawPrices: Record<string, number> = {};
+      const cacheGradedPrices: Record<string, Record<string, number>> = {};
+      
+      for (const res of results) {
+        if (res.grade === 'raw') {
+          cacheRawPrices[res.source] = res.price;
+        } else {
+          if (!cacheGradedPrices[res.grade]) cacheGradedPrices[res.grade] = {};
+          cacheGradedPrices[res.grade][res.source] = res.price;
+        }
+      }
+      
+      const rawVals = Object.values(cacheRawPrices);
+      if (rawVals.length > 0) {
+        cacheRawPrices.market = Math.min(...rawVals);
+      }
+      
+      await supabase.from('price_cache').upsert({
+        card_id: card.id,
+        variant_id: null,
+        raw_prices: cacheRawPrices,
+        graded_prices: cacheGradedPrices,
+        fetched_at: new Date().toISOString(),
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+      }, { onConflict: 'card_id' }).catch(() => null);
+
       for (const result of results) {
         const { error: insertError } = await supabase
           .from('price_history')
