@@ -113,7 +113,7 @@ async function run() {
         graded_prices: cacheGradedPrices,
         fetched_at: new Date().toISOString(),
         expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-      }, { onConflict: 'card_id' }).catch(() => null);
+      }, { onConflict: 'card_id' });
 
       for (const result of results) {
         const { error: insertError } = await supabase
