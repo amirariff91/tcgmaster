@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { Activity, Database, Sparkles, Trophy, ExternalLink, BarChart3, Bot, Terminal } from 'lucide-react';
 import { formatDistanceToNow, formatDistanceToNowStrict } from 'date-fns';
 import Link from 'next/link';
-import { HealthAreaChart, HealthBarChart } from '@/components/admin/health-charts';
+import { PriceChart } from '@/components/charts/price-chart';
 
 export const metadata: Metadata = {
   title: 'Mission Control | TCGMaster Admin',
@@ -47,37 +47,14 @@ export default async function AdminHealthDashboard() {
   const priceCoverage = totalCards && totalCards > 0 ? Math.round(((cachedPrices || 0) / totalCards) * 100) : 0;
   const artistCoverage = totalCards && totalCards > 0 ? Math.round(((cardsWithArtist || 0) / totalCards) * 100) : 0;
 
-  // 2. Fetch Chart Data (Fast Aggregation)
-  const { data: cacheDates } = await supabase.from('price_cache').select('fetched_at').order('fetched_at', { ascending: false }).limit(2000);
-  const cacheMap: Record<string, number> = {};
-  cacheDates?.forEach(r => {
-    if (!r.fetched_at) return;
-    const d = new Date(r.fetched_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    cacheMap[d] = (cacheMap[d] || 0) + 1;
-  });
-  const cacheChartData = Object.entries(cacheMap).map(([name, count]) => ({ name, count })).reverse();
+  // Pre-calculate last 7 days for activity graphs
+  const last7Days = Array.from({length: 7}, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    return d.toISOString().split('T')[0];
+  }).reverse(); // chronological order
 
-  const { data: tourneyDates } = await supabase.from('tournaments').select('date').order('date', { ascending: false }).limit(1000);
-  const tourneyMap: Record<string, number> = {};
-  tourneyDates?.forEach(r => {
-    if (!r.date) return;
-    const d = new Date(r.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    tourneyMap[d] = (tourneyMap[d] || 0) + 1;
-  });
-  const tourneyChartData = Object.entries(tourneyMap).map(([name, count]) => ({ name, count })).reverse();
-
-  const { data: artistDates } = await supabase.from('cards').select('updated_at').not('artist', 'is', null).order('updated_at', { ascending: true }).limit(5000);
-  const artistMap: Record<string, number> = {};
-  let cumulativeArtists = 0;
-  artistDates?.forEach(r => {
-    if (!r.updated_at) return;
-    const d = new Date(r.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    cumulativeArtists += 1;
-    artistMap[d] = cumulativeArtists;
-  });
-  const artistChartData = Object.entries(artistMap).map(([name, count]) => ({ name, count }));
-
-  // 3. Fetch Games & Game-Specific Scraper Data
+  // 2. Fetch Games & Game-Specific Scraper Data
   const { data: games } = await supabase.from('games').select('id, name, slug');
 
   const gameDiagnostics = games ? await Promise.all(games.map(async (game) => {
@@ -89,9 +66,10 @@ export default async function AdminHealthDashboard() {
     const { count: cardrushConfigured } = await supabase.from('cards').select('*, sets!inner(game_id)', { count: 'exact', head: true }).eq('sets.game_id', game.id).not('cardrush_url', 'is', null);
     const { count: tcgPlayerConfigured } = await supabase.from('cards').select('*, sets!inner(game_id)', { count: 'exact', head: true }).eq('sets.game_id', game.id).not('tcg_player_id', 'is', null);
 
-    // Heartbeats and Live Feeds
+    // Heartbeats, Live Feeds, and 7-Day Activity Volume
     const sources = ['snkrdunk', 'yuyutei', 'tcgplayer', 'cardrush'];
     const heartbeats = await Promise.all(sources.map(async (source) => {
+      // A: Fetch 5 recent logs
       const { data: logsData } = await supabase
         .from('price_history')
         .select(`
@@ -115,11 +93,30 @@ export default async function AdminHealthDashboard() {
       const date = dateStr ? new Date(dateStr) : null;
       const isHealthy = date ? (new Date().getTime() - date.getTime()) < 1000 * 60 * 60 * 24 : false; // < 24h
       
+      // B: Fetch 7-day activity counts in parallel
+      const dailyCounts = await Promise.all(last7Days.map(async (dateStr) => {
+        const nextDate = new Date(dateStr);
+        nextDate.setDate(nextDate.getDate() + 1);
+        const { count } = await supabase
+          .from('price_history')
+          .select('id, cards!inner(sets!inner(game_id))', { count: 'exact', head: true })
+          .eq('source', source)
+          .eq('cards.sets.game_id', game.id)
+          .gte('recorded_at', dateStr)
+          .lt('recorded_at', nextDate.toISOString().split('T')[0]);
+          
+        return {
+          date: dateStr,
+          price: count || 0 // Map to 'price' so PriceChart can render it perfectly
+        };
+      }));
+
       return {
         source,
         date,
         isHealthy,
-        logs
+        logs,
+        activityChart: dailyCounts
       };
     }));
 
@@ -171,9 +168,9 @@ export default async function AdminHealthDashboard() {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             
-            <div className="bg-[#0b1329] border border-white/10 rounded-2xl shadow-xl relative overflow-hidden flex flex-col h-64">
+            <div className="bg-[#0b1329] border border-white/10 rounded-2xl p-6 shadow-xl relative overflow-hidden">
               <div className="absolute top-0 right-0 p-6 opacity-5"><Database className="w-24 h-24 text-emerald-400" /></div>
-              <div className="relative z-10 space-y-4 p-6 pb-2">
+              <div className="relative z-10 space-y-4">
                 <div className="flex items-center gap-3 mb-2">
                   <div className={`w-3 h-3 rounded-full ${priceCoverage > 90 ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]'}`} />
                   <h2 className="text-lg font-bold text-white">Price Cache Integrity</h2>
@@ -186,14 +183,11 @@ export default async function AdminHealthDashboard() {
                   <p className="text-xs font-medium text-zinc-400 mt-1">{cachedPrices?.toLocaleString()} / {totalCards?.toLocaleString()} cards cached</p>
                 </div>
               </div>
-              <div className="mt-auto h-24 w-full opacity-70">
-                <HealthAreaChart data={cacheChartData} color="#10b981" />
-              </div>
             </div>
 
-            <div className="bg-[#0b1329] border border-white/10 rounded-2xl shadow-xl relative overflow-hidden flex flex-col h-64">
+            <div className="bg-[#0b1329] border border-white/10 rounded-2xl p-6 shadow-xl relative overflow-hidden">
               <div className="absolute top-0 right-0 p-6 opacity-5"><Trophy className="w-24 h-24 text-amber-400" /></div>
-              <div className="relative z-10 space-y-4 p-6 pb-2">
+              <div className="relative z-10 space-y-4">
                 <div className="flex items-center gap-3 mb-2">
                   <div className="w-3 h-3 rounded-full bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]" />
                   <h2 className="text-lg font-bold text-white">Tournaments (Limitless)</h2>
@@ -206,14 +200,11 @@ export default async function AdminHealthDashboard() {
                   <p className="text-xs font-medium text-zinc-400 mt-1">{totalTourneys?.toLocaleString()} Events • {totalDecks?.toLocaleString()} Decks</p>
                 </div>
               </div>
-              <div className="mt-auto h-24 w-full opacity-70">
-                <HealthBarChart data={tourneyChartData} color="#f59e0b" />
-              </div>
             </div>
 
-            <div className="bg-[#0b1329] border border-white/10 rounded-2xl shadow-xl relative overflow-hidden flex flex-col h-64">
+            <div className="bg-[#0b1329] border border-white/10 rounded-2xl p-6 shadow-xl relative overflow-hidden">
               <div className="absolute top-0 right-0 p-6 opacity-5"><Sparkles className="w-24 h-24 text-purple-400" /></div>
-              <div className="relative z-10 space-y-4 p-6 pb-2">
+              <div className="relative z-10 space-y-4">
                 <div className="flex items-center gap-3 mb-2">
                   <div className={`w-3 h-3 rounded-full ${artistCoverage > 50 ? 'bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]' : 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]'}`} />
                   <h2 className="text-lg font-bold text-white">AI Enrichment (Gemini)</h2>
@@ -225,9 +216,6 @@ export default async function AdminHealthDashboard() {
                   </p>
                   <p className="text-xs font-medium text-zinc-400 mt-1">{cardsWithArtist?.toLocaleString()} / {totalCards?.toLocaleString()} cards enriched</p>
                 </div>
-              </div>
-              <div className="mt-auto h-24 w-full opacity-70">
-                <HealthAreaChart data={artistChartData} color="#a855f7" />
               </div>
             </div>
 
@@ -279,6 +267,17 @@ export default async function AdminHealthDashboard() {
                               {hb?.date ? formatDistanceToNow(hb.date, { addSuffix: true }) : 'Stalled'}
                             </p>
                           </div>
+                        </div>
+
+                        {/* 7-Day Activity Chart */}
+                        <div className="mb-6 h-[80px]">
+                          <PriceChart 
+                            data={hb?.activityChart || []} 
+                            height={80} 
+                            showGradient={true}
+                            variant="recharts"
+                            className="-ml-2 pointer-events-none" // Disable tooltip interaction for the mini-chart
+                          />
                         </div>
 
                         {/* Configuration Coverage */}
