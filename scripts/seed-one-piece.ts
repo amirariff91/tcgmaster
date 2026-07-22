@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { storeCardImage } from '../lib/images/r2';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SECRET_KEY; // Service role key
@@ -71,23 +72,8 @@ async function uploadImage(url: string, path: string): Promise<string | null> {
     const arrayBuffer = await res.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     
-    const { data, error } = await supabase.storage
-      .from('card-images')
-      .upload(path, buffer, {
-        upsert: true,
-        contentType: 'image/png' // One Piece is usually PNG from that site
-      });
-      
-    if (error) {
-      console.error('Error uploading image to storage:', error.message);
-      return null;
-    }
-    
-    const { data: publicUrlData } = supabase.storage
-      .from('card-images')
-      .getPublicUrl(path);
-      
-    return publicUrlData.publicUrl;
+    // R2 (preferred) or Supabase Storage fallback — same object key on both.
+    return await storeCardImage({ key: path, body: buffer, contentType: 'image/png', supabase, bucket: 'card-images' });
   } catch (error) {
     console.error('Exception uploading image:', error);
     return null;

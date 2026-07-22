@@ -9,6 +9,7 @@
  * Run:  bun run scripts/backfill-don-images.ts
  */
 import { createClient } from '@supabase/supabase-js';
+import { storeCardImage } from '../lib/images/r2';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SECRET_KEY;
@@ -46,16 +47,17 @@ async function backfillOne(card: { id: string; number: string }): Promise<{ ok: 
     if (bytes.byteLength < MIN_BYTES) return { ok: false, reason: `too small (${bytes.byteLength}b, likely placeholder)` };
 
     const path = `cards/${card.id}.jpg`;
-    const { error: upErr } = await supabase.storage
-      .from(BUCKET)
-      .upload(path, bytes, { contentType, upsert: true });
-    if (upErr) return { ok: false, reason: `upload: ${upErr.message}` };
+    let publicUrl: string;
+    try {
+      publicUrl = await storeCardImage({ key: path, body: bytes, contentType, supabase, bucket: BUCKET });
+    } catch (e) {
+      return { ok: false, reason: `upload: ${e instanceof Error ? e.message : String(e)}` };
+    }
 
-    const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(path);
     const { error: updErr } = await supabase
       .from('cards')
       .update({
-        local_image_url: urlData.publicUrl,
+        local_image_url: publicUrl,
         image_url: url,
         image_fetched_at: new Date().toISOString(),
       })

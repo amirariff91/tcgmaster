@@ -7,6 +7,7 @@
  * Run:  bun run scripts/backfill-images.ts
  */
 import { createClient } from '@supabase/supabase-js';
+import { storeCardImage } from '../lib/images/r2';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SECRET_KEY; // service role — bypasses RLS
@@ -42,16 +43,16 @@ async function backfillOne(card: { id: string; image_url: string }): Promise<{ o
     const bytes = new Uint8Array(await res.arrayBuffer());
     const path = `cards/${card.id}.${ext}`;
 
-    const { error: upErr } = await supabase.storage
-      .from(BUCKET)
-      .upload(path, bytes, { contentType, upsert: true });
-    if (upErr) return { ok: false, reason: `upload: ${upErr.message}` };
-
-    const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(path);
+    let publicUrl: string;
+    try {
+      publicUrl = await storeCardImage({ key: path, body: bytes, contentType, supabase, bucket: BUCKET });
+    } catch (e) {
+      return { ok: false, reason: `upload: ${e instanceof Error ? e.message : String(e)}` };
+    }
 
     const { error: updErr } = await supabase
       .from('cards')
-      .update({ local_image_url: urlData.publicUrl, image_fetched_at: new Date().toISOString() })
+      .update({ local_image_url: publicUrl, image_fetched_at: new Date().toISOString() })
       .eq('id', card.id)
       .is('local_image_url', null); // stay idempotent under concurrent runs
     if (updErr) return { ok: false, reason: `db update: ${updErr.message}` };

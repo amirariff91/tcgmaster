@@ -44,3 +44,5 @@ next-env.d.ts
 # debug dumps
 *.html
 logs/
+.wrangler/
+.playwright-mcp/

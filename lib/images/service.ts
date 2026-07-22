@@ -7,6 +7,7 @@
 import { createServerClient } from '@/lib/supabase/client';
 import { getPokemonTCGClient } from '@/lib/pokemon-tcg/client';
 import { SET_ID_MAP } from '@/lib/pokemon-tcg/types';
+import { storeCardImage } from '@/lib/images/r2';
 
 const STORAGE_BUCKET = 'card-images';
 
@@ -188,27 +189,11 @@ async function downloadAndStoreImage(
   const extension = contentType.includes('jpeg') || contentType.includes('jpg') ? 'jpg' : 'png';
   const blob = await response.blob();
 
-  // Generate storage path
+  // Generate storage path (identical key on R2 or Supabase)
   const storagePath = `cards/${cardId}.${extension}`;
 
-  // Upload to Supabase Storage
-  const { error } = await supabase.storage
-    .from(STORAGE_BUCKET)
-    .upload(storagePath, blob, {
-      contentType,
-      upsert: true,
-    });
-
-  if (error) {
-    throw new Error(`Failed to upload image: ${error.message}`);
-  }
-
-  // Get public URL
-  const { data: urlData } = supabase.storage
-    .from(STORAGE_BUCKET)
-    .getPublicUrl(storagePath);
-
-  return urlData.publicUrl;
+  // Store to R2 (preferred) or Supabase Storage fallback; returns the public URL.
+  return storeCardImage({ key: storagePath, body: blob, contentType, supabase, bucket: STORAGE_BUCKET });
 }
 
 /**
@@ -240,28 +225,16 @@ async function downloadAndStoreWithVariants(
     large: '',
   };
 
-  // Upload the large variant (original)
+  // Upload the large variant (original) to R2 (preferred) or Supabase fallback.
   const largePath = `cards/${cardId}/large.${extension}`;
-  const { error: largeError } = await supabase.storage
-    .from(STORAGE_BUCKET)
-    .upload(largePath, arrayBuffer, {
-      contentType,
-      upsert: true,
-    });
+  variants.large = await storeCardImage({
+    key: largePath, body: arrayBuffer, contentType, supabase, bucket: STORAGE_BUCKET,
+  });
 
-  if (largeError) {
-    throw new Error(`Failed to upload large image: ${largeError.message}`);
-  }
-
-  const { data: largeUrl } = supabase.storage
-    .from(STORAGE_BUCKET)
-    .getPublicUrl(largePath);
-  variants.large = largeUrl.publicUrl;
-
-  // For medium and thumbnail, use Supabase image transforms if available
-  // Otherwise, store the same image (can be resized via URL params if using Supabase Pro)
-  variants.medium = `${largeUrl.publicUrl}?width=${IMAGE_SIZES.medium}`;
-  variants.thumbnail = `${largeUrl.publicUrl}?width=${IMAGE_SIZES.thumbnail}`;
+  // Medium and thumbnail reference the same object; the CF Image Transformations loader
+  // (or the next/image loader) handles actual resizing at the edge.
+  variants.medium = `${variants.large}?width=${IMAGE_SIZES.medium}`;
+  variants.thumbnail = `${variants.large}?width=${IMAGE_SIZES.thumbnail}`;
 
   return variants;
 }
