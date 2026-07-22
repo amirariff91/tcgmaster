@@ -4,6 +4,7 @@ import * as React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Search, X, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { cdnImageUrl } from '@/lib/images/cloudflare-loader';
 import { useDebounce } from '@/hooks/use-debounce';
 import type { SearchResult } from '@/types';
 
@@ -164,7 +165,7 @@ export function SearchBar({
                   >
                     {result.image_url ? (
                       <img
-                        src={result.image_url}
+                        src={cdnImageUrl(result.image_url, 80) ?? undefined}
                         alt={result.name}
                         className="h-12 w-10 rounded object-cover"
                       />

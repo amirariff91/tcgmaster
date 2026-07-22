@@ -29,6 +29,12 @@ COPY . .
 # Build Next.js
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+# NEXT_PUBLIC_* is inlined into the client bundle at BUILD time. The card-image CDN loader
+# reads NEXT_PUBLIC_IMAGE_CDN, so it must be present HERE (set as a Coolify BUILD variable,
+# e.g. https://images.tcgmaster.com) and the image rebuilt to flip delivery on/off.
+# Unset (default) → card images use the built-in optimizer / pass-through, no CDN.
+ARG NEXT_PUBLIC_IMAGE_CDN
+ENV NEXT_PUBLIC_IMAGE_CDN=$NEXT_PUBLIC_IMAGE_CDN
 RUN npm run build
 
 # Production image

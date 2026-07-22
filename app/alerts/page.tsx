@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
+import { cdnImageUrl } from '@/lib/images/cloudflare-loader';
 import {
   Bell,
   BellOff,
@@ -374,7 +375,7 @@ function CreateAlertModal({ isOpen, onClose, onCreated }: CreateAlertModalProps)
                   <div className="h-12 w-9 flex-shrink-0 rounded bg-zinc-100 overflow-hidden">
                     {card.image_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={card.image_url} alt={card.name} className="h-full w-full object-cover" />
+                      <img src={cdnImageUrl(card.image_url, 80) ?? undefined} alt={card.name} className="h-full w-full object-cover" />
                     ) : (
                       <div className="h-full w-full bg-zinc-200" />
                     )}
@@ -665,7 +666,7 @@ export default function AlertsPage() {
                           <div className="flex h-14 w-10 items-center justify-center rounded bg-zinc-100 overflow-hidden flex-shrink-0">
                             {card.imageUrl ? (
                               // eslint-disable-next-line @next/next/no-img-element
-                              <img src={card.imageUrl} alt={card.name} className="h-full w-full object-cover" />
+                              <img src={cdnImageUrl(card.imageUrl, 80) ?? undefined} alt={card.name} className="h-full w-full object-cover" />
                             ) : (
                               <span className="text-lg font-bold text-zinc-400">?</span>
                             )}

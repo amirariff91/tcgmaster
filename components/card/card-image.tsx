@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import Image from 'next/image';
+import cloudflareImageLoader, { isImageCdnEnabled } from '@/lib/images/cloudflare-loader';
 import { cn } from '@/lib/utils';
 
 interface CardImageProps {
@@ -148,7 +149,8 @@ export function CardImage({
         priority={priority}
         placeholder={blurDataURL ? 'blur' : 'empty'}
         blurDataURL={blurDataURL || DEFAULT_BLUR_PLACEHOLDER}
-        unoptimized={src.startsWith('http')}
+        loader={cloudflareImageLoader}
+        unoptimized={!isImageCdnEnabled}
         onLoad={() => setLoadingState('loaded')}
         onError={() => setLoadingState('error')}
         className={cn(
@@ -260,7 +262,8 @@ export function CardThumbnail({ src, alt, className, name }: CardThumbnailProps)
         height={56}
         onError={() => setHasError(true)}
         className="h-full w-full object-cover"
-        unoptimized={src.startsWith('http')}
+        loader={cloudflareImageLoader}
+        unoptimized={!isImageCdnEnabled}
       />
     </div>
   );
