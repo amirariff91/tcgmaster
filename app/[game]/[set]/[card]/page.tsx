@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import { Bell, Plus, Share2, Info, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -156,6 +156,30 @@ async function getCardData(gameSlug: string, setSlug: string, cardSlug: string):
   return card as unknown as CardData;
 }
 
+// Retired `one-piece-<code>` slugs (deduped 2026-07-22, merged into `op-<code>`) resolve
+// to their canonical `op-<code>` card so old/indexed URLs 308-redirect instead of 404.
+async function resolveRetiredOnePieceSlug(
+  gameSlug: string,
+  cardSlug: string
+): Promise<string | null> {
+  if (!cardSlug.startsWith('one-piece-')) return null;
+  const winnerSlug = `op-${cardSlug.slice('one-piece-'.length).toLowerCase()}`;
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('cards')
+    .select('slug, sets!inner ( slug, games!inner ( slug ) )')
+    .eq('slug', winnerSlug)
+    .eq('sets.games.slug', gameSlug)
+    .single();
+
+  if (!data) return null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const setSlug = (data as any).sets?.slug as string | undefined;
+  if (!setSlug) return null;
+  return `/${gameSlug}/${setSlug}/${winnerSlug}`;
+}
+
 interface PageProps {
   params: Promise<{
     game: string;
@@ -196,6 +220,8 @@ export default async function CardDetailPage({ params }: PageProps) {
   const cardData = await getCardData(game, set, cardSlug);
 
   if (!cardData) {
+    const retired = await resolveRetiredOnePieceSlug(game, cardSlug);
+    if (retired) permanentRedirect(retired);
     notFound();
   }
 
