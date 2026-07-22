@@ -1,4 +1,4 @@
-// Currency conversion utilities with exchangerate.host API integration
+// Currency conversion utilities with open.er-api.com (free, no-key) integration
 
 export type SupportedCurrency = 'USD' | 'EUR' | 'GBP' | 'JPY' | 'CAD' | 'AUD' | 'MYR';
 
@@ -40,7 +40,7 @@ const FALLBACK_RATES: Record<SupportedCurrency, number> = {
 const CACHE_KEY = 'tcgmaster_exchange_rates';
 const CACHE_DURATION = 60 * 60 * 1000; // 1 hour in milliseconds
 
-// Fetch rates from exchangerate.host (free, no API key required)
+// Fetch rates from open.er-api.com (free, no API key required)
 export async function fetchExchangeRates(): Promise<ExchangeRates | null> {
   try {
     // Try to get from cache first
@@ -49,9 +49,12 @@ export async function fetchExchangeRates(): Promise<ExchangeRates | null> {
       return cached;
     }
 
-    // Fetch fresh rates
+    // Fetch fresh rates. exchangerate.host now requires a paid access_key and
+    // returns {success:false, error:missing_access_key} for keyless calls, so we
+    // use open.er-api.com (free, no key, includes MYR) which returns
+    // {result:"success", rates:{...}}.
     const response = await fetch(
-      'https://api.exchangerate.host/latest?base=USD&symbols=EUR,GBP,JPY,CAD,AUD,MYR',
+      'https://open.er-api.com/v6/latest/USD',
       { next: { revalidate: 3600 } } // Cache for 1 hour on server
     );
 
@@ -61,13 +64,15 @@ export async function fetchExchangeRates(): Promise<ExchangeRates | null> {
 
     const data = await response.json();
 
-    if (!data.success || !data.rates) {
+    if (data.result !== 'success' || !data.rates) {
       throw new Error('Invalid response from exchange rate API');
     }
 
     const rates: ExchangeRates = {
       base: 'USD',
-      date: data.date || new Date().toISOString().split('T')[0],
+      date: data.time_last_update_utc
+        ? new Date(data.time_last_update_utc).toISOString().split('T')[0]
+        : new Date().toISOString().split('T')[0],
       rates: {
         USD: 1,
         EUR: data.rates?.EUR ?? FALLBACK_RATES.EUR,
