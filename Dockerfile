@@ -48,6 +48,10 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
+# `next start` reads images.remotePatterns from next.config at RUNTIME. Without this,
+# the image optimizer has an empty remote allowlist and /_next/image returns
+# 400 "url parameter is not allowed" for every card image (Supabase Storage, CDNs, etc.).
+COPY --from=builder /app/next.config.ts ./next.config.ts
 
 EXPOSE 3000
 
