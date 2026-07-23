@@ -189,5 +189,25 @@ module.exports = {
       error_file: './logs/image-downloader-error.log',
       time: true,
     },
+
+    // ─────────────────────────────────────────────
+    // Snkrdunk Historical Price Backfill Worker
+    // ─────────────────────────────────────────────
+    {
+      name: 'historical-snkrdunk',
+      script: 'bun',
+      args: 'run scripts/historical-snkrdunk-worker.ts',
+      env: {
+        SAFE_MODE: SAFE_MODE ? '1' : '0',
+      },
+      watch: false,
+      autorestart: true,
+      restart_delay: 5000,
+      max_restarts: 50,
+      min_uptime: '10s',
+      log_file: './logs/historical-snkrdunk.log',
+      error_file: './logs/historical-snkrdunk-error.log',
+      time: true,
+    },
   ],
 };
