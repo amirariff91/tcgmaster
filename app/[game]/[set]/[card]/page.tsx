@@ -564,7 +564,8 @@ export default async function CardDetailPage({ params }: PageProps) {
                       if (s.includes('yuyutei')) return '/logos/yuyutei.png';
                       if (s.includes('cardrush')) return '/logos/cardrush.png';
                       if (s.includes('tcgplayer')) return '/logos/tcgplayer.png';
-                      if (s.includes('tcg republic')) return '/logos/tcgrepublic.png';
+                      if (s.includes('tcg republic') || s.includes('tcgrepublic')) return '/logos/tcgrepublic.png';
+                      if (s.includes('pricecharting') || s.includes('price charting') || s.includes('price_charting')) return '/logos/pricecharting.png';
                       return null;
                     };
                     const logo = getMarketLogo(item.source);
