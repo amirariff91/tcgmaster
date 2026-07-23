@@ -85,6 +85,26 @@ module.exports = {
     },
 
     // ─────────────────────────────────────────────
+    // English Dragon Ball Fusion World — TCGPlayer
+    // ─────────────────────────────────────────────
+    {
+      name: 'scraper-en-dbfw',
+      script: 'bun',
+      args: 'run scripts/price-engine/queue-english-dbfw.ts',
+      env: {
+        SAFE_MODE: SAFE_MODE ? '1' : '0',
+      },
+      watch: false,
+      autorestart: true,
+      restart_delay: 5000,
+      max_restarts: 50,
+      min_uptime: '10s',
+      log_file: './logs/scraper-en-dbfw.log',
+      error_file: './logs/scraper-en-dbfw-error.log',
+      time: true,
+    },
+
+    // ─────────────────────────────────────────────
     // Vision Artist Extractor (Ollama Cloud) — EN One Piece first
     // Runs as idle-loop: waits 5min when backlog is empty
     // Expand to JA OP + DBFW in Phase 2
