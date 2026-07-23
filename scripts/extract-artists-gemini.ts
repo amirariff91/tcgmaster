@@ -1,8 +1,9 @@
+import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
 
-// Load env automatically via bun
+const SAFE_MODE = process.env.SAFE_MODE === '1';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SECRET_KEY! || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
+const supabaseKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -14,7 +15,7 @@ if (!GEMINI_API_KEY) {
 }
 
 // Strict zero-cost safety: 1 min sleep ensures 1440 req/day (under 1500 free limit)
-const SLEEP_MS = 60000;
+const SLEEP_MS = SAFE_MODE ? 120000 : 60000;
 
 // Every OP card carries a copyright strip (e.g. "©E.O/S., T.A. BANDAI MADE IN JAPAN")
 // on the same edge as the artist credit. Cards WITHOUT a credit make vision models read
@@ -64,18 +65,13 @@ async function askVisionModel(base64Data: string, mimeType: string): Promise<str
   return text.trim() || 'Unknown';
 }
 
-/**
- * Detect MIME type from HTTP Content-Type header.
- * Falls back to 'image/jpeg' if unknown — Gemini handles JPEG/PNG/WebP fine.
- * IMPORTANT: Do NOT hardcode 'image/png' — card images are typically JPEG.
- */
 function detectMimeType(contentType: string | null): string {
   if (!contentType) return 'image/jpeg';
   if (contentType.includes('jpeg') || contentType.includes('jpg')) return 'image/jpeg';
   if (contentType.includes('png')) return 'image/png';
   if (contentType.includes('webp')) return 'image/webp';
   if (contentType.includes('gif')) return 'image/gif';
-  return 'image/jpeg'; // safe default — Gemini handles it well
+  return 'image/jpeg';
 }
 
 async function extractArtist(imageUrl: string): Promise<string | null> {
@@ -85,7 +81,6 @@ async function extractArtist(imageUrl: string): Promise<string | null> {
       const res = await fetch(imageUrl);
       if (!res.ok) throw new Error("Failed to download image");
       
-      // Detect MIME type from actual response headers (fixes the image/png hardcode bug)
       const contentType = res.headers.get('content-type');
       const mimeType = detectMimeType(contentType);
       
@@ -117,7 +112,7 @@ async function run() {
     const { data: cards, error } = await supabase
       .from('cards')
       .select('id, name, image_url, local_image_url')
-      .is('artist', null) // Only fetch cards that have NOT been processed to prevent infinite loops
+      .is('artist', null)
       .like('slug', 'op-%')
       .not('slug', 'like', '%-ja')
       .not('image_url', 'is', null)
@@ -125,14 +120,15 @@ async function run() {
       
     if (error) {
       console.error("Failed to fetch cards", error);
-      break;
+      await new Promise(r => setTimeout(r, 60000));
+      continue;
     }
     
     if (!cards || cards.length === 0) {
       console.log("No more cards to process. All EN OP artists filled or marked Unknown!");
       console.log("Sleeping 5 minutes before checking for new cards...");
       await new Promise(r => setTimeout(r, 5 * 60 * 1000));
-      continue; // Keep running as idle-loop, don't exit
+      continue;
     }
     
     console.log(`Found ${cards.length} cards to process.`);
@@ -146,7 +142,7 @@ async function run() {
       if (artist === null) {
         console.log(`-> Extraction failed (likely rate limits). Skipping DB update and waiting 5 minutes...`);
         await new Promise(r => setTimeout(r, 5 * 60 * 1000));
-        break; // Break the current batch to fetch again later
+        break;
       }
 
       console.log(`-> Extracted Artist: ${artist}`);
@@ -160,7 +156,6 @@ async function run() {
         console.error(`Failed to update ${card.name}`, updateError);
       }
       
-      // Sleep to respect Gemini rate limits (15 RPM free tier)
       console.log(`Sleeping ${SLEEP_MS / 1000}s for rate limits...`);
       await new Promise(r => setTimeout(r, SLEEP_MS));
     }

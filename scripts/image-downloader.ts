@@ -1,12 +1,9 @@
+import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
 import { getCardImageUrl } from '../lib/images/service';
 
-dotenv.config({ path: '.env.local' });
-dotenv.config({ path: '.env' });
-
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+const supabaseKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
   console.error('Missing Supabase credentials');
@@ -25,64 +22,58 @@ async function run() {
 
   while (true) {
     try {
-      // Find cards that have a Bandai/external image_url but NO local_image_url
+      // Find cards missing local images
       const { data: cards, error } = await supabase
         .from('cards')
-        .select('id, image_url')
+        .select('id, name, image_url')
         .is('local_image_url', null)
         .not('image_url', 'is', null)
-        // Don't try to download empty strings
-        .neq('image_url', '')
         .limit(BATCH_SIZE);
 
       if (error) {
-        console.error('❌ Error fetching cards from Supabase:', error.message);
-        await sleep(DELAY_BETWEEN_BATCHES_MS);
+        console.error('Error fetching cards needing images:', error);
+        await new Promise(resolve => setTimeout(resolve, DELAY_WHEN_IDLE_MS));
         continue;
       }
 
       if (!cards || cards.length === 0) {
-        console.log('✨ All cards have local images! Sleeping for 1 minute...');
-        await sleep(DELAY_WHEN_IDLE_MS);
+        console.log('No cards need image downloading. Idle sleeping for 1m...');
+        await new Promise(resolve => setTimeout(resolve, DELAY_WHEN_IDLE_MS));
         continue;
       }
 
-      console.log(`📦 Processing batch of ${cards.length} cards...`);
+      console.log(`Processing batch of ${cards.length} cards...`);
 
-      for (const card of cards) {
+      for (const card of cards as Array<{ id: string; name: string; image_url: string }>) {
         if (!card.image_url) continue;
 
         try {
-          console.log(`-> Fetching image for card ${card.id}: ${card.image_url}`);
-          // getCardImageUrl handles the download, Supabase Storage upload, and DB update!
-          const result = await getCardImageUrl(card.id, card.image_url, { forceDownload: true });
-          
-          if (result.error) {
-            console.error(`   ❌ Failed to process ${card.id}: ${result.error}`);
-          } else {
-            console.log(`   ✅ Success! Saved as ${result.url}`);
+          console.log(`Downloading image for ${card.name} (${card.id})...`);
+          const result = await getCardImageUrl(card.id, card.image_url);
+
+          if (result.isLocal) {
+            console.log(`  ✓ Successfully stored image: ${result.url}`);
+          } else if (result.error) {
+            console.warn(`  ! Failed to download: ${result.error}`);
           }
-        } catch (e) {
-          console.error(`   ❌ Crash processing ${card.id}:`, e);
+        } catch (err) {
+          console.error(`  ✗ Error processing ${card.name}:`, err);
         }
 
-        // Small delay between individual cards to be nice to the host server
-        await sleep(1000);
+        // Small delay between cards
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
 
-      // Delay before the next batch
-      console.log(`⏳ Batch complete. Waiting ${DELAY_BETWEEN_BATCHES_MS / 1000}s...`);
-      await sleep(DELAY_BETWEEN_BATCHES_MS);
-      
-    } catch (err) {
-      console.error('❌ Fatal error in worker loop:', err);
-      await sleep(DELAY_BETWEEN_BATCHES_MS);
+      console.log(`Batch complete. Waiting ${DELAY_BETWEEN_BATCHES_MS / 1000}s before next batch...`);
+      await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_BATCHES_MS));
+    } catch (loopError) {
+      console.error('Unexpected error in worker loop:', loopError);
+      await new Promise(resolve => setTimeout(resolve, DELAY_WHEN_IDLE_MS));
     }
   }
 }
 
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-run();
+run().catch(err => {
+  console.error('Fatal worker error:', err);
+  process.exit(1);
+});

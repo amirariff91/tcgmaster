@@ -1,8 +1,11 @@
+import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
 import fs from 'fs';
 import path from 'path';
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!);
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 const OLLAMA_API_KEY = process.env.OLLAMA_API_KEY;
 const OLLAMA_MODEL = process.env.OLLAMA_VISION_MODEL || 'gemma4:31b';
@@ -34,7 +37,6 @@ async function getProducts(groupId: number) {
 async function findTcgProductsForNumber(baseNumber: string) {
   const groups = await getGroups();
   let matches: any[] = [];
-  // Brute force all groups since we just need to find the products
   for (const g of groups) {
     const products = await getProducts(g.groupId);
     const m = products.filter((p: any) => p.extendedData?.find((d: any) => d.name === 'Number')?.value === baseNumber);
@@ -104,61 +106,65 @@ Return ONLY the numeric product ID. If none match or you are unsure, return "Unk
 }
 
 async function run() {
-  console.log("Starting AI Variant Mapping...");
+  console.log("Starting AI Variant Mapping Worker...");
   
-  const { data: cards } = await supabase
-    .from('cards')
-    .select('id, slug, name, number, image_url, local_image_url')
-    .like('slug', 'op-%_%') // Only variants
-    .not('slug', 'like', '%-ja') // Exclude Japanese cards
-    .limit(300);
+  while (true) {
+    const { data: cards } = await supabase
+      .from('cards')
+      .select('id, slug, name, number, image_url, local_image_url')
+      .like('slug', 'op-%_%') // Only variants
+      .not('slug', 'like', '%-ja') // Exclude Japanese cards
+      .limit(300);
 
-  if (!cards || cards.length === 0) {
-    console.log("No English variants need mapping right now.");
-    return;
-  }
-
-  const dict = loadDict();
-  let newMappings = 0;
-
-  for (const card of cards) {
-    if (dict[card.slug]) continue; // Already mapped
-    
-    console.log(`Processing ${card.slug}...`);
-    const baseNumber = card.number; // e.g. OP13-118
-    const products = await findTcgProductsForNumber(baseNumber);
-    
-    if (products.length === 0) {
-      console.log(`-> No TCGPlayer products found for ${baseNumber}`);
+    if (!cards || cards.length === 0) {
+      console.log("No English variants need mapping right now. Sleeping 5m...");
+      await new Promise(r => setTimeout(r, 5 * 60 * 1000));
       continue;
     }
-    
-    if (products.length === 1) {
-      console.log(`-> Auto-mapped ${card.slug} to ${products[0].productId}`);
-      dict[card.slug] = products[0].productId;
-      newMappings++;
-      continue;
-    }
-    
-    console.log(`-> Found ${products.length} possibilities. Asking Ollama...`);
-    const targetImageUrl = card.local_image_url || card.image_url;
-    const matchedId = await askOllama(targetImageUrl, products);
-    
-    if (matchedId) {
-      console.log(`-> Ollama matched ${card.slug} to TCGPlayer ID ${matchedId} (${products.find(p=>p.productId===matchedId)?.name})`);
-      dict[card.slug] = matchedId;
-      newMappings++;
-      saveDict(dict); // Save immediately
-    } else {
-      console.log(`-> Ollama failed to match. Marking as -1 to prevent infinite retries.`);
-      dict[card.slug] = -1; // -1 indicates it was processed but could not be confidently matched
-      saveDict(dict);
-    }
-    
-    await new Promise(r => setTimeout(r, 12000)); // Sleep 12s to respect limits
-  }
 
-  console.log(`Finished mapping! Added ${newMappings} new mappings.`);
+    const dict = loadDict();
+    let newMappings = 0;
+
+    for (const card of cards) {
+      if (dict[card.slug]) continue; // Already mapped
+      
+      console.log(`Processing ${card.slug}...`);
+      const baseNumber = card.number;
+      const products = await findTcgProductsForNumber(baseNumber);
+      
+      if (products.length === 0) {
+        console.log(`-> No TCGPlayer products found for ${baseNumber}`);
+        continue;
+      }
+      
+      if (products.length === 1) {
+        console.log(`-> Auto-mapped ${card.slug} to ${products[0].productId}`);
+        dict[card.slug] = products[0].productId;
+        newMappings++;
+        continue;
+      }
+      
+      console.log(`-> Found ${products.length} possibilities. Asking Ollama...`);
+      const targetImageUrl = card.local_image_url || card.image_url;
+      const matchedId = await askOllama(targetImageUrl, products);
+      
+      if (matchedId) {
+        console.log(`-> Ollama matched ${card.slug} to TCGPlayer ID ${matchedId} (${products.find(p=>p.productId===matchedId)?.name})`);
+        dict[card.slug] = matchedId;
+        newMappings++;
+        saveDict(dict);
+      } else {
+        console.log(`-> Ollama failed to match. Marking as -1 to prevent infinite retries.`);
+        dict[card.slug] = -1;
+        saveDict(dict);
+      }
+      
+      await new Promise(r => setTimeout(r, 12000)); // Sleep 12s to respect limits
+    }
+
+    console.log(`Finished mapping batch! Added ${newMappings} new mappings. Sleeping 5m...`);
+    await new Promise(r => setTimeout(r, 5 * 60 * 1000));
+  }
 }
 
 run();
