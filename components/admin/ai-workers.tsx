@@ -1,28 +1,42 @@
 import { Bot, Terminal } from 'lucide-react';
 import fs from 'fs';
 import path from 'path';
-import { execSync } from 'child_process';
+
+async function getPM2Logs(logPath: string) {
+  try {
+    const absolutePath = path.join(process.cwd(), logPath);
+    if (!fs.existsSync(absolutePath)) return ["Log file not found."];
+
+    const stat = await fs.promises.stat(absolutePath);
+    if (stat.size === 0) return ["Waiting for activity..."];
+
+    const readSize = Math.min(stat.size, 4096);
+    const buffer = Buffer.alloc(readSize);
+    const fileHandle = await fs.promises.open(absolutePath, 'r');
+    
+    try {
+      await fileHandle.read(buffer, 0, readSize, stat.size - readSize);
+    } finally {
+      await fileHandle.close();
+    }
+
+    const output = buffer.toString('utf8').trim();
+    if (!output) return ["Waiting for activity..."];
+
+    const lines = output.split('\n').filter(Boolean).slice(-6);
+    return lines.map(line => {
+      const match = line.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}:\s*(.*)/);
+      if (match) return match[1];
+      return line.replace(/^\d+\|[^|]+\|\s*/, '');
+    });
+  } catch (e) {
+    return ["Failed to read PM2 logs."];
+  }
+}
 
 export async function AIWorkerClusters() {
-  function getPM2Logs(logPath: string) {
-    try {
-      const absolutePath = path.join(process.cwd(), logPath);
-      if (!fs.existsSync(absolutePath)) return ["Log file not found."];
-      const output = execSync(`tail -n 6 ${absolutePath}`).toString().trim();
-      if (!output) return ["Waiting for activity..."];
-      
-      return output.split('\n').map(line => {
-        const match = line.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}:\s*(.*)/);
-        if (match) return match[1];
-        return line.replace(/^\d+\|[^|]+\|\s*/, '');
-      });
-    } catch (e) {
-      return ["Failed to read PM2 logs."];
-    }
-  }
-
-  const geminiLogs = getPM2Logs('logs/artist-vision.log');
-  const ollamaLogs = getPM2Logs('logs/variant-mapper.log');
+  const geminiLogs = await getPM2Logs('logs/artist-vision.log');
+  const ollamaLogs = await getPM2Logs('logs/variant-mapper.log');
 
   return (
     <div className="pt-8 border-t border-white/10">
@@ -58,7 +72,7 @@ export async function AIWorkerClusters() {
                 {geminiLogs.map((log, i) => (
                   <div key={i} className="flex gap-2.5 text-zinc-400 items-start">
                     <span className="text-purple-500 flex-shrink-0 mt-px">{'->'}</span>
-                    <span className={log.includes('Extracted Artist') || log.includes('Processing') ? 'text-white' : 'text-zinc-500'}>{log}</span>
+                    <span>{log}</span>
                   </div>
                 ))}
               </div>
@@ -66,19 +80,19 @@ export async function AIWorkerClusters() {
           </div>
         </div>
 
-        {/* Ollama Variant Mapper */}
+        {/* Variant Mapper */}
         <div className="bg-[#0b1329] border border-white/10 rounded-2xl p-5 shadow-xl flex flex-col relative overflow-hidden group">
           <div className="flex justify-between items-start mb-5">
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse" />
-                <h3 className="font-black text-white text-lg tracking-tight">Ollama Classification</h3>
+                <h3 className="font-black text-white text-lg tracking-tight">Variant Canonical Resolver</h3>
               </div>
-              <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">Variant Mapper Engine</p>
+              <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">Cross-Set Matcher</p>
             </div>
             <div className="text-right">
               <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Architecture</p>
-              <p className="font-bold tabular-nums text-sm text-blue-400">gemma4:31b</p>
+              <p className="font-bold tabular-nums text-sm text-indigo-400">ollama/qwen2.5:14b</p>
             </div>
           </div>
           
@@ -91,8 +105,8 @@ export async function AIWorkerClusters() {
               <div className="space-y-2 font-mono text-[11px] leading-relaxed break-all">
                 {ollamaLogs.map((log, i) => (
                   <div key={i} className="flex gap-2.5 text-zinc-400 items-start">
-                    <span className="text-blue-500 flex-shrink-0 mt-px">{'->'}</span>
-                    <span className={log.includes('matched') || log.includes('Processing') ? 'text-white' : 'text-zinc-500'}>{log}</span>
+                    <span className="text-indigo-500 flex-shrink-0 mt-px">{'->'}</span>
+                    <span>{log}</span>
                   </div>
                 ))}
               </div>

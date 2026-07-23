@@ -1,11 +1,11 @@
 import { Metadata } from 'next';
 import { Activity, ExternalLink, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { AutoRefresh } from '@/components/admin/auto-refresh';
 import { Suspense } from 'react';
 import { GlobalPlatformHealth } from '@/components/admin/global-health';
 import { AIWorkerClusters } from '@/components/admin/ai-workers';
 import { GameScrapers } from '@/components/admin/game-scrapers';
+import { RefreshButton } from '@/components/admin/refresh-button';
 
 export const metadata: Metadata = {
   title: 'Mission Control | TCGMaster Admin',
@@ -26,7 +26,6 @@ function LoadingSection({ title }: { title: string }) {
 export default function AdminHealthDashboard() {
   return (
     <div className="min-h-screen bg-[#060c18] pt-24 pb-20">
-      <AutoRefresh interval={10000} />
       <div className="container max-w-[1200px] mx-auto px-4 sm:px-6 space-y-12">
         
         {/* Header (Instantly Loads) */}
@@ -40,6 +39,7 @@ export default function AdminHealthDashboard() {
           </div>
           
           <div className="mt-4 md:mt-0 flex items-center gap-3">
+            <RefreshButton />
             <Link 
               href="https://app.inngest.com" 
               target="_blank"

@@ -1,25 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
-import { Bot, Terminal } from 'lucide-react';
-import { formatDistanceToNow, formatDistanceToNowStrict } from 'date-fns';
-
-function formatShortTime(date: Date) {
-  return formatDistanceToNowStrict(date)
-    .replace(' seconds', 's')
-    .replace(' second', 's')
-    .replace(' minutes', 'm')
-    .replace(' minute', 'm')
-    .replace(' hours', 'h')
-    .replace(' hour', 'h')
-    .replace(' days', 'd')
-    .replace(' day', 'd');
-}
-
-function formatPrice(price: number, source: string) {
-  if (source === 'tcgplayer') {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(price);
-  }
-  return `¥${new Intl.NumberFormat('ja-JP').format(price)}`;
-}
+import { Bot } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
 
 export async function GameScrapers() {
   const supabase = await createClient();
@@ -28,39 +9,48 @@ export async function GameScrapers() {
   const games = gamesData as { id: string; name: string; slug: string }[] | null;
 
   const gameDiagnostics = games ? await Promise.all(games.map(async (game) => {
-    // These queries are heavy (using estimated joins) but because this component is wrapped in Suspense,
-    // the UI will load instantly and stream this data in when it finishes!
-    const { count: gameTotalCards } = await supabase.from('cards').select('*, sets!inner(game_id)', { count: 'estimated', head: true }).eq('sets.game_id', game.id);
+    const { count: gameTotalCards } = await supabase
+      .from('cards')
+      .select('*, sets!inner(game_id)', { count: 'estimated', head: true })
+      .eq('sets.game_id', game.id);
     
-    // Configured Cards
-    const { count: snkrdunkConfigured } = await supabase.from('cards').select('*, sets!inner(game_id)', { count: 'estimated', head: true }).eq('sets.game_id', game.id).not('snkrdunk_url', 'is', null);
-    const { count: yuyuteiConfigured } = await supabase.from('cards').select('*, sets!inner(game_id)', { count: 'estimated', head: true }).eq('sets.game_id', game.id).not('yuyutei_url', 'is', null);
-    const { count: cardrushConfigured } = await supabase.from('cards').select('*, sets!inner(game_id)', { count: 'estimated', head: true }).eq('sets.game_id', game.id).not('cardrush_url', 'is', null);
-    const { count: tcgPlayerConfigured } = await supabase.from('cards').select('*, sets!inner(game_id)', { count: 'estimated', head: true }).eq('sets.game_id', game.id).not('tcg_player_id', 'is', null);
+    // Configured Cards per game
+    const { count: snkrdunkConfigured } = await supabase
+      .from('cards')
+      .select('*, sets!inner(game_id)', { count: 'estimated', head: true })
+      .eq('sets.game_id', game.id)
+      .not('snkrdunk_url', 'is', null);
 
-    // Heartbeats and Live Feeds
-    // We simplified this query to avoid the massive deep join scan.
+    const { count: yuyuteiConfigured } = await supabase
+      .from('cards')
+      .select('*, sets!inner(game_id)', { count: 'estimated', head: true })
+      .eq('sets.game_id', game.id)
+      .not('yuyutei_url', 'is', null);
+
+    const { count: cardrushConfigured } = await supabase
+      .from('cards')
+      .select('*, sets!inner(game_id)', { count: 'estimated', head: true })
+      .eq('sets.game_id', game.id)
+      .not('cardrush_url', 'is', null);
+
+    const { count: tcgPlayerConfigured } = await supabase
+      .from('cards')
+      .select('*, sets!inner(game_id)', { count: 'estimated', head: true })
+      .eq('sets.game_id', game.id)
+      .not('tcg_player_id', 'is', null);
+
+    // Fast Single-Record Heartbeat Check (No Join)
     const sources = ['snkrdunk', 'yuyutei', 'tcgplayer', 'cardrush'];
     const heartbeats = await Promise.all(sources.map(async (source) => {
-      const { data: logsData } = await supabase
+      const { data: latestRecord } = await supabase
         .from('price_history')
-        .select(`
-          recorded_at,
-          price,
-          cards(name, number)
-        `)
+        .select('recorded_at')
         .eq('source', source)
         .order('recorded_at', { ascending: false })
-        .limit(5);
-        
-      const logs = (logsData || []).map((log: any) => ({
-        price: log.price,
-        recorded_at: log.recorded_at,
-        card_name: log.cards?.name || 'Unknown',
-        card_number: log.cards?.number || '?'
-      }));
-      
-      const dateStr = logs[0]?.recorded_at || null;
+        .limit(1)
+        .maybeSingle();
+
+      const dateStr = (latestRecord as { recorded_at: string } | null)?.recorded_at || null;
       const date = dateStr ? new Date(dateStr) : null;
       const isHealthy = date ? (new Date().getTime() - date.getTime()) < 1000 * 60 * 60 * 24 : false; // < 24h
       
@@ -68,7 +58,6 @@ export async function GameScrapers() {
         source,
         date,
         isHealthy,
-        logs
       };
     }));
 
@@ -135,43 +124,13 @@ export async function GameScrapers() {
                     </div>
 
                     {/* Configuration Coverage */}
-                    <div className="mb-6">
+                    <div>
                       <div className="flex justify-between items-end mb-1.5">
                         <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Database Configuration</p>
                         <p className="text-xs font-bold text-zinc-300 tabular-nums">{scraper.configCount.toLocaleString()} <span className="text-zinc-600">/ {game.totalCards.toLocaleString()} cards</span></p>
                       </div>
                       <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
                         <div className={`h-full rounded-full ${scraper.theme === 'indigo' ? 'bg-indigo-500' : 'bg-blue-500'}`} style={{ width: `${coverage}%` }} />
-                      </div>
-                    </div>
-
-                    {/* Live Terminal Logs */}
-                    <div className="mt-auto">
-                      <div className="bg-black/60 border border-white/5 rounded-xl p-3.5 relative">
-                        <div className="flex items-center gap-2 border-b border-white/5 pb-2.5 mb-2.5">
-                          <Terminal className="w-3.5 h-3.5 text-zinc-500" />
-                          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Live Feed</p>
-                        </div>
-                        
-                        <div className="space-y-2 font-mono text-[11px] leading-relaxed">
-                          {hb?.logs && hb.logs.length > 0 ? (
-                            hb.logs.map((log: any, i: number) => (
-                              <div key={i} className="flex gap-2.5 text-zinc-400 items-start">
-                                <span className="text-emerald-500 flex-shrink-0 mt-px">{'->'}</span>
-                                <span className="text-zinc-500 min-w-[32px] flex-shrink-0 tabular-nums">
-                                  {formatShortTime(new Date(log.recorded_at))}
-                                </span>
-                                <span className="truncate">
-                                  {log.card_name} [{log.card_number}] to <span className="text-white font-semibold">{formatPrice(log.price, scraper.source)}</span>
-                                </span>
-                              </div>
-                            ))
-                          ) : (
-                            <div className="text-zinc-600 italic py-2 flex items-center justify-center">
-                              No recent activity detected.
-                            </div>
-                          )}
-                        </div>
                       </div>
                     </div>
 
