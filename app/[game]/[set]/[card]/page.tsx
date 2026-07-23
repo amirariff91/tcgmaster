@@ -569,6 +569,7 @@ export default async function CardDetailPage({ params }: PageProps) {
                       return null;
                     };
                     const logo = getMarketLogo(item.source);
+                    const isWhiteBg = ['pricecharting', 'yuyutei', 'cardrush', 'tcgplayer', 'tcgrepublic'].some(s => item.source.toLowerCase().includes(s));
                     
                     return (
                     <div key={item.source} className="flex justify-between items-center px-5 py-4 hover:bg-white/5 transition-colors">
@@ -577,10 +578,8 @@ export default async function CardDetailPage({ params }: PageProps) {
                           <img 
                             src={logo} 
                             alt={item.source} 
-                            className={`w-8 h-8 rounded-md border border-white/10 shadow-sm bg-white/5 ${
-                              item.source.toLowerCase().includes('snkrdunk') 
-                                ? 'object-cover p-0 overflow-hidden' 
-                                : 'object-contain p-1'
+                            className={`w-8 h-8 rounded-md border border-white/10 shadow-sm ${
+                              isWhiteBg ? 'bg-white object-contain p-1' : 'bg-white/5 object-cover p-0 overflow-hidden'
                             }`} 
                           />
                         ) : (
