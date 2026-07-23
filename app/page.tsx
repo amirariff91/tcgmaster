@@ -4,7 +4,9 @@ import { HeroCardsAnimation } from '@/components/home/hero-cards-animation';
 import { MarketMovers, type MarketMover } from '@/components/home/market-movers';
 import { CategoryCards, type Category } from '@/components/home/category-cards';
 import { CardsMarquee } from '@/components/home/cards-marquee';
-import { createClient } from '@/lib/supabase/server';
+import { createPublicClient as createClient } from '@/lib/supabase/client';
+
+export const revalidate = 900; // Cache for 15 minutes
 
 // Mock data (same as before)
 const marketMovers: { gainers: MarketMover[]; losers: MarketMover[] } = {
@@ -25,15 +27,15 @@ const categories: Category[] = [
 ];
 
 export default async function HomePage() {
-  const supabase = await createClient();
+  const supabase = createClient();
   
-  // Database-level scan for all high-end hits across the entire table
+  // Database-level query targeted for OP and DBFW cards
   const { data: rawCards } = await supabase
     .from('cards')
     .select('id, name, image_url, local_image_url, slug, rarity')
     .not('image_url', 'is', null)
-    .or('rarity.ilike.%sp%,rarity.ilike.%sec%,rarity.ilike.%scr%,name.ilike.%manga%,name.ilike.%tournament%,name.ilike.%wanted%')
-    .limit(500);
+    .or('slug.like.op-%,slug.like.dbfw-%')
+    .limit(100);
 
   // In-memory filter to strictly enforce the OP and DBFW rules
   const filteredCards = (rawCards || []).filter((card: any) => {

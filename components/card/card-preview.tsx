@@ -18,6 +18,7 @@ interface CardPreviewData {
   number: string;
   rarity?: Rarity | string | null;
   image_url?: string | null;
+  local_image_url?: string | null;
   set?: {
     id?: string;
     name: string;
@@ -44,7 +45,7 @@ export function CardPreview({ card, gameSlug, variant = 'default', className }: 
     return (
       <Link href={href} className={cn('block', className)}>
         <div className="flex items-center gap-4 rounded-lg p-3 transition-all duration-200 hover:bg-white/5 hover:border-orange-500/30 border border-transparent">
-          <CardImage src={card.image_url} alt={cleanName} size="sm" />
+          <CardImage src={card.local_image_url || card.image_url} alt={cleanName} size="sm" />
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-white truncate">
               {cleanName}
@@ -76,7 +77,7 @@ export function CardPreview({ card, gameSlug, variant = 'default', className }: 
     return (
       <Link href={href} className={cn('block', className)}>
         <div className="flex items-center gap-3 rounded-lg p-2 transition-all duration-200 hover:bg-white/5 border border-transparent hover:border-orange-500/30">
-          <CardImage src={card.image_url} alt={cleanName} size="sm" />
+          <CardImage src={card.local_image_url || card.image_url} alt={cleanName} size="sm" />
           <div className="flex-1 min-w-0">
             <h3 className="font-medium text-white truncate text-sm">
               {cleanName}
@@ -113,7 +114,7 @@ export function CardPreview({ card, gameSlug, variant = 'default', className }: 
           )}
           
           <CardImage 
-            src={card.image_url} 
+            src={card.local_image_url || card.image_url} 
             alt={cleanName} 
             className="w-full h-auto object-contain drop-shadow-md aspect-[5/7] transition-transform duration-300 group-hover:scale-105"
           />

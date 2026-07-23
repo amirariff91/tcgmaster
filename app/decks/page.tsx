@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import { createClient } from '@/lib/supabase/server';
+import { createPublicClient as createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Trophy, ChevronRight, Loader2 } from 'lucide-react';
@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   description: 'Explore the top winning deck archetypes across all your favorite Trading Card Games.',
 };
 
-export const revalidate = 60; // Revalidate every minute
+export const revalidate = 900; // Revalidate every 15 minutes
 
 // Map slugs to dynamic background gradients for the headers
 const gameStyles: Record<string, { bg: string; text: string; banner: string }> = {
@@ -45,7 +45,7 @@ type ArchetypeData = {
 };
 
 export default async function GlobalDecksHub() {
-  const supabase = await createClient();
+  const supabase = createClient();
 
   // 1. Fetch all active games
   const { data: gamesData } = await supabase

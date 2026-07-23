@@ -154,7 +154,7 @@ export async function searchCards(
           )
         `;
         
-    let dbQuery = supabase.from('cards').select(columns, { count: 'exact', head });
+    let dbQuery = supabase.from('cards').select(columns, { count: 'estimated', head });
 
     // Apply text search
     if (parsed.cardName && parsed.cardName.length >= 2) {
@@ -181,9 +181,9 @@ export async function searchCards(
 
     // Apply language filter
     if (options.filters?.lang === 'en') {
-      dbQuery = dbQuery.not('slug', 'ilike', '%-ja');
+      dbQuery = dbQuery.not('slug', 'like', '%-ja');
     } else if (options.filters?.lang === 'ja') {
-      dbQuery = dbQuery.ilike('slug', '%-ja');
+      dbQuery = dbQuery.like('slug', '%-ja');
     }
 
     // Filter out cards with no prices when sorting by "Recently Updated"

@@ -464,3 +464,224 @@
 2026-07-20T14:33:10:   hint: "",
 2026-07-20T14:33:10:   code: "",
 2026-07-20T14:33:10: }
+2026-07-22T17:57:58: PriceCharting fetch error for FS03-01_p1 japanese: 180 |                     ensureNewDocumentNavigation = !!response.loaderId;
+2026-07-22T17:57:58: 181 |                     if (response.errorText === 'net::ERR_HTTP_RESPONSE_CODE_FAILURE') {
+2026-07-22T17:57:58: 182 |                         return null;
+2026-07-22T17:57:58: 183 |                     }
+2026-07-22T17:57:58: 184 |                     return response.errorText
+2026-07-22T17:57:58: 185 |                         ? new Error(`${response.errorText} at ${url}`)
+2026-07-22T17:57:58:                                     ^
+2026-07-22T17:57:58: error: net::ERR_NAME_NOT_RESOLVED at https://www.pricecharting.com/search-products?type=prices&q=FS03-01
+2026-07-22T17:57:58:       at navigate (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:185:31)
+2026-07-22T17:57:58:       at async race (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/util/Deferred.js:33:34)
+2026-07-22T17:57:58:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:151:40)
+2026-07-22T17:57:58:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/api/Page.js:576:43)
+2026-07-22T17:57:58:       at async fetchPriceChartingPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/pricecharting.ts:23:16)
+2026-07-22T17:57:58:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-dbfw.ts:47:28)
+2026-07-22T17:57:58: 
+2026-07-22T18:15:08: error: Unable to connect. Is the computer able to access the url?
+2026-07-22T18:15:08:   path: "https://mquqwlxqrsvfflsgfhmi.supabase.co/rest/v1/price_cache",
+2026-07-22T18:15:08:  errno: 0,
+2026-07-22T18:15:08:   code: "ConnectionRefused"
+2026-07-22T18:15:08: 
+2026-07-22T18:15:08: 
+2026-07-22T18:15:08: Bun v1.3.14 (macOS arm64)
+2026-07-22T18:30:19: Failed to fetch queue {
+2026-07-22T18:30:19:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-22T18:30:19:   details: "",
+2026-07-22T18:30:19:   hint: "",
+2026-07-22T18:30:19:   code: "",
+2026-07-22T18:30:19: }
+2026-07-22T18:47:05: Failed to fetch queue {
+2026-07-22T18:47:05:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-22T18:47:05:   details: "",
+2026-07-22T18:47:05:   hint: "",
+2026-07-22T18:47:05:   code: "",
+2026-07-22T18:47:05: }
+2026-07-22T19:04:42: Failed to fetch queue {
+2026-07-22T19:04:42:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-22T19:04:42:   details: "",
+2026-07-22T19:04:42:   hint: "",
+2026-07-22T19:04:42:   code: "",
+2026-07-22T19:04:42: }
+2026-07-22T19:22:42: Failed to fetch queue {
+2026-07-22T19:22:42:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-22T19:22:42:   details: "",
+2026-07-22T19:22:42:   hint: "",
+2026-07-22T19:22:42:   code: "",
+2026-07-22T19:22:42: }
+2026-07-22T19:32:33: Failed to fetch queue {
+2026-07-22T19:32:33:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-22T19:32:33:   details: "",
+2026-07-22T19:32:33:   hint: "",
+2026-07-22T19:32:33:   code: "",
+2026-07-22T19:32:33: }
+2026-07-22T19:48:39: [scraper-rate-limit] Redis unavailable; using local fallback: Redis rate limiter timed out
+2026-07-22T20:51:09: 101 |     #id;
+2026-07-22T20:51:09: 102 |     #error = new ProtocolError();
+2026-07-22T20:51:09: 103 |     #deferred = Deferred.create();
+2026-07-22T20:51:09: 104 |     #timer;
+2026-07-22T20:51:09: 105 |     #label;
+2026-07-22T20:51:09: 106 |     constructor(id, label, timeout) {
+2026-07-22T20:51:09:                       ^
+2026-07-22T20:51:09: ProtocolError: Page.addScriptToEvaluateOnNewDocument timed out. Increase the 'protocolTimeout' setting in launch/connect calls for a higher timeout if needed.
+2026-07-22T20:51:09:       at Callback (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/common/CallbackRegistry.js:106:17)
+2026-07-22T20:51:09:       at create (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/common/CallbackRegistry.js:42:10)
+2026-07-22T20:51:09:       at send (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/CdpSession.js:113:13)
+2026-07-22T20:51:09:       at /Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-extra-plugin-stealth/evasions/sourceurl/index.js:60:31
+2026-07-22T20:51:09:       at /Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-extra-plugin-stealth/evasions/sourceurl/index.js:67:18
+2026-07-22T20:51:09:       at evaluateOnNewDocument (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/FrameManager.js:301:56)
+2026-07-22T20:51:09:       at evaluateOnNewDocument (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Page.js:940:18)
+2026-07-22T20:51:09:       at evaluateOnNewDocument (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-extra-plugin-stealth/evasions/_utils/withUtils.js:33:17)
+2026-07-22T20:51:09:       at onPageCreated (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-extra-plugin-stealth/evasions/iframe.contentWindow/index.js:50:22)
+2026-07-22T20:51:09:       at _onTargetCreated (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-extra-plugin/dist/index.cjs.js:496:32)
+2026-07-22T20:51:09: 
+2026-07-22T20:51:09: 101 |     #id;
+2026-07-22T20:51:09: 102 |     #error = new ProtocolError();
+2026-07-22T20:51:09: 103 |     #deferred = Deferred.create();
+2026-07-22T20:51:09: 104 |     #timer;
+2026-07-22T20:51:09: 105 |     #label;
+2026-07-22T20:51:09: 106 |     constructor(id, label, timeout) {
+2026-07-22T20:51:09:                       ^
+2026-07-22T20:51:09: ProtocolError: Network.setUserAgentOverride timed out. Increase the 'protocolTimeout' setting in launch/connect calls for a higher timeout if needed.
+2026-07-22T20:51:09:       at Callback (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/common/CallbackRegistry.js:106:17)
+2026-07-22T20:51:09:       at create (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/common/CallbackRegistry.js:42:10)
+2026-07-22T20:51:09:       at send (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/CdpSession.js:113:13)
+2026-07-22T20:51:09:       at /Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-extra-plugin-stealth/evasions/sourceurl/index.js:60:31
+2026-07-22T20:51:09:       at /Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-extra-plugin-stealth/evasions/sourceurl/index.js:67:18
+2026-07-22T20:51:09:       at onPageCreated (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-extra-plugin-stealth/evasions/user-agent-override/index.js:182:12)
+2026-07-22T20:51:09:       at _onTargetCreated (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-extra-plugin/dist/index.cjs.js:496:32)
+2026-07-22T20:51:09:       at processTicksAndRejections (unknown:7:39)
+2026-07-22T20:51:09: PriceCharting fetch error for FB02-034_p1 japanese: 101 |     #id;
+2026-07-22T20:51:09: 102 |     #error = new ProtocolError();
+2026-07-22T20:51:09: 103 |     #deferred = Deferred.create();
+2026-07-22T20:51:09: 104 |     #timer;
+2026-07-22T20:51:09: 105 |     #label;
+2026-07-22T20:51:09: 106 |     constructor(id, label, timeout) {
+2026-07-22T20:51:09:                       ^
+2026-07-22T20:51:09: ProtocolError: Emulation.setDeviceMetricsOverride timed out. Increase the 'protocolTimeout' setting in launch/connect calls for a higher timeout if needed.
+2026-07-22T20:51:09:       at Callback (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/common/CallbackRegistry.js:106:17)
+2026-07-22T20:51:09:       at create (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/common/CallbackRegistry.js:42:10)
+2026-07-22T20:51:09:       at send (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/CdpSession.js:113:13)
+2026-07-22T20:51:09:       at /Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-extra-plugin-stealth/evasions/sourceurl/index.js:60:31
+2026-07-22T20:51:09:       at /Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-extra-plugin-stealth/evasions/sourceurl/index.js:67:18
+2026-07-22T20:51:09:       at /Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/EmulationManager.js:165:25
+2026-07-22T20:51:09:       at map (unknown:1:11)
+2026-07-22T20:51:09:       at sync (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/EmulationManager.js:29:36)
+2026-07-22T20:51:09:       at setState (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/EmulationManager.js:25:42)
+2026-07-22T20:51:09:       at emulateViewport (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/EmulationManager.js:377:17)
+2026-07-22T20:51:09:       at run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-dbfw.ts:78:25)
+2026-07-22T20:51:09: 
+2026-07-22T20:51:09: 
+2026-07-22T20:51:09: Bun v1.3.14 (macOS arm64)
+2026-07-23T03:20:15: [scraper-rate-limit] Redis unavailable; using local fallback: Redis rate limiter timed out
+2026-07-23T04:43:46: PriceCharting fetch error for FB06-097_p2 japanese: 52 |     });
+2026-07-23T04:43:46: 53 |     #timeoutId;
+2026-07-23T04:43:46: 54 |     #timeoutError;
+2026-07-23T04:43:46: 55 |     constructor(opts) {
+2026-07-23T04:43:46: 56 |         if (opts && opts.timeout > 0) {
+2026-07-23T04:43:46: 57 |             this.#timeoutError = new TimeoutError(opts.message);
+2026-07-23T04:43:46:                                       ^
+2026-07-23T04:43:46: TimeoutError: Navigation timeout of 60000 ms exceeded
+2026-07-23T04:43:46:       at new Deferred (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/util/Deferred.js:57:34)
+2026-07-23T04:43:46:       at create (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/util/Deferred.js:18:16)
+2026-07-23T04:43:46:       at new LifecycleWatcher (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/LifecycleWatcher.js:70:46)
+2026-07-23T04:43:46:       at goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:150:29)
+2026-07-23T04:43:46:       at goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/api/Page.js:576:43)
+2026-07-23T04:43:46:       at fetchPriceChartingPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/pricecharting.ts:23:16)
+2026-07-23T04:43:46:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-dbfw.ts:47:28)
+2026-07-23T04:43:46: 
+2026-07-23T08:33:44: Cardrush fetch error for FB03-051_p1: DOMException {
+2026-07-23T08:33:44:   stack: "",
+2026-07-23T08:33:44:   code: 23,
+2026-07-23T08:33:44:   name: "TimeoutError",
+2026-07-23T08:33:44:   message: "The operation timed out.",
+2026-07-23T08:33:44:   INDEX_SIZE_ERR: 1,
+2026-07-23T08:33:44:   DOMSTRING_SIZE_ERR: 2,
+2026-07-23T08:33:44:   HIERARCHY_REQUEST_ERR: 3,
+2026-07-23T08:33:44:   WRONG_DOCUMENT_ERR: 4,
+2026-07-23T08:33:44:   INVALID_CHARACTER_ERR: 5,
+2026-07-23T08:33:44:   NO_DATA_ALLOWED_ERR: 6,
+2026-07-23T08:33:44:   NO_MODIFICATION_ALLOWED_ERR: 7,
+2026-07-23T08:33:44:   NOT_FOUND_ERR: 8,
+2026-07-23T08:33:44:   NOT_SUPPORTED_ERR: 9,
+2026-07-23T08:33:44:   INUSE_ATTRIBUTE_ERR: 10,
+2026-07-23T08:33:44:   INVALID_STATE_ERR: 11,
+2026-07-23T08:33:44:   SYNTAX_ERR: 12,
+2026-07-23T08:33:44:   INVALID_MODIFICATION_ERR: 13,
+2026-07-23T08:33:44:   NAMESPACE_ERR: 14,
+2026-07-23T08:33:44:   INVALID_ACCESS_ERR: 15,
+2026-07-23T08:33:44:   VALIDATION_ERR: 16,
+2026-07-23T08:33:44:   TYPE_MISMATCH_ERR: 17,
+2026-07-23T08:33:44:   SECURITY_ERR: 18,
+2026-07-23T08:33:44:   NETWORK_ERR: 19,
+2026-07-23T08:33:44:   ABORT_ERR: 20,
+2026-07-23T08:33:44:   URL_MISMATCH_ERR: 21,
+2026-07-23T08:33:44:   QUOTA_EXCEEDED_ERR: 22,
+2026-07-23T08:33:44:   TIMEOUT_ERR: 23,
+2026-07-23T08:33:44:   INVALID_NODE_TYPE_ERR: 24,
+2026-07-23T08:33:44:   DATA_CLONE_ERR: 25,
+2026-07-23T08:33:44:   toString: [Function: toString],
+2026-07-23T08:33:44: }
+2026-07-23T08:34:58: PriceCharting fetch error for FB06-109_p1 japanese: 180 |                     ensureNewDocumentNavigation = !!response.loaderId;
+2026-07-23T08:34:58: 181 |                     if (response.errorText === 'net::ERR_HTTP_RESPONSE_CODE_FAILURE') {
+2026-07-23T08:34:58: 182 |                         return null;
+2026-07-23T08:34:58: 183 |                     }
+2026-07-23T08:34:58: 184 |                     return response.errorText
+2026-07-23T08:34:58: 185 |                         ? new Error(`${response.errorText} at ${url}`)
+2026-07-23T08:34:58:                                     ^
+2026-07-23T08:34:58: error: net::ERR_NETWORK_CHANGED at https://www.pricecharting.com/search-products?type=prices&q=FB06-109
+2026-07-23T08:34:58:       at navigate (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:185:31)
+2026-07-23T08:34:58:       at async race (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/util/Deferred.js:33:34)
+2026-07-23T08:34:58:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:151:40)
+2026-07-23T08:34:58:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/api/Page.js:576:43)
+2026-07-23T08:34:58:       at async fetchPriceChartingPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/pricecharting.ts:23:16)
+2026-07-23T08:34:58:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-dbfw.ts:47:28)
+2026-07-23T08:34:58: 
+2026-07-23T11:49:54: Cardrush fetch error for FS12-11: DOMException {
+2026-07-23T11:49:54:   stack: "",
+2026-07-23T11:49:54:   code: 23,
+2026-07-23T11:49:54:   name: "TimeoutError",
+2026-07-23T11:49:54:   message: "The operation timed out.",
+2026-07-23T11:49:54:   INDEX_SIZE_ERR: 1,
+2026-07-23T11:49:54:   DOMSTRING_SIZE_ERR: 2,
+2026-07-23T11:49:54:   HIERARCHY_REQUEST_ERR: 3,
+2026-07-23T11:49:54:   WRONG_DOCUMENT_ERR: 4,
+2026-07-23T11:49:54:   INVALID_CHARACTER_ERR: 5,
+2026-07-23T11:49:54:   NO_DATA_ALLOWED_ERR: 6,
+2026-07-23T11:49:54:   NO_MODIFICATION_ALLOWED_ERR: 7,
+2026-07-23T11:49:54:   NOT_FOUND_ERR: 8,
+2026-07-23T11:49:54:   NOT_SUPPORTED_ERR: 9,
+2026-07-23T11:49:54:   INUSE_ATTRIBUTE_ERR: 10,
+2026-07-23T11:49:54:   INVALID_STATE_ERR: 11,
+2026-07-23T11:49:54:   SYNTAX_ERR: 12,
+2026-07-23T11:49:54:   INVALID_MODIFICATION_ERR: 13,
+2026-07-23T11:49:54:   NAMESPACE_ERR: 14,
+2026-07-23T11:49:54:   INVALID_ACCESS_ERR: 15,
+2026-07-23T11:49:54:   VALIDATION_ERR: 16,
+2026-07-23T11:49:54:   TYPE_MISMATCH_ERR: 17,
+2026-07-23T11:49:54:   SECURITY_ERR: 18,
+2026-07-23T11:49:54:   NETWORK_ERR: 19,
+2026-07-23T11:49:54:   ABORT_ERR: 20,
+2026-07-23T11:49:54:   URL_MISMATCH_ERR: 21,
+2026-07-23T11:49:54:   QUOTA_EXCEEDED_ERR: 22,
+2026-07-23T11:49:54:   TIMEOUT_ERR: 23,
+2026-07-23T11:49:54:   INVALID_NODE_TYPE_ERR: 24,
+2026-07-23T11:49:54:   DATA_CLONE_ERR: 25,
+2026-07-23T11:49:54:   toString: [Function: toString],
+2026-07-23T11:49:54: }
+2026-07-23T12:09:46: PriceCharting fetch error for FB07-042 japanese: 180 |                     ensureNewDocumentNavigation = !!response.loaderId;
+2026-07-23T12:09:46: 181 |                     if (response.errorText === 'net::ERR_HTTP_RESPONSE_CODE_FAILURE') {
+2026-07-23T12:09:46: 182 |                         return null;
+2026-07-23T12:09:46: 183 |                     }
+2026-07-23T12:09:46: 184 |                     return response.errorText
+2026-07-23T12:09:46: 185 |                         ? new Error(`${response.errorText} at ${url}`)
+2026-07-23T12:09:46:                                     ^
+2026-07-23T12:09:46: error: net::ERR_NETWORK_CHANGED at https://www.pricecharting.com/search-products?type=prices&q=FB07-042%20japanese
+2026-07-23T12:09:46:       at navigate (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:185:31)
+2026-07-23T12:09:46:       at async race (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/util/Deferred.js:33:34)
+2026-07-23T12:09:46:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:151:40)
+2026-07-23T12:09:46:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/api/Page.js:576:43)
+2026-07-23T12:09:46:       at async fetchPriceChartingPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/pricecharting.ts:23:16)
+2026-07-23T12:09:46:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-dbfw.ts:47:28)
+2026-07-23T12:09:46: 

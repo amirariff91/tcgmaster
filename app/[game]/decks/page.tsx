@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import { createClient } from '@/lib/supabase/server';
+import { createPublicClient as createClient } from '@/lib/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FormattedPrice } from '@/components/ui/formatted-price';
 import { Trophy, Calendar, Users, Target } from 'lucide-react';
@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   description: 'View the latest winning decklists and tournament results.',
 };
 
-export const revalidate = 60; // Revalidate every minute to keep meta fresh
+export const revalidate = 900; // Revalidate every 15 minutes to keep meta fresh
 
 export default async function DecksPage({
   params,
@@ -19,7 +19,7 @@ export default async function DecksPage({
   params: Promise<{ game: string }>;
 }) {
   const { game } = await params;
-  const supabase = await createClient();
+  const supabase = createClient();
 
   // 1. Fetch recent tournaments
   const { data: tournaments } = await supabase

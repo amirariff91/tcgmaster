@@ -77,7 +77,7 @@ export function HeroCardsAnimation() {
               src={card.src} 
               alt={card.alt} 
               fill
-              unoptimized={false}
+              unoptimized={true}
               sizes="(max-width: 640px) 90px, 170px"
               className="object-cover"
             />

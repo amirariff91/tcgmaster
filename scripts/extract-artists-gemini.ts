@@ -5,21 +5,16 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.SUPABASE_SECRET_KEY! || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Vision model runs on Ollama Cloud rather than Gemini — same job, one less vendor,
-// and it reads these cards at least as accurately (verified against known-artist cards).
-const OLLAMA_API_KEY = process.env.OLLAMA_API_KEY;
-const OLLAMA_MODEL = process.env.OLLAMA_VISION_MODEL || 'gemma4:31b';
-const OLLAMA_URL = process.env.OLLAMA_BASE_URL || 'https://ollama.com';
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-if (!OLLAMA_API_KEY) {
-  console.error("Missing OLLAMA_API_KEY.");
-  console.error("Create one at https://ollama.com/settings/keys and set OLLAMA_API_KEY.");
+if (!GEMINI_API_KEY) {
+  console.error("Missing GEMINI_API_KEY.");
+  console.error("Create one at Google AI Studio and set GEMINI_API_KEY in .env");
   process.exit(1);
 }
 
-// SAFE_MODE=1 → longer sleep between vision calls
-const SAFE_MODE = process.env.SAFE_MODE === '1';
-const SLEEP_MS = SAFE_MODE ? 15000 : 12000;
+// Strict zero-cost safety: 1 min sleep ensures 1440 req/day (under 1500 free limit)
+const SLEEP_MS = 60000;
 
 // Every OP card carries a copyright strip (e.g. "©E.O/S., T.A. BANDAI MADE IN JAPAN")
 // on the same edge as the artist credit. Cards WITHOUT a credit make vision models read
@@ -38,17 +33,24 @@ const ARTIST_PROMPT = [
   "If the only text you can see on that edge is the copyright line, return 'Unknown'.",
 ].join('\n');
 
-async function askVisionModel(base64Data: string, _mimeType: string): Promise<string> {
-  const res = await fetch(`${OLLAMA_URL}/api/chat`, {
+async function askVisionModel(base64Data: string, mimeType: string): Promise<string> {
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${OLLAMA_API_KEY}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: OLLAMA_MODEL,
-      stream: false,
-      messages: [{ role: 'user', content: ARTIST_PROMPT, images: [base64Data] }],
+      contents: [{
+        parts: [
+          { text: ARTIST_PROMPT },
+          {
+            inlineData: {
+              mimeType: mimeType,
+              data: base64Data
+            }
+          }
+        ]
+      }]
     }),
   });
 
@@ -58,7 +60,8 @@ async function askVisionModel(base64Data: string, _mimeType: string): Promise<st
   }
 
   const data = await res.json();
-  return (data?.message?.content ?? '').trim() || 'Unknown';
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+  return text.trim() || 'Unknown';
 }
 
 /**
@@ -113,8 +116,8 @@ async function run() {
     console.log("Fetching next batch of cards missing artist data...");
     const { data: cards, error } = await supabase
       .from('cards')
-      .select('id, name, image_url')
-      .or('artist.is.null,artist.eq.Unknown')
+      .select('id, name, image_url, local_image_url')
+      .is('artist', null) // Only fetch cards that have NOT been processed to prevent infinite loops
       .like('slug', 'op-%')
       .not('slug', 'like', '%-ja')
       .not('image_url', 'is', null)
@@ -137,7 +140,8 @@ async function run() {
     for (const card of cards) {
       console.log(`Processing ${card.name}...`);
       
-      const artist = await extractArtist(card.image_url);
+      const targetImageUrl = card.local_image_url || card.image_url;
+      const artist = await extractArtist(targetImageUrl);
       
       if (artist === null) {
         console.log(`-> Extraction failed (likely rate limits). Skipping DB update and waiting 5 minutes...`);

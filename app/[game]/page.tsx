@@ -6,7 +6,9 @@ import { SearchBar } from '@/components/search/search-bar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatDate, formatPrice, formatSetName, splitCardName } from '@/lib/utils';
-import { createClient } from '@/lib/supabase/server';
+import { createPublicClient as createClient } from '@/lib/supabase/client';
+
+export const revalidate = 900;
 import { Badge } from '@/components/ui/badge';
 
 interface GameData {
@@ -122,7 +124,7 @@ async function getAllSetPrices(supabase: SupabaseClient, gameId: string): Promis
 }
 
 async function getGameBySlug(gameSlug: string): Promise<GameData | null> {
-  const supabase = await createClient();
+  const supabase = createClient();
   const { data: game, error } = await supabase
     .from('games')
     .select('id, name, slug, display_name')
@@ -139,7 +141,7 @@ async function getGamePageData(gameSlug: string): Promise<GamePageData | null> {
 
   if (!gameData) return null;
 
-  const supabase = await createClient();
+  const supabase = createClient();
 
   const [sets, cardsCount, topCardsResult, latestPriceResult, setPrices] = await Promise.all([
     getAllSets(supabase, gameData.id),

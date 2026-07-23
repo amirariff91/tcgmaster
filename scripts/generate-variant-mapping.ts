@@ -1,11 +1,17 @@
 import { createClient } from '@supabase/supabase-js';
-import { GoogleGenAI } from '@google/genai';
 import fs from 'fs';
 import path from 'path';
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!);
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const OLLAMA_API_KEY = process.env.OLLAMA_API_KEY;
+const OLLAMA_MODEL = process.env.OLLAMA_VISION_MODEL || 'gemma4:31b';
+const OLLAMA_URL = process.env.OLLAMA_BASE_URL || 'https://ollama.com';
+
+if (!OLLAMA_API_KEY) {
+  console.error("Missing OLLAMA_API_KEY.");
+  process.exit(1);
+}
 const CATEGORY_ID = 68; // One Piece
 
 let cachedGroups: any[] | null = null;
@@ -51,7 +57,7 @@ function saveDict(dict: any) {
   fs.writeFileSync(dictPath, JSON.stringify(dict, null, 2));
 }
 
-async function askGemini(imageUrl: string, products: any[]) {
+async function askOllama(imageUrl: string, products: any[]) {
   try {
     const res = await fetch(imageUrl);
     if (!res.ok) return null;
@@ -66,31 +72,33 @@ ${products.map(p => `- ID: ${p.productId}, Name: "${p.name}"`).join('\n')}
 Look closely at the image (is it Manga, Alternate Art, Wanted, SP, Gold?). Pick the ONE product ID that corresponds perfectly to this card variant. 
 Return ONLY the numeric product ID. If none match or you are unsure, return "Unknown".`;
 
-    const response = await ai.models.generateContent({
-      model: process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite',
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            { text: prompt },
-            { inlineData: { data: base64Data, mimeType: 'image/jpeg' } }
-          ]
-        }
-      ]
+    const chatRes = await fetch(`${OLLAMA_URL}/api/chat`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OLLAMA_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: OLLAMA_MODEL,
+        stream: false,
+        messages: [{ role: 'user', content: prompt, images: [base64Data] }],
+      }),
     });
+
+    if (!chatRes.ok) {
+      console.error(`Ollama Error: ${chatRes.statusText}`);
+      return null;
+    }
+
+    const data = await chatRes.json();
+    const text = (data?.message?.content ?? '').trim();
     
-    const text = response.text?.trim();
     if (text && !isNaN(parseInt(text))) {
       return parseInt(text);
     }
     return null;
   } catch (error: any) {
-    if (error?.status === 429 || error?.message?.includes('429')) {
-      console.log("Rate limited! Waiting 30s...");
-      await new Promise(r => setTimeout(r, 30000));
-    } else {
-      console.error(error);
-    }
+    console.error("AI Mapping error:", error);
     return null;
   }
 }
@@ -100,7 +108,7 @@ async function run() {
   
   const { data: cards } = await supabase
     .from('cards')
-    .select('id, slug, name, number, image_url')
+    .select('id, slug, name, number, image_url, local_image_url')
     .like('slug', 'op-%_%') // Only variants
     .not('slug', 'like', '%-ja') // Exclude Japanese cards
     .limit(300);
@@ -132,16 +140,19 @@ async function run() {
       continue;
     }
     
-    console.log(`-> Found ${products.length} possibilities. Asking Gemini...`);
-    const matchedId = await askGemini(card.image_url, products);
+    console.log(`-> Found ${products.length} possibilities. Asking Ollama...`);
+    const targetImageUrl = card.local_image_url || card.image_url;
+    const matchedId = await askOllama(targetImageUrl, products);
     
     if (matchedId) {
-      console.log(`-> Gemini matched ${card.slug} to TCGPlayer ID ${matchedId} (${products.find(p=>p.productId===matchedId)?.name})`);
+      console.log(`-> Ollama matched ${card.slug} to TCGPlayer ID ${matchedId} (${products.find(p=>p.productId===matchedId)?.name})`);
       dict[card.slug] = matchedId;
       newMappings++;
       saveDict(dict); // Save immediately
     } else {
-      console.log(`-> Gemini failed to match.`);
+      console.log(`-> Ollama failed to match. Marking as -1 to prevent infinite retries.`);
+      dict[card.slug] = -1; // -1 indicates it was processed but could not be confidently matched
+      saveDict(dict);
     }
     
     await new Promise(r => setTimeout(r, 12000)); // Sleep 12s to respect limits

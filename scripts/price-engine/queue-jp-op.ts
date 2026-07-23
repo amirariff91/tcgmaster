@@ -16,8 +16,8 @@ async function run() {
     const { data: cards, error } = await supabase
       .from('cards')
       .select('id, name, slug, number, yuyutei_url, snkrdunk_url')
-      .ilike('slug', 'op-%')
-      .ilike('slug', '%-ja')
+      .like('slug', 'op-%')
+      .like('slug', '%-ja')
       .order('last_price_fetch', { ascending: true, nullsFirst: true })
       .limit(1);
       
@@ -113,7 +113,7 @@ async function run() {
         graded_prices: cacheGradedPrices,
         fetched_at: new Date().toISOString(),
         expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-      }, { onConflict: 'card_id' });
+      }).throwOnError();
 
       for (const result of results) {
         const { error: insertError } = await supabase

@@ -3,6 +3,11 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
+      // Cloudflare R2 CDN (TCGMaster Images)
+      {
+        protocol: "https",
+        hostname: "images.tcgmaster.com",
+      },
       // Supabase Storage (local_image_url)
       {
         protocol: "https",

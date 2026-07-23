@@ -229,6 +229,7 @@ interface SearchResult {
   subtitle: string;
   price: number | null;
   image_url: string | null;
+  imageUrl?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -266,12 +267,12 @@ function CreateAlertModal({ isOpen, onClose, onCreated }: CreateAlertModalProps)
           const json = await res.json();
           const cards: SearchResult[] = (json.results ?? [])
             .filter((r: { type: string }) => r.type === 'card')
-            .map((r: { id: string; name: string; subtitle: string; price: number | null; image_url: string | null }) => ({
+            .map((r: { id: string; name: string; subtitle: string; price: number | null; image_url: string | null; imageUrl?: string | null }) => ({
               id: r.id,
               name: r.name,
               subtitle: r.subtitle,
               price: r.price,
-              image_url: r.image_url,
+              image_url: r.imageUrl || r.image_url,
             }));
           setSearchResults(cards);
         }

@@ -1,0 +1,24 @@
+import puppeteer from 'puppeteer';
+
+async function main() {
+  const browser = await puppeteer.launch({ headless: true });
+  const page = await browser.newPage();
+  await page.setViewport({ width: 1280, height: 800 });
+  await page.goto('https://snkrdunk.com/en/trading-cards/265720', { waitUntil: 'networkidle2' });
+  
+  // Click the PSA 10 label
+  const labels = await page.$$('label.condition-btn');
+  for (const label of labels) {
+    const text = await label.evaluate(el => el.textContent?.trim());
+    if (text === 'PSA 10') {
+      await label.click();
+      await new Promise(r => setTimeout(r, 1000));
+      const priceText = await page.$eval('.product-detail__price', el => el.textContent);
+      console.log('PSA 10 Price Text:', priceText);
+      break;
+    }
+  }
+  
+  await browser.close();
+}
+main();

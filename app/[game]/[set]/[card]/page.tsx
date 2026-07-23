@@ -8,9 +8,8 @@ import { CardImage } from '@/components/card/card-image';
 import { FormattedPrice } from '@/components/ui/formatted-price';
 import { CollectrChart } from '@/components/charts/collectr-chart';
 import { formatPrice, formatNumber, getRarityDisplay, formatDate, formatDisplayNumber, formatSetName, splitCardName } from '@/lib/utils';
-import { createClient } from '@/lib/supabase/server';
+import { createPublicClient as createClient, createServerClient } from '@/lib/supabase/client';
 import { getCardWithPrices } from '@/lib/ppt/service';
-import { createServerClient } from '@/lib/supabase/client';
 import { calculatePriceChange24h } from '@/lib/pricing/trending';
 
 interface CardDataSet {
@@ -37,7 +36,7 @@ interface GradedPriceData {
 
 interface CardDataPriceCache {
   raw_prices: Record<string, number | null>;
-  graded_prices: Record<string, GradedPriceData>;
+  graded_prices: Record<string, any>;
   ebay_sales: Record<string, unknown>;
   fetched_at: string;
   expires_at: string;
@@ -84,8 +83,8 @@ interface CardData {
   yuyutei_url?: string;
 }
 
-async function getCardData(gameSlug: string, setSlug: string, cardSlug: string): Promise<CardData | null> {
-  const supabase = await createClient();
+async function getCardData(gameSlug: string, setSlug: string, cardSlug: string) {
+  const supabase = createClient();
 
   const { data: card, error } = await supabase
     .from('cards')
@@ -164,7 +163,7 @@ interface PageProps {
   }>;
 }
 
-export const revalidate = 300; 
+export const revalidate = 900; 
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { game, set, card: cardSlug } = await params;
@@ -252,8 +251,25 @@ export default async function CardDetailPage({ params }: PageProps) {
     heavilyPlayed: dbPriceCache?.raw_prices?.heavilyPlayed ?? livePrices?.raw?.heavilyPlayed ?? null,
   };
 
-  const gradedPrices: Record<string, GradedPriceData> =
-    dbPriceCache?.graded_prices || livePrices?.graded || {};
+  let gradedPrices: Record<string, GradedPriceData> = {};
+  if (livePrices?.graded) {
+    gradedPrices = livePrices.graded;
+  } else if (dbPriceCache?.graded_prices) {
+    for (const [grade, sources] of Object.entries(dbPriceCache.graded_prices)) {
+      if (sources && typeof sources === 'object') {
+        const prices = Object.values(sources).filter(v => typeof v === 'number') as number[];
+        if (prices.length > 0) {
+          gradedPrices[grade] = {
+            average: Math.min(...prices),
+            median: null,
+            low: Math.min(...prices),
+            high: Math.max(...prices),
+            count: prices.length
+          };
+        }
+      }
+    }
+  }
 
 
   const populationReports = cardData?.population_reports || [];
@@ -269,6 +285,9 @@ export default async function CardDetailPage({ params }: PageProps) {
   const gradeLabel = gradedPrices.psa10?.average ? 'PSA 10' : (gradedPrices.psa9?.average ? 'PSA 9' : 'Raw');
   const activeGradeForChart = gradedPrices.psa10?.average ? '10' : (gradedPrices.psa9?.average ? '9' : 'raw');
 
+  // Ensure "Compared Markets" always uses raw prices
+  const rawHistoryData = priceHistoryData.filter(h => h.grade === 'raw');
+  
   const relevantHistory = priceHistoryData.filter(h => h.grade === activeGradeForChart || h.grade === `psa${activeGradeForChart}`);
   
   let featuredPrice = gradedPrices.psa10?.average || gradedPrices.psa9?.average || rawPrices.nearMint || null;
@@ -323,7 +342,7 @@ export default async function CardDetailPage({ params }: PageProps) {
     { grade: '8' as const, grading_company: 'psa' as const, price: gradedPrices.psa8?.average || 0, confidence: 'high' as const, last_sale_date: null, population: population['psa-8'] || null },
     { grade: '9' as const, grading_company: 'psa' as const, price: gradedPrices.psa9?.average || 0, confidence: 'high' as const, last_sale_date: null, population: population['psa-9'] || null },
     { grade: '10' as const, grading_company: 'psa' as const, price: gradedPrices.psa10?.average || 0, confidence: 'medium' as const, last_sale_date: null, population: population['psa-10'] || null },
-  ].filter(e => e.price > 0);
+  ];
 
   const availableGrades = [
     { grade: 'raw' as const, grading_company: null, hasData: rawPrices.nearMint !== null },
@@ -342,7 +361,7 @@ export default async function CardDetailPage({ params }: PageProps) {
   }
 
   const latestPricesMap = new Map<string, { price: number; date: string }>();
-  relevantHistory.forEach(h => {
+  rawHistoryData.forEach(h => {
     const source = h.source || 'Market';
     if (source === 'Market') return; // Skip Market from compared markets
     const current = latestPricesMap.get(source);
@@ -509,7 +528,7 @@ export default async function CardDetailPage({ params }: PageProps) {
             {latestPricesList.length > 0 && (
               <div className="bg-[#0b1329]/80 backdrop-blur-sm rounded-2xl border border-white/10 overflow-hidden shadow-sm">
                 <div className="bg-white/5 px-5 py-3 border-b border-white/10">
-                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">Compared Markets ({gradeLabel})</h3>
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">Compared Markets (Raw)</h3>
                 </div>
                 <div className="divide-y divide-white/10">
                   {latestPricesList.map((item) => {

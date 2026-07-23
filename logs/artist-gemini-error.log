@@ -1385,3 +1385,95 @@
 2026-07-20T14:34:26:   DATA_CLONE_ERR: 25,
 2026-07-20T14:34:26:   toString: [Function: toString],
 2026-07-20T14:34:26: }
+2026-07-22T16:55:55: Missing OLLAMA_API_KEY.
+2026-07-22T16:55:55: Create one at https://ollama.com/settings/keys and set OLLAMA_API_KEY.
+2026-07-22T16:56:05: Missing OLLAMA_API_KEY.
+2026-07-22T16:56:05: Create one at https://ollama.com/settings/keys and set OLLAMA_API_KEY.
+2026-07-22T16:56:15: Missing OLLAMA_API_KEY.
+2026-07-22T16:56:15: Create one at https://ollama.com/settings/keys and set OLLAMA_API_KEY.
+2026-07-22T16:56:25: Missing OLLAMA_API_KEY.
+2026-07-22T16:56:25: Create one at https://ollama.com/settings/keys and set OLLAMA_API_KEY.
+2026-07-22T16:56:36: Missing OLLAMA_API_KEY.
+2026-07-22T16:56:36: Create one at https://ollama.com/settings/keys and set OLLAMA_API_KEY.
+2026-07-22T16:56:46: Missing OLLAMA_API_KEY.
+2026-07-22T16:56:46: Create one at https://ollama.com/settings/keys and set OLLAMA_API_KEY.
+2026-07-22T16:56:56: Missing OLLAMA_API_KEY.
+2026-07-22T16:56:56: Create one at https://ollama.com/settings/keys and set OLLAMA_API_KEY.
+2026-07-22T16:57:06: Missing OLLAMA_API_KEY.
+2026-07-22T16:57:06: Create one at https://ollama.com/settings/keys and set OLLAMA_API_KEY.
+2026-07-22T16:57:16: Missing OLLAMA_API_KEY.
+2026-07-22T16:57:16: Create one at https://ollama.com/settings/keys and set OLLAMA_API_KEY.
+2026-07-22T16:57:26: Missing OLLAMA_API_KEY.
+2026-07-22T16:57:26: Create one at https://ollama.com/settings/keys and set OLLAMA_API_KEY.
+2026-07-22T16:57:36: Missing OLLAMA_API_KEY.
+2026-07-22T16:57:36: Create one at https://ollama.com/settings/keys and set OLLAMA_API_KEY.
+2026-07-22T16:57:46: Missing OLLAMA_API_KEY.
+2026-07-22T16:57:46: Create one at https://ollama.com/settings/keys and set OLLAMA_API_KEY.
+2026-07-22T16:57:56: Missing OLLAMA_API_KEY.
+2026-07-22T16:57:56: Create one at https://ollama.com/settings/keys and set OLLAMA_API_KEY.
+2026-07-22T16:58:06: Missing OLLAMA_API_KEY.
+2026-07-22T16:58:06: Create one at https://ollama.com/settings/keys and set OLLAMA_API_KEY.
+2026-07-22T16:58:16: Missing OLLAMA_API_KEY.
+2026-07-22T16:58:16: Create one at https://ollama.com/settings/keys and set OLLAMA_API_KEY.
+2026-07-22T16:58:26: Missing OLLAMA_API_KEY.
+2026-07-22T16:58:26: Create one at https://ollama.com/settings/keys and set OLLAMA_API_KEY.
+2026-07-22T16:58:36: Missing OLLAMA_API_KEY.
+2026-07-22T16:58:36: Create one at https://ollama.com/settings/keys and set OLLAMA_API_KEY.
+2026-07-22T16:58:46: Missing OLLAMA_API_KEY.
+2026-07-22T16:58:46: Create one at https://ollama.com/settings/keys and set OLLAMA_API_KEY.
+2026-07-22T16:58:56: Missing OLLAMA_API_KEY.
+2026-07-22T16:58:56: Create one at https://ollama.com/settings/keys and set OLLAMA_API_KEY.
+2026-07-22T16:59:06: Missing OLLAMA_API_KEY.
+2026-07-22T16:59:06: Create one at https://ollama.com/settings/keys and set OLLAMA_API_KEY.
+2026-07-22T16:59:16: Missing OLLAMA_API_KEY.
+2026-07-22T16:59:16: Create one at https://ollama.com/settings/keys and set OLLAMA_API_KEY.
+2026-07-22T16:59:27: Missing OLLAMA_API_KEY.
+2026-07-22T16:59:27: Create one at https://ollama.com/settings/keys and set OLLAMA_API_KEY.
+2026-07-22T16:59:37: Missing OLLAMA_API_KEY.
+2026-07-22T16:59:37: Create one at https://ollama.com/settings/keys and set OLLAMA_API_KEY.
+2026-07-22T16:59:47: Missing OLLAMA_API_KEY.
+2026-07-22T16:59:47: Create one at https://ollama.com/settings/keys and set OLLAMA_API_KEY.
+2026-07-22T16:59:57: Missing OLLAMA_API_KEY.
+2026-07-22T16:59:57: Create one at https://ollama.com/settings/keys and set OLLAMA_API_KEY.
+2026-07-22T17:00:07: Missing OLLAMA_API_KEY.
+2026-07-22T17:00:07: Create one at https://ollama.com/settings/keys and set OLLAMA_API_KEY.
+2026-07-22T17:00:17: Missing OLLAMA_API_KEY.
+2026-07-22T17:00:17: Create one at https://ollama.com/settings/keys and set OLLAMA_API_KEY.
+2026-07-22T17:00:27: Missing OLLAMA_API_KEY.
+2026-07-22T17:00:27: Create one at https://ollama.com/settings/keys and set OLLAMA_API_KEY.
+2026-07-22T17:00:37: Missing OLLAMA_API_KEY.
+2026-07-22T17:00:37: Create one at https://ollama.com/settings/keys and set OLLAMA_API_KEY.
+2026-07-22T17:00:47: Missing OLLAMA_API_KEY.
+2026-07-22T17:00:47: Create one at https://ollama.com/settings/keys and set OLLAMA_API_KEY.
+2026-07-23T00:39:37: AI Extraction error: DOMException {
+2026-07-23T00:39:37:   stack: "",
+2026-07-23T00:39:37:   code: 23,
+2026-07-23T00:39:37:   name: "TimeoutError",
+2026-07-23T00:39:37:   message: "The operation timed out.",
+2026-07-23T00:39:37:   INDEX_SIZE_ERR: 1,
+2026-07-23T00:39:37:   DOMSTRING_SIZE_ERR: 2,
+2026-07-23T00:39:37:   HIERARCHY_REQUEST_ERR: 3,
+2026-07-23T00:39:37:   WRONG_DOCUMENT_ERR: 4,
+2026-07-23T00:39:37:   INVALID_CHARACTER_ERR: 5,
+2026-07-23T00:39:37:   NO_DATA_ALLOWED_ERR: 6,
+2026-07-23T00:39:37:   NO_MODIFICATION_ALLOWED_ERR: 7,
+2026-07-23T00:39:37:   NOT_FOUND_ERR: 8,
+2026-07-23T00:39:37:   NOT_SUPPORTED_ERR: 9,
+2026-07-23T00:39:37:   INUSE_ATTRIBUTE_ERR: 10,
+2026-07-23T00:39:37:   INVALID_STATE_ERR: 11,
+2026-07-23T00:39:37:   SYNTAX_ERR: 12,
+2026-07-23T00:39:37:   INVALID_MODIFICATION_ERR: 13,
+2026-07-23T00:39:37:   NAMESPACE_ERR: 14,
+2026-07-23T00:39:37:   INVALID_ACCESS_ERR: 15,
+2026-07-23T00:39:37:   VALIDATION_ERR: 16,
+2026-07-23T00:39:37:   TYPE_MISMATCH_ERR: 17,
+2026-07-23T00:39:37:   SECURITY_ERR: 18,
+2026-07-23T00:39:37:   NETWORK_ERR: 19,
+2026-07-23T00:39:37:   ABORT_ERR: 20,
+2026-07-23T00:39:37:   URL_MISMATCH_ERR: 21,
+2026-07-23T00:39:37:   QUOTA_EXCEEDED_ERR: 22,
+2026-07-23T00:39:37:   TIMEOUT_ERR: 23,
+2026-07-23T00:39:37:   INVALID_NODE_TYPE_ERR: 24,
+2026-07-23T00:39:37:   DATA_CLONE_ERR: 25,
+2026-07-23T00:39:37:   toString: [Function: toString],
+2026-07-23T00:39:37: }

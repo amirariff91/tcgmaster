@@ -17,6 +17,7 @@
  *   scraper-jp-op  — Yuyutei primary + SnkrDunk fallback for Japanese One Piece
  *   scraper-dbfw   — CardRush for Dragon Ball Fusion World
  *   artist-vision  — Ollama Cloud vision artist extractor for EN OP cards
+ *   variant-mapper — Ollama Cloud variant mapping for English cards
  */
 
 const SAFE_MODE = process.env.SAFE_MODE === '1';
@@ -105,6 +106,67 @@ module.exports = {
       min_uptime: '10s',
       log_file: './logs/artist-vision.log',
       error_file: './logs/artist-vision-error.log',
+      time: true,
+    },
+
+    // ─────────────────────────────────────────────
+    // Variant Mapper (Ollama Cloud) — English cards
+    // ─────────────────────────────────────────────
+    {
+      name: 'variant-mapper',
+      script: 'bun',
+      args: 'run scripts/generate-variant-mapping.ts',
+      env: {
+        SAFE_MODE: SAFE_MODE ? '1' : '0',
+        OLLAMA_VISION_MODEL: 'gemma4:31b',
+      },
+      watch: false,
+      autorestart: true,
+      restart_delay: 10000,
+      max_restarts: 30,
+      min_uptime: '10s',
+      log_file: './logs/variant-mapper.log',
+      error_file: './logs/variant-mapper-error.log',
+      time: true,
+    },
+
+    // ─────────────────────────────────────────────
+    // Deck Prices Calculator — Background Worker
+    // ─────────────────────────────────────────────
+    {
+      name: 'deck-prices',
+      script: 'bun',
+      args: 'run scripts/price-engine/calculate-deck-prices.ts',
+      env: {
+        SAFE_MODE: SAFE_MODE ? '1' : '0',
+      },
+      watch: false,
+      autorestart: true,
+      restart_delay: 5000,
+      max_restarts: 50,
+      min_uptime: '10s',
+      log_file: './logs/deck-prices.log',
+      error_file: './logs/deck-prices-error.log',
+      time: true,
+    },
+
+    // ─────────────────────────────────────────────
+    // Image Downloader — Background Worker
+    // ─────────────────────────────────────────────
+    {
+      name: 'image-downloader',
+      script: 'bun',
+      args: 'run scripts/image-downloader.ts',
+      env: {
+        SAFE_MODE: SAFE_MODE ? '1' : '0',
+      },
+      watch: false,
+      autorestart: true,
+      restart_delay: 5000,
+      max_restarts: 50,
+      min_uptime: '10s',
+      log_file: './logs/image-downloader.log',
+      error_file: './logs/image-downloader-error.log',
       time: true,
     },
   ],

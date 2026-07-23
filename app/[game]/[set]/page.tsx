@@ -2,9 +2,11 @@ import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getSetBySlug, getRelatedSets, mockSets } from '@/lib/mock-data';
 import { SetPageClient } from './set-page-client';
-import { createClient } from '@/lib/supabase/server';
+import { createPublicClient as createClient } from '@/lib/supabase/client';
 import { formatSetName } from '@/lib/utils';
 import type { MockSet, MockCard } from '@/lib/mock-data';
+
+export const revalidate = 900;
 
 interface SetPageProps {
   params: Promise<{
@@ -20,7 +22,7 @@ interface SetPageProps {
 // Fetch set + cards from Supabase
 async function getSetFromDB(gameSlug: string, setSlug: string): Promise<MockSet | null> {
   try {
-    const supabase = await createClient();
+    const supabase = createClient();
 
     // Fetch set with game info (use any to avoid Supabase join typing issues)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -156,7 +158,6 @@ export async function generateMetadata({ params }: SetPageProps): Promise<Metada
   };
 }
 
-export const revalidate = 3600;
 
 export default async function SetPage({ params, searchParams }: SetPageProps) {
   const { game, set: setSlug } = await params;
