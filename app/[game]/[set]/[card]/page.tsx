@@ -578,7 +578,7 @@ export default async function CardDetailPage({ params }: PageProps) {
                             src={logo} 
                             alt={item.source} 
                             className={`w-8 h-8 rounded-md border border-white/10 shadow-sm bg-white/5 ${
-                              item.source.toLowerCase().includes('snkrdunk') 
+                              item.source.toLowerCase().includes('snkrdunk') || item.source.toLowerCase().includes('pricecharting') || item.source.toLowerCase().includes('price charting')
                                 ? 'object-cover p-0 overflow-hidden' 
                                 : 'object-contain p-1'
                             }`} 
