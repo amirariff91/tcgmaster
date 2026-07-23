@@ -85,7 +85,7 @@ async function getSetFromDB(gameSlug: string, setSlug: string): Promise<MockSet 
         // so it moves to R2 on cutover, falling back to the source image_url.
         image_url: c.local_image_url ?? c.image_url,
         prices: {
-          raw: raw?.nearMint ?? null,
+          raw: raw?.nearMint ?? raw?.market ?? raw?.yuyutei ?? raw?.snkrdunk ?? raw?.tcgplayer ?? raw?.cardrush ?? null,
           psa7: graded?.psa7?.average ?? null,
           psa8: graded?.psa8?.average ?? null,
           psa9: graded?.psa9?.average ?? null,

@@ -271,7 +271,7 @@ export default async function CardDetailPage({ params }: PageProps) {
   }
 
   const rawPrices = {
-    nearMint: dbPriceCache?.raw_prices?.nearMint ?? dbPriceCache?.raw_prices?.market ?? livePrices?.raw?.nearMint ?? null,
+    nearMint: dbPriceCache?.raw_prices?.nearMint ?? dbPriceCache?.raw_prices?.market ?? dbPriceCache?.raw_prices?.yuyutei ?? dbPriceCache?.raw_prices?.snkrdunk ?? dbPriceCache?.raw_prices?.tcgplayer ?? dbPriceCache?.raw_prices?.cardrush ?? livePrices?.raw?.nearMint ?? null,
     lightlyPlayed: dbPriceCache?.raw_prices?.lightlyPlayed ?? dbPriceCache?.raw_prices?.low ?? livePrices?.raw?.lightlyPlayed ?? null,
     moderatelyPlayed: dbPriceCache?.raw_prices?.moderatelyPlayed ?? livePrices?.raw?.moderatelyPlayed ?? null,
     heavilyPlayed: dbPriceCache?.raw_prices?.heavilyPlayed ?? livePrices?.raw?.heavilyPlayed ?? null,
