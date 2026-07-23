@@ -312,8 +312,20 @@ export function SetPageClient({
               <NoCards searchQuery={debouncedQuery} onClearSearch={clearSearch} />
             )}
 
-            {/* Infinite scroll trigger */}
-            {hasMoreCards && <div ref={loadMoreRef} className="h-10" />}
+            {/* Infinite scroll & Load More trigger */}
+            {hasMoreCards && (
+              <div className="mt-8 flex flex-col items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setVisibleCards((prev) => prev + CARDS_PER_BATCH)}
+                  disabled={isLoadingMore}
+                  className="w-full max-w-sm py-3 px-6 rounded-full bg-gradient-to-r from-orange-600 to-amber-500 text-white font-bold hover:from-orange-500 hover:to-amber-400 shadow-[0_0_20px_rgba(249,115,22,0.3)] hover:shadow-[0_0_30px_rgba(249,115,22,0.5)] transition-all text-sm"
+                >
+                  {isLoadingMore ? 'Loading...' : `Load More Cards (${displayedCards.length - visibleCards} remaining)`}
+                </button>
+                <div ref={loadMoreRef} className="h-6" />
+              </div>
+            )}
           </div>
 
           {/* Sidebar */}
