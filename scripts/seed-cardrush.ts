@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { storeCardImage } from '../lib/images/r2';
 import { fetchCardrushData } from './price-engine/cardrush';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -21,23 +22,7 @@ async function uploadImage(url: string, path: string): Promise<string | null> {
     const arrayBuffer = await res.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     
-    const { data, error } = await supabase.storage
-      .from('card-images')
-      .upload(path, buffer, {
-        upsert: true,
-        contentType: 'image/jpeg'
-      });
-      
-    if (error) {
-      console.error('Error uploading image to storage:', error.message);
-      return null;
-    }
-    
-    const { data: publicUrlData } = supabase.storage
-      .from('card-images')
-      .getPublicUrl(path);
-      
-    return publicUrlData.publicUrl;
+    return await storeCardImage({ key: path, body: buffer, contentType: 'image/jpeg', supabase, bucket: 'card-images' });
   } catch (error) {
     console.error('Exception uploading image:', error);
     return null;

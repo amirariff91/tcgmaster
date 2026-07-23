@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { cdnImageUrl } from '@/lib/images/cloudflare-loader';
 import {
   Plus,
   FolderOpen,
@@ -221,11 +222,12 @@ function CollectionItemsView({
               <div className="mx-auto w-fit">
                 {item.cards?.image_url || item.cards?.local_image_url ? (
                   <img
-                    src={
+                    src={cdnImageUrl(
                       item.cards.local_image_url ??
                       item.cards.image_url ??
-                      undefined
-                    }
+                      undefined,
+                      224,
+                    ) ?? undefined}
                     alt={item.cards.name}
                     className="h-40 w-28 rounded-lg object-cover"
                   />
@@ -301,11 +303,12 @@ function CollectionItemsView({
           <div className="h-16 w-12 flex-shrink-0 overflow-hidden rounded bg-zinc-100">
             {(item.cards?.local_image_url || item.cards?.image_url) && (
               <img
-                src={
+                src={cdnImageUrl(
                   item.cards.local_image_url ??
                   item.cards.image_url ??
-                  undefined
-                }
+                  undefined,
+                  96,
+                ) ?? undefined}
                 alt={item.cards?.name}
                 className="h-full w-full object-cover"
               />

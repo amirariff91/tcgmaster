@@ -2,6 +2,7 @@
 
 import React, { useRef, useState, MouseEvent } from 'react';
 import Image from 'next/image';
+import cloudflareImageLoader, { isImageCdnEnabled } from '@/lib/images/cloudflare-loader';
 
 interface Card {
   id: string;
@@ -78,8 +79,9 @@ function InteractiveTiltCard({ card }: { card: Card }) {
         alt={card.name || 'TCG Card'} 
         fill 
         sizes="(max-width: 640px) 130px, 170px"
-        className="object-cover" 
-        unoptimized
+        className="object-cover"
+        loader={cloudflareImageLoader}
+        unoptimized={!isImageCdnEnabled}
       />
       {/* Dynamic Glare effect */}
       <div 

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
+import cloudflareImageLoader, { isImageCdnEnabled } from '@/lib/images/cloudflare-loader';
 import { Check } from 'lucide-react';
 import { cn, splitCardName } from '@/lib/utils';
 import { type MockCard, pokemonTypeColors, rarityColors } from '@/lib/mock-data';
@@ -82,7 +83,8 @@ export function CardGridItem({
               height={112}
               className="w-20 h-28 object-cover rounded"
               loading="lazy"
-              unoptimized={(card.local_image_url || card.image_url || '').startsWith('http')}
+              loader={cloudflareImageLoader}
+              unoptimized={!isImageCdnEnabled}
             />
           ) : (
             <div

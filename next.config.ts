@@ -3,16 +3,17 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
-      // Cloudflare R2 CDN (TCGMaster Images)
-      {
-        protocol: "https",
-        hostname: "images.tcgmaster.com",
-      },
-      // Supabase Storage (local_image_url)
+      // Supabase Storage (local_image_url) — retain during R2 cutover/rollback window
       {
         protocol: "https",
         hostname: "*.supabase.co",
         pathname: "/storage/v1/object/public/**",
+      },
+      // Cloudflare R2 via the Image Transformations custom domain
+      {
+        protocol: "https",
+        hostname: "images.tcgmaster.com",
+        pathname: "/**",
       },
       // Pokemon TCG API CDN
       {

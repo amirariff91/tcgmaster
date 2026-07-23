@@ -47,7 +47,7 @@ async function getSetFromDB(gameSlug: string, setSlug: string): Promise<MockSet 
     const { data: cardsData } = await (supabase as any)
       .from('cards')
       .select(`
-        id, name, slug, number, rarity, artist, image_url, description,
+        id, name, slug, number, rarity, artist, image_url, local_image_url, description,
         price_cache ( raw_prices, graded_prices )
       `)
       .eq('set_id', setData.id)
@@ -62,6 +62,7 @@ async function getSetFromDB(gameSlug: string, setSlug: string): Promise<MockSet 
       rarity: string | null;
       artist: string | null;
       image_url: string | null;
+      local_image_url: string | null;
       description: string | null;
       price_cache: Array<{
         raw_prices: Record<string, number | null> | null;
@@ -80,7 +81,9 @@ async function getSetFromDB(gameSlug: string, setSlug: string): Promise<MockSet 
         slug: c.slug,
         number: c.number,
         rarity,
-        image_url: c.image_url,
+        // Grid renders MockCard.image_url; prefer the cached/CDN copy (local_image_url)
+        // so it moves to R2 on cutover, falling back to the source image_url.
+        image_url: c.local_image_url ?? c.image_url,
         prices: {
           raw: raw?.nearMint ?? null,
           psa7: graded?.psa7?.average ?? null,
