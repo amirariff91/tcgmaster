@@ -11,35 +11,60 @@ const OLLAMA_API_KEY = process.env.OLLAMA_API_KEY;
 const OLLAMA_MODEL = process.env.OLLAMA_VISION_MODEL || 'gemma4:31b';
 const OLLAMA_URL = process.env.OLLAMA_BASE_URL || 'https://ollama.com';
 
-if (!OLLAMA_API_KEY) {
-  console.error("Missing OLLAMA_API_KEY.");
-  process.exit(1);
-}
+const HEADERS = { 'User-Agent': 'TCGMaster/1.0.0' };
 const CATEGORY_ID = 68; // One Piece
 
 let cachedGroups: any[] | null = null;
 const cachedProducts: Record<number, any[]> = {};
 
+/**
+ * Clean card number to isolate the base set number for TCGPlayer lookup.
+ * E.g., "OP10-022_p1" -> "OP10-022", "ST12-008_r1" -> "ST12-008"
+ */
+function cleanBaseNumber(rawNumber: string): string {
+  if (!rawNumber) return '';
+  // Split on underscore to remove variant/parallel suffixes (_p1, _r1, etc.)
+  const base = rawNumber.split('_')[0].trim().toUpperCase();
+  return base;
+}
+
 async function getGroups() {
   if (cachedGroups) return cachedGroups;
-  const res = await fetch(`https://tcgcsv.com/tcgplayer/${CATEGORY_ID}/groups`, { headers: { 'User-Agent': 'curl/8.4.0' } });
-  cachedGroups = (await res.json()).results || [];
-  return cachedGroups;
+  try {
+    const res = await fetch(`https://tcgcsv.com/tcgplayer/${CATEGORY_ID}/groups`, { headers: HEADERS });
+    if (!res.ok) return [];
+    cachedGroups = (await res.json()).results || [];
+    return cachedGroups;
+  } catch {
+    return [];
+  }
 }
 
 async function getProducts(groupId: number) {
   if (cachedProducts[groupId]) return cachedProducts[groupId];
-  const res = await fetch(`https://tcgcsv.com/tcgplayer/${CATEGORY_ID}/${groupId}/products`, { headers: { 'User-Agent': 'curl/8.4.0' } });
-  cachedProducts[groupId] = (await res.json()).results || [];
-  return cachedProducts[groupId];
+  try {
+    const res = await fetch(`https://tcgcsv.com/tcgplayer/${CATEGORY_ID}/${groupId}/products`, { headers: HEADERS });
+    if (!res.ok) return [];
+    cachedProducts[groupId] = (await res.json()).results || [];
+    return cachedProducts[groupId];
+  } catch {
+    return [];
+  }
 }
 
-async function findTcgProductsForNumber(baseNumber: string) {
+async function findTcgProductsForNumber(rawNumber: string) {
+  const baseNumber = cleanBaseNumber(rawNumber);
+  if (!baseNumber) return [];
+
   const groups = await getGroups();
   let matches: any[] = [];
+
   for (const g of groups) {
     const products = await getProducts(g.groupId);
-    const m = products.filter((p: any) => p.extendedData?.find((d: any) => d.name === 'Number')?.value === baseNumber);
+    const m = products.filter((p: any) => {
+      const numVal = p.extendedData?.find((d: any) => d.name === 'Number')?.value;
+      return numVal && numVal.toUpperCase() === baseNumber;
+    });
     if (m.length > 0) matches.push(...m);
   }
   return matches;
@@ -47,19 +72,27 @@ async function findTcgProductsForNumber(baseNumber: string) {
 
 const dictPath = path.resolve(process.cwd(), 'lib/price-engine/mapping-dictionary.json');
 
-function loadDict() {
+function loadDict(): Record<string, number> {
   try {
-    return JSON.parse(fs.readFileSync(dictPath, 'utf8'));
+    const data = JSON.parse(fs.readFileSync(dictPath, 'utf8'));
+    // Flush any stale -1 markers so they get re-evaluated cleanly
+    for (const key of Object.keys(data)) {
+      if (data[key] === -1) {
+        delete data[key];
+      }
+    }
+    return data;
   } catch {
     return {};
   }
 }
 
-function saveDict(dict: any) {
+function saveDict(dict: Record<string, number>) {
   fs.writeFileSync(dictPath, JSON.stringify(dict, null, 2));
 }
 
 async function askOllama(imageUrl: string, products: any[]) {
+  if (!OLLAMA_API_KEY) return null;
   try {
     const res = await fetch(imageUrl);
     if (!res.ok) return null;
@@ -79,6 +112,7 @@ Return ONLY the numeric product ID. If none match or you are unsure, return "Unk
       headers: {
         'Authorization': `Bearer ${OLLAMA_API_KEY}`,
         'Content-Type': 'application/json',
+        'User-Agent': 'TCGMaster/1.0.0',
       },
       body: JSON.stringify({
         model: OLLAMA_MODEL,
@@ -88,7 +122,6 @@ Return ONLY the numeric product ID. If none match or you are unsure, return "Unk
     });
 
     if (!chatRes.ok) {
-      console.error(`Ollama Error: ${chatRes.statusText}`);
       return null;
     }
 
@@ -99,72 +132,153 @@ Return ONLY the numeric product ID. If none match or you are unsure, return "Unk
       return parseInt(text);
     }
     return null;
-  } catch (error: any) {
-    console.error("AI Mapping error:", error);
+  } catch {
     return null;
   }
 }
 
-async function run() {
-  console.log("Starting AI Variant Mapping Worker...");
-  
-  while (true) {
-    const { data: cards } = await supabase
-      .from('cards')
-      .select('id, slug, name, number, image_url, local_image_url')
-      .like('slug', 'op-%_%') // Only variants
-      .not('slug', 'like', '%-ja') // Exclude Japanese cards
-      .limit(300);
+/**
+ * Fetch cards ordered by highest price history first
+ */
+async function fetchCardsByPhase(phaseFilter: string): Promise<any[]> {
+  // Query price_history to order by highest price descending
+  const { data: topPrices } = await supabase
+    .from('price_history')
+    .select('card_id, price')
+    .order('price', { ascending: false })
+    .limit(1000);
 
-    if (!cards || cards.length === 0) {
-      console.log("No English variants need mapping right now. Sleeping 5m...");
-      await new Promise(r => setTimeout(r, 5 * 60 * 1000));
+  const priceMap = new Map<string, number>();
+  if (topPrices) {
+    for (const p of topPrices) {
+      if (!priceMap.has(p.card_id) || (p.price || 0) > priceMap.get(p.card_id)!) {
+        priceMap.set(p.card_id, p.price || 0);
+      }
+    }
+  }
+
+  let query = supabase
+    .from('cards')
+    .select('id, slug, name, number, image_url, local_image_url');
+
+  if (phaseFilter === 'jp-one-piece') {
+    query = query.like('slug', 'op-%').like('slug', '%-ja');
+  } else if (phaseFilter === 'en-one-piece') {
+    query = query.like('slug', 'op-%').not('slug', 'like', '%-ja');
+  } else if (phaseFilter === 'dbfw') {
+    query = query.like('slug', 'dbfw-%');
+  }
+
+  const { data: cards } = await query.limit(500);
+  if (!cards) return [];
+
+  // Sort cards by highest price first
+  cards.sort((a, b) => {
+    const priceA = priceMap.get(a.id) || 0;
+    const priceB = priceMap.get(b.id) || 0;
+    return priceB - priceA;
+  });
+
+  return cards;
+}
+
+async function runPhase(phaseName: string, phaseFilter: string, dict: Record<string, number>): Promise<number> {
+  console.log(`\n=================================================================`);
+  console.log(`🚀 Starting ${phaseName} Mapping (Highest Price First)...`);
+  console.log(`=================================================================`);
+
+  const cards = await fetchCardsByPhase(phaseFilter);
+  if (cards.length === 0) {
+    console.log(`No cards found for ${phaseName}.`);
+    return 0;
+  }
+
+  console.log(`Found ${cards.length} cards in ${phaseName} queue.`);
+  let newMappings = 0;
+
+  for (const card of cards) {
+    if (dict[card.slug]) continue; // Already mapped
+
+    const baseNumber = cleanBaseNumber(card.number);
+    console.log(`\nProcessing ${card.slug} (Base Number: ${baseNumber})...`);
+
+    const products = await findTcgProductsForNumber(card.number);
+
+    if (products.length === 0) {
+      console.log(`-> No TCGPlayer products found for base number "${baseNumber}"`);
       continue;
     }
 
-    const dict = loadDict();
-    let newMappings = 0;
-
-    for (const card of cards) {
-      if (dict[card.slug]) continue; // Already mapped
-      
-      console.log(`Processing ${card.slug}...`);
-      const baseNumber = card.number;
-      const products = await findTcgProductsForNumber(baseNumber);
-      
-      if (products.length === 0) {
-        console.log(`-> No TCGPlayer products found for ${baseNumber}`);
-        continue;
-      }
-      
-      if (products.length === 1) {
-        console.log(`-> Auto-mapped ${card.slug} to ${products[0].productId}`);
-        dict[card.slug] = products[0].productId;
-        newMappings++;
-        continue;
-      }
-      
-      console.log(`-> Found ${products.length} possibilities. Asking Ollama...`);
-      const targetImageUrl = card.local_image_url || card.image_url;
-      const matchedId = await askOllama(targetImageUrl, products);
-      
-      if (matchedId) {
-        console.log(`-> Ollama matched ${card.slug} to TCGPlayer ID ${matchedId} (${products.find(p=>p.productId===matchedId)?.name})`);
-        dict[card.slug] = matchedId;
-        newMappings++;
-        saveDict(dict);
-      } else {
-        console.log(`-> Ollama failed to match. Marking as -1 to prevent infinite retries.`);
-        dict[card.slug] = -1;
-        saveDict(dict);
-      }
-      
-      await new Promise(r => setTimeout(r, 12000)); // Sleep 12s to respect limits
+    if (products.length === 1) {
+      console.log(`-> Auto-mapped ${card.slug} to TCGPlayer ID ${products[0].productId} (${products[0].name})`);
+      dict[card.slug] = products[0].productId;
+      newMappings++;
+      saveDict(dict);
+      continue;
     }
 
-    console.log(`Finished mapping batch! Added ${newMappings} new mappings. Sleeping 5m...`);
-    await new Promise(r => setTimeout(r, 5 * 60 * 1000));
+    // Multiple products found — check for Parallel / Alternate Art match
+    const parallelMatch = products.find((p: any) => {
+      const n = (p.name || '').toLowerCase();
+      return n.includes('parallel') || n.includes('alternate art') || n.includes('manga') || n.includes('special card');
+    });
+
+    if (parallelMatch && products.length === 2) {
+      console.log(`-> Auto-matched parallel variant ${card.slug} to TCGPlayer ID ${parallelMatch.productId} (${parallelMatch.name})`);
+      dict[card.slug] = parallelMatch.productId;
+      newMappings++;
+      saveDict(dict);
+      continue;
+    }
+
+    console.log(`-> Found ${products.length} possibilities. Asking Ollama Cloud Vision...`);
+    const targetImageUrl = card.local_image_url || card.image_url;
+    const matchedId = await askOllama(targetImageUrl, products);
+
+    if (matchedId) {
+      console.log(`-> Ollama matched ${card.slug} to TCGPlayer ID ${matchedId}`);
+      dict[card.slug] = matchedId;
+      newMappings++;
+      saveDict(dict);
+    } else if (parallelMatch) {
+      console.log(`-> Ollama unsure. Falling back to parallel match ${parallelMatch.productId}`);
+      dict[card.slug] = parallelMatch.productId;
+      newMappings++;
+      saveDict(dict);
+    } else {
+      console.log(`-> Marking ${card.slug} as unmatched (-1)`);
+      dict[card.slug] = -1;
+      saveDict(dict);
+    }
+
+    await new Promise(r => setTimeout(r, 2000));
+  }
+
+  console.log(`Finished ${phaseName}! Added ${newMappings} new mappings.`);
+  return newMappings;
+}
+
+async function run() {
+  console.log("🤖 Starting AI Variant Mapping Engine (Phase Order: JP One Piece -> EN One Piece -> DBFW)...");
+
+  while (true) {
+    const dict = loadDict();
+
+    // Phase 1: Japanese One Piece (highest price first)
+    await runPhase("Phase 1: Japanese One Piece", "jp-one-piece", dict);
+
+    // Phase 2: English One Piece (highest price first)
+    await runPhase("Phase 2: English One Piece", "en-one-piece", dict);
+
+    // Phase 3: Dragon Ball Fusion World (highest price first)
+    await runPhase("Phase 3: Dragon Ball Fusion World", "dbfw", dict);
+
+    console.log("\nAll phases complete! Idle sleeping for 10 minutes before next audit pass...");
+    await new Promise(r => setTimeout(r, 10 * 60 * 1000));
   }
 }
 
-run();
+run().catch(err => {
+  console.error("Fatal Variant Mapper error:", err);
+  process.exit(1);
+});
