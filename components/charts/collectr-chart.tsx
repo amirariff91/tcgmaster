@@ -128,10 +128,11 @@ export function CollectrChart({ priceHistory, gradeInfos, className }: CollectrC
     const lastKnownPrices: Record<string, number> = {};
     
     const finalData = initialData.map(row => {
-        const newRow = { ...row };
+        const r = row as Record<string, any>;
+        const newRow: Record<string, any> = { ...row };
         activeSourcesArr.forEach(source => {
-            if (row[source] !== undefined) {
-                lastKnownPrices[source] = row[source] as number;
+            if (r[source] !== undefined) {
+                lastKnownPrices[source] = r[source] as number;
             } else if (lastKnownPrices[source] !== undefined) {
                 newRow[source] = lastKnownPrices[source];
             }

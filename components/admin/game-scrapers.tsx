@@ -24,7 +24,8 @@ function formatPrice(price: number, source: string) {
 export async function GameScrapers() {
   const supabase = await createClient();
 
-  const { data: games } = await supabase.from('games').select('id, name, slug');
+  const { data: gamesData } = await supabase.from('games').select('id, name, slug');
+  const games = gamesData as { id: string; name: string; slug: string }[] | null;
 
   const gameDiagnostics = games ? await Promise.all(games.map(async (game) => {
     // These queries are heavy (using estimated joins) but because this component is wrapped in Suspense,

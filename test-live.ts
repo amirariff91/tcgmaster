@@ -1,4 +1,4 @@
 import 'dotenv/config';
-import { getCardWithPrices } from './lib/data-fetching'; // Assuming it's here
+// import { getCardWithPrices } from './lib/data-fetching';
 
 // Just check the database directly what livePrices is!

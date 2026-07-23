@@ -16,7 +16,7 @@ async function main() {
     // Only text nodes
     const text = $(el).clone().children().remove().end().text().trim();
     if (text.includes('US $') || text.toLowerCase().includes('psa')) {
-      console.log('Element:', el.tagName, 'Class:', $(el).attr('class'), 'Text:', text);
+      console.log('Element:', (el as any).tagName, 'Class:', $(el).attr('class'), 'Text:', text);
     }
   });
   

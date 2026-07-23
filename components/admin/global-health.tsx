@@ -18,7 +18,8 @@ export async function GlobalPlatformHealth() {
     .select('*', { count: 'estimated', head: true })
     .lt('fetched_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
 
-  const { data: latestTourney } = await supabase.from('tournaments').select('created_at').order('created_at', { ascending: false }).limit(1).single();
+  const { data: latestTourneyData } = await supabase.from('tournaments').select('created_at').order('created_at', { ascending: false }).limit(1).single();
+  const latestTourney = latestTourneyData as { created_at: string } | null;
   const latestTourneyDate = latestTourney?.created_at ? new Date(latestTourney.created_at) : null;
 
   const priceCoverage = totalCards && totalCards > 0 ? Math.round(((cachedPrices || 0) / totalCards) * 100) : 0;

@@ -10,7 +10,7 @@ async function run() {
   
   const content = await page.evaluate(() => {
     // Find recent sales
-    const sales = [];
+    const sales: any[] = [];
     document.querySelectorAll('.sale-list__item').forEach(el => {
        sales.push(el.textContent);
     });
