@@ -41,15 +41,15 @@ async function fetchHistoricalSalesForCard(cardId: string, snkrdunkId: string) {
   const productCode = `SW---${snkrdunkId}`;
   let totalSaved = 0;
   let page = 1;
-  const maxPages = 10; // Up to 1000 sales records per card
+  const maxPages = 200; // Uncapped deep historical search (up to 20,000 sales per card)
 
-  console.log(`  -> Fetching Snkrdunk sales for product ${productCode}...`);
+  console.log(`  -> Uncapped Deep Snkrdunk Sales Ingestion for product ${productCode}...`);
 
   while (page <= maxPages) {
     try {
       const url = `https://snkrdunk.com/en/v1/products/${productCode}/used-listings?perPage=100&page=${page}&sortType=latest&isOnlyOnSale=false`;
       const res = await fetch(url, { headers: HEADERS });
-      
+
       if (!res.ok) {
         console.warn(`  ! HTTP ${res.status} fetching page ${page} for ${productCode}`);
         break;
@@ -61,10 +61,6 @@ async function fetchHistoricalSalesForCard(cardId: string, snkrdunkId: string) {
       if (listings.length === 0) break;
 
       const soldListings = listings.filter((l: any) => l.isSold && l.priceAmount > 0);
-
-      if (soldListings.length === 0 && page > 2) {
-        break;
-      }
 
       const insertRows = soldListings.map((l: any) => {
         const recordedAt = decodeUlidTime(l.listingUID).toISOString();
@@ -95,82 +91,97 @@ async function fetchHistoricalSalesForCard(cardId: string, snkrdunkId: string) {
       }
 
       page++;
-      await new Promise(r => setTimeout(r, 600)); // Respect rate limit
+      await new Promise(r => setTimeout(r, 400)); // Smooth rate limiting
     } catch (err: any) {
       console.error(`  ✗ Error fetching page ${page}:`, err.message);
       break;
     }
   }
 
-  // Mark historical_fetched = true on card record
-  await supabase
-    .from('cards')
-    .update({ historical_fetched: true, updated_at: new Date().toISOString() })
-    .eq('id', cardId);
+  // Refresh latest prices from newly inserted history
+  const { data: latestPrices } = await supabase
+    .from('price_history')
+    .select('price, grade')
+    .eq('card_id', cardId)
+    .order('recorded_at', { ascending: false })
+    .limit(20);
+
+  if (latestPrices && latestPrices.length > 0) {
+    const rawVal = latestPrices[0].price;
+    await supabase.from('price_cache').upsert({
+      card_id: cardId,
+      raw_prices: { market: rawVal, snkrdunk: rawVal },
+      source: 'snkrdunk',
+      fetched_at: new Date().toISOString(),
+      expires_at: new Date(Date.now() + 86400000).toISOString(),
+    }, { onConflict: 'card_id' });
+
+    await supabase.from('cards').update({
+      price_cache_ttl: Math.round(rawVal * 100),
+      historical_fetched: true,
+      last_price_fetch: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }).eq('id', cardId);
+  } else {
+    await supabase.from('cards').update({
+      historical_fetched: true,
+      last_price_fetch: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }).eq('id', cardId);
+  }
 
   return totalSaved;
 }
 
 async function run() {
-  console.log('🤖 Starting Snkrdunk Historical Price & Trade Backfill Worker...');
+  console.log('🤖 Starting Continuous 24/7 Rolling Snkrdunk Historical Trade Ingestion Engine...');
 
   while (true) {
     try {
-      // Prioritize Japanese One Piece cards with snkrdunk_url that haven't fetched history yet
+      // Continuous 24/7 Rolling Queue: Order by last_price_fetch ASC (Nulls First)
       const { data: cards, error } = await supabase
         .from('cards')
-        .select('id, slug, name, snkrdunk_url, historical_fetched')
+        .select('id, slug, name, snkrdunk_url, last_price_fetch')
         .not('snkrdunk_url', 'is', null)
-        .or('historical_fetched.is.null,historical_fetched.eq.false')
         .like('slug', 'op-%-ja')
+        .order('last_price_fetch', { ascending: true, nullsFirst: true })
         .limit(50);
 
       if (error) {
-        console.error('Error querying cards:', error);
-        await new Promise(r => setTimeout(r, 60000));
+        console.error('Error querying cards queue:', error);
+        await new Promise(r => setTimeout(r, 30000));
         continue;
       }
 
       let processQueue = cards || [];
 
       if (processQueue.length === 0) {
-        const { data: remainingCards } = await supabase
-          .from('cards')
-          .select('id, slug, name, snkrdunk_url, historical_fetched')
-          .not('snkrdunk_url', 'is', null)
-          .or('historical_fetched.is.null,historical_fetched.eq.false')
-          .limit(50);
-
-        processQueue = remainingCards || [];
-      }
-
-      if (processQueue.length === 0) {
-        console.log('No cards pending Snkrdunk historical backfill. Sleeping 15m...');
-        await new Promise(r => setTimeout(r, 15 * 60 * 1000));
+        console.log('Queue empty. Retrying in 15 seconds...');
+        await new Promise(r => setTimeout(r, 15000));
         continue;
       }
 
-      console.log(`Processing batch of ${processQueue.length} cards for Snkrdunk historical backfill...`);
+      console.log(`Processing continuous batch of ${processQueue.length} cards for Snkrdunk historical trade backfill...`);
 
       for (const card of processQueue) {
         const snkrdunkId = extractSnkrdunkId(card.snkrdunk_url);
         if (!snkrdunkId) {
-          await supabase.from('cards').update({ historical_fetched: true }).eq('id', card.id);
+          await supabase.from('cards').update({ last_price_fetch: new Date().toISOString() }).eq('id', card.id);
           continue;
         }
 
-        console.log(`Processing ${card.slug} (${card.name}) [Snkrdunk ID: ${snkrdunkId}]...`);
+        console.log(`Ingesting ${card.slug} (${card.name}) [Snkrdunk ID: ${snkrdunkId}]...`);
         const savedCount = await fetchHistoricalSalesForCard(card.id, snkrdunkId);
         console.log(`  ✓ Saved ${savedCount} historical Snkrdunk trades for ${card.slug}`);
 
-        await new Promise(r => setTimeout(r, 1000));
+        await new Promise(r => setTimeout(r, 600));
       }
 
-      console.log('Batch complete. Waiting 10s before next batch...');
-      await new Promise(r => setTimeout(r, 10000));
+      console.log('Batch complete. Recirculating to next batch in 5s...');
+      await new Promise(r => setTimeout(r, 5000));
     } catch (loopErr: any) {
       console.error('Unexpected error in worker loop:', loopErr);
-      await new Promise(r => setTimeout(r, 30000));
+      await new Promise(r => setTimeout(r, 15000));
     }
   }
 }
