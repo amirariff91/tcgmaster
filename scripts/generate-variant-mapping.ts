@@ -259,22 +259,16 @@ async function runPhase(phaseName: string, phaseFilter: string, dict: Record<str
 }
 
 async function run() {
-  console.log("🤖 Starting AI Variant Mapping Engine (Phase Order: JP One Piece -> EN One Piece -> DBFW)...");
+  console.log("🤖 Starting AI Variant Mapping Engine (Continuous Priority: Japanese One Piece -> Expensive First)...");
 
   while (true) {
     const dict = loadDict();
 
-    // Phase 1: Japanese One Piece (highest price first)
-    await runPhase("Phase 1: Japanese One Piece", "jp-one-piece", dict);
+    // Priority Focus: Japanese One Piece (highest price first)
+    await runPhase("Priority Phase: Japanese One Piece (Expensive First)", "jp-one-piece", dict);
 
-    // Phase 2: English One Piece (highest price first)
-    await runPhase("Phase 2: English One Piece", "en-one-piece", dict);
-
-    // Phase 3: Dragon Ball Fusion World (highest price first)
-    await runPhase("Phase 3: Dragon Ball Fusion World", "dbfw", dict);
-
-    console.log("\nAll phases complete! Idle sleeping for 10 minutes before next audit pass...");
-    await new Promise(r => setTimeout(r, 10 * 60 * 1000));
+    console.log("\nJapanese One Piece Audit pass complete! Recirculating to highest price Japanese cards in 10 seconds...");
+    await new Promise(r => setTimeout(r, 10000));
   }
 }
 
