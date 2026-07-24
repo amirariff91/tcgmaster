@@ -14,13 +14,17 @@ if (!GEMINI_API_KEY) {
   process.exit(1);
 }
 
-// Strict zero-cost safety: 1 min sleep ensures 1440 req/day (under 1500 free limit)
+// Rate limit sleep: 60s normal mode
 const SLEEP_MS = SAFE_MODE ? 120000 : 60000;
 
-// Every OP card carries a copyright strip (e.g. "©E.O/S., T.A. BANDAI MADE IN JAPAN")
-// on the same edge as the artist credit. Cards WITHOUT a credit make vision models read
-// that strip as a name — Gemini turned "©E.O" into "Eiichiro Oda". Name the trap so the
-// model returns Unknown instead of inventing an artist.
+// Supported active Google Gemini vision models in priority order
+const MODEL_PRIORITY = [
+  'gemini-flash-latest',
+  'gemini-2.5-flash-lite',
+  'gemini-2.0-flash',
+  'gemini-2.5-flash',
+];
+
 const ARTIST_PROMPT = [
   "This is a One Piece Trading Card Game card. The artist/illustrator name, when present,",
   "appears as vertical text along the RIGHT edge of the card (rotated 90°).",
@@ -35,34 +39,52 @@ const ARTIST_PROMPT = [
 ].join('\n');
 
 async function askVisionModel(base64Data: string, mimeType: string): Promise<string> {
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      contents: [{
-        parts: [
-          { text: ARTIST_PROMPT },
-          {
-            inlineData: {
-              mimeType: mimeType,
-              data: base64Data
-            }
-          }
-        ]
-      }]
-    }),
-  });
+  let lastError = '';
 
-  if (!res.ok) {
-    const body = await res.text().catch(() => '');
-    throw new Error(`${res.status} ${res.statusText}: ${body.slice(0, 200)}`);
+  for (const modelName of MODEL_PRIORITY) {
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GEMINI_API_KEY}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { text: ARTIST_PROMPT },
+              {
+                inlineData: {
+                  mimeType: mimeType,
+                  data: base64Data
+                }
+              }
+            ]
+          }]
+        }),
+      });
+
+      if (res.status === 429) {
+        console.warn(`  ! Model ${modelName} hit 429 rate limit. Trying next model...`);
+        lastError = `429 Rate Limit on ${modelName}`;
+        await new Promise(r => setTimeout(r, 2000));
+        continue;
+      }
+
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        lastError = `${res.status} ${res.statusText}: ${body.slice(0, 150)}`;
+        continue;
+      }
+
+      const data = await res.json();
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+      return text.trim() || 'Unknown';
+    } catch (err: any) {
+      lastError = err.message;
+    }
   }
 
-  const data = await res.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-  return text.trim() || 'Unknown';
+  throw new Error(`All Gemini models failed. Last error: ${lastError}`);
 }
 
 function detectMimeType(contentType: string | null): string {
@@ -78,26 +100,22 @@ async function extractArtist(imageUrl: string): Promise<string | null> {
   let retries = 3;
   while (retries > 0) {
     try {
-      const res = await fetch(imageUrl);
-      if (!res.ok) throw new Error("Failed to download image");
-      
-      const contentType = res.headers.get('content-type');
-      const mimeType = detectMimeType(contentType);
-      
-      const arrayBuffer = await res.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-      const base64Data = buffer.toString('base64');
-      
-      const artist = await askVisionModel(base64Data, mimeType);
-      return artist;
-    } catch (error: any) {
-      if (error?.message?.includes('429') || error?.status === 429) {
-        console.log(`Rate limited! (${error?.message}) Waiting 15s before retry...`);
-        await new Promise(r => setTimeout(r, 15000));
-        retries--;
-      } else {
-        console.error("AI Extraction error:", error);
+      const imgRes = await fetch(imageUrl);
+      if (!imgRes.ok) {
+        console.warn(`  ! Failed to download image: ${imgRes.status} ${imgRes.statusText}`);
         return null;
+      }
+
+      const mimeType = detectMimeType(imgRes.headers.get('content-type'));
+      const arrayBuffer = await imgRes.arrayBuffer();
+      const base64Data = Buffer.from(arrayBuffer).toString('base64');
+
+      return await askVisionModel(base64Data, mimeType);
+    } catch (err: any) {
+      console.warn(`  ! Vision extraction attempt failed: ${err.message}. Retries left: ${retries - 1}`);
+      retries--;
+      if (retries > 0) {
+        await new Promise((resolve) => setTimeout(resolve, 5000));
       }
     }
   }
@@ -105,63 +123,68 @@ async function extractArtist(imageUrl: string): Promise<string | null> {
 }
 
 async function run() {
-  console.log(`Starting continuous background extraction for One Piece cards [SAFE_MODE=${SAFE_MODE}]...`);
-  
+  console.log(`🤖 Starting Gemini Artist Vision Extraction Worker [SAFE_MODE=${SAFE_MODE}]...`);
+
   while (true) {
-    console.log("Fetching next batch of cards missing artist data...");
-    const { data: cards, error } = await supabase
-      .from('cards')
-      .select('id, name, image_url, local_image_url')
-      .is('artist', null)
-      .like('slug', 'op-%')
-      .not('slug', 'like', '%-ja')
-      .not('image_url', 'is', null)
-      .limit(100);
-      
-    if (error) {
-      console.error("Failed to fetch cards", error);
-      await new Promise(r => setTimeout(r, 60000));
-      continue;
-    }
-    
-    if (!cards || cards.length === 0) {
-      console.log("No more cards to process. All EN OP artists filled or marked Unknown!");
-      console.log("Sleeping 5 minutes before checking for new cards...");
-      await new Promise(r => setTimeout(r, 5 * 60 * 1000));
-      continue;
-    }
-    
-    console.log(`Found ${cards.length} cards to process.`);
-    
-    for (const card of cards) {
-      console.log(`Processing ${card.name}...`);
-      
-      const targetImageUrl = card.local_image_url || card.image_url;
-      const artist = await extractArtist(targetImageUrl);
-      
-      if (artist === null) {
-        console.log(`-> Extraction failed (likely rate limits). Skipping DB update and waiting 5 minutes...`);
-        await new Promise(r => setTimeout(r, 5 * 60 * 1000));
-        break;
+    try {
+      // Find cards missing illustrator info (priority: Japanese One Piece first)
+      const { data: cards, error } = await supabase
+        .from('cards')
+        .select('id, name, slug, image_url, local_image_url, illustrator')
+        .is('illustrator', null)
+        .like('slug', 'op-%-ja')
+        .limit(1);
+
+      let targetCard = cards?.[0];
+
+      if (!targetCard) {
+        const { data: generalCards } = await supabase
+          .from('cards')
+          .select('id, name, slug, image_url, local_image_url, illustrator')
+          .is('illustrator', null)
+          .limit(1);
+        targetCard = generalCards?.[0];
       }
 
-      console.log(`-> Extracted Artist: ${artist}`);
-      
-      const { error: updateError } = await supabase
-        .from('cards')
-        .update({ artist: artist })
-        .eq('id', card.id);
-        
-      if (updateError) {
-        console.error(`Failed to update ${card.name}`, updateError);
+      if (!targetCard) {
+        console.log("No cards pending artist extraction. Sleeping 10 minutes...");
+        await new Promise((resolve) => setTimeout(resolve, 600000));
+        continue;
       }
-      
-      console.log(`Sleeping ${SLEEP_MS / 1000}s for rate limits...`);
-      await new Promise(r => setTimeout(r, SLEEP_MS));
+
+      const targetImageUrl = targetCard.local_image_url || targetCard.image_url;
+      if (!targetImageUrl) {
+        await supabase.from('cards').update({ illustrator: 'Unknown' }).eq('id', targetCard.id);
+        continue;
+      }
+
+      console.log(`\nExtracting artist for ${targetCard.slug} (${targetCard.name})...`);
+      const artist = await extractArtist(targetImageUrl);
+
+      if (artist) {
+        await supabase
+          .from('cards')
+          .update({ illustrator: artist, updated_at: new Date().toISOString() })
+          .eq('id', targetCard.id);
+        console.log(`  ✓ Successfully extracted artist for ${targetCard.slug}: "${artist}"`);
+      } else {
+        await supabase
+          .from('cards')
+          .update({ illustrator: 'Unknown', updated_at: new Date().toISOString() })
+          .eq('id', targetCard.id);
+        console.log(`  ! Extraction failed for ${targetCard.slug}. Set to "Unknown".`);
+      }
+
+      console.log(`Sleeping ${SLEEP_MS / 1000}s to respect Gemini API rate limits...`);
+      await new Promise((resolve) => setTimeout(resolve, SLEEP_MS));
+    } catch (loopErr: any) {
+      console.error("Unexpected worker loop error:", loopErr.message);
+      await new Promise((resolve) => setTimeout(resolve, 30000));
     }
-    
-    console.log("Finished batch! Continuing to next batch...");
   }
 }
 
-run();
+run().catch((err) => {
+  console.error("Fatal Artist Vision worker error:", err);
+  process.exit(1);
+});
