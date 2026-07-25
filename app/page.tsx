@@ -25,6 +25,12 @@ const categories: Category[] = [
   { name: 'Dragon Ball', slug: 'dragon-ball', description: 'Fusion World, Awakened Pulse, Super Rares', cardCount: '2,100+', change: '+5.7%', topMover: 'Goku SCR' }
 ];
 
+// Without this the page has no dynamic API left after the cookie-free client swap, so
+// Next bakes it once at build and freezes it until the next manual Coolify deploy —
+// pinning the Math.random() shuffle below to one permanent set of 60 cards and hiding
+// every newly ingested card. An hourly window keeps the marquee rotating.
+export const revalidate = 3600;
+
 export default async function HomePage() {
   const supabase = createPublicClient();
   

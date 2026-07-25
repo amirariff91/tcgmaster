@@ -78,7 +78,12 @@ export default function cloudflareImageLoader({
   }
 
   // fit=scale-down never upscales past the source (~600px card art).
-  const opts = `width=${snapWidth(width)},quality=${quality ?? 75},format=auto,fit=scale-down`;
+  // onerror=redirect is the safety net for the Free-tier 5,000 unique-transformation
+  // cap: past it Cloudflare answers 9422 instead of an image, which would break every
+  // card image at once, mid-month, with no deploy to correlate it to. With the
+  // redirect, overflow falls back to the original R2 object — already edge-HIT with
+  // max-age=2592000 — so the failure mode degrades to "larger images", not "no images".
+  const opts = `width=${snapWidth(width)},quality=${quality ?? 75},format=auto,fit=scale-down,onerror=redirect`;
   // pathname/search are already percent-encoded by URL — do NOT re-encode.
   return `${CDN_ORIGIN}/cdn-cgi/image/${opts}${url.pathname}${url.search}`;
 }

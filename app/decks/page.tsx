@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
-import { createClient } from '@/lib/supabase/server';
+// Cookie-free anon client keeps this route statically renderable (see card page).
+import { createPublicClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Trophy, ChevronRight, Loader2 } from 'lucide-react';
@@ -45,7 +46,7 @@ type ArchetypeData = {
 };
 
 export default async function GlobalDecksHub() {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
 
   // 1. Fetch all active games
   const { data: gamesData } = await supabase

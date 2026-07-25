@@ -250,6 +250,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
+// This route had neither revalidate nor generateStaticParams, so the cookie-free client
+// swap alone left it rendering per request. Both are needed for a dynamic segment to
+// join the ISR path in Next 16.
+export const revalidate = 3600;
+
+export async function generateStaticParams() {
+  return [];
+}
+
 export default async function GamePage({ params }: PageProps) {
   const { game } = await params;
   const gamePageData = await getGamePageData(game);

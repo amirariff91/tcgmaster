@@ -82,13 +82,13 @@ curl -s -X PUT "https://api.cloudflare.com/client/v4/zones/$ZONE/rulesets/phases
       }
     },
     {
-      "description": "ISR catalog pages - honour s-maxage from Next",
-      "expression": "(http.host eq \"tcgmaster.com\" and not starts_with(http.request.uri.path, \"/api/\") and not starts_with(http.request.uri.path, \"/collection\") and not starts_with(http.request.uri.path, \"/portfolio\") and not starts_with(http.request.uri.path, \"/alerts\") and not starts_with(http.request.uri.path, \"/settings\") and not starts_with(http.request.uri.path, \"/achievements\") and not starts_with(http.request.uri.path, \"/login\") and not starts_with(http.request.uri.path, \"/signup\") and not starts_with(http.request.uri.path, \"/auth\"))",
+      "description": "ISR catalog pages - bounded edge TTL, never respect_origin",
+      "expression": "(http.host eq \"tcgmaster.com\" and not starts_with(http.request.uri.path, \"/api/\") and not starts_with(http.request.uri.path, \"/admin\") and not starts_with(http.request.uri.path, \"/collection\") and not starts_with(http.request.uri.path, \"/portfolio\") and not starts_with(http.request.uri.path, \"/alerts\") and not starts_with(http.request.uri.path, \"/settings\") and not starts_with(http.request.uri.path, \"/achievements\") and not starts_with(http.request.uri.path, \"/login\") and not starts_with(http.request.uri.path, \"/signup\") and not starts_with(http.request.uri.path, \"/auth\"))",
       "action": "set_cache_settings",
       "action_parameters": {
         "cache": true,
-        "edge_ttl": { "mode": "respect_origin" },
-        "browser_ttl": { "mode": "respect_origin" }
+        "edge_ttl": { "mode": "override_origin", "default": 3600 },
+        "browser_ttl": { "mode": "override_origin", "default": 0 }
       }
     }
   ]
@@ -97,6 +97,19 @@ curl -s -X PUT "https://api.cloudflare.com/client/v4/zones/$ZONE/rulesets/phases
 
 Rule 3 deliberately excludes every authenticated surface. Ship it **after** the app
 redeploy — before that, the pages still say `no-store` and the rule is a no-op at best.
+
+> **Do not use `edge_ttl: respect_origin` on rule 3.** Next emits
+> `stale-while-revalidate = ONE_YEAR − revalidate` automatically — confirmed exactly:
+> the card page sends `31535700` (= 31536000 − 300) and the set page `31532400`
+> (= 31536000 − 3600). It is not a tuned value. Today it is inert because nothing
+> caches the HTML, but `respect_origin` would adopt the whole directive set and
+> license Cloudflare to serve a card page **up to a year stale** whenever origin
+> revalidation fails — and the most likely trigger is a Coolify redeploy, which is
+> manual and does not fire on push. Year-old prices pinned at the edge of a price
+> comparison site is the worst failure this stack can produce, and it would detonate
+> on the very action recommended as the fix. `override_origin` with a bounded default
+> keeps the SWR value out of edge policy. `browser_ttl: 0` keeps prices out of private
+> caches, where they cannot be purged.
 
 ## 3. Image Transformations — the real cap
 
@@ -108,17 +121,29 @@ Fixed in code: `lib/images/cloudflare-loader.ts` now snaps widths to
 match. Verified — every one of Next's 16 candidate widths now collapses to 4 variants,
 and the live page's `width=3840` request (for ~600px source art) caps at 1280.
 
-Still worth watching: 15,342 cards × 4 = ~61k *potential* variants. Only viewed cards
-mint a transformation, and current measured usage is low (~1–3/min), but there is no
-alarm on it. Check monthly:
+**This is not "safe" now — it is 6–12× over the cap, just reached more slowly.**
+15,342 cards × 4 buckets = 61,368 potential unique variants against a 5,000/month cap.
+Even at the 2 widths actually observed in the rendered DOM it is 30,684. Staying under
+5,000 means serving at most ~1,250 distinct cards/month at 4 variants (~2,500 at 2) —
+against 2,500–4,700 uniques/day browsing a 15,342-card catalogue, plus Googlebot
+crawling all of it. Bucketing bought roughly a 4.5× delay before failure, not headroom.
 
-```bash
-curl -s https://api.cloudflare.com/client/v4/graphql \
-  -H "Authorization: Bearer $CF_TOKEN" -H 'Content-Type: application/json' \
-  -d '{"query":"query { viewer { zones(filter:{zoneTag:\"9fed7d9dfdfbe82affbea2aabc136a2f\"}) { imageResizingRequests1mGroups(limit:100, filter:{datetime_geq:\"2026-07-01T00:00:00Z\"}) { sum { requests } } } } }"}'
-```
+Mitigation already shipped: `lib/images/cloudflare-loader.ts` appends **`onerror=redirect`**,
+so once the cap trips, Cloudflare falls back to the original R2 object (already edge-HIT
+at `max-age=2592000`) instead of returning 9422. The failure degrades to "larger images"
+rather than every card image on the site breaking at once, mid-month, with no deploy to
+correlate it to.
 
-If it approaches the cap, buy the **Cloudflare Images** paid tier. Do **not** buy
+⚠️ **Do not monitor this with `imageResizingRequests1mGroups { sum { requests } }`.** That
+counts total resize *requests*; the cap is on distinct `(source, option-string)` pairs per
+month. A cache-warm variant serves forever without minting a new unique, so the two
+diverge by orders of magnitude — the earlier "~1–3/min" reading (≈130k requests/month) is
+incapable of indicating cap proximity in either direction. Treat request volume as a
+traffic signal only, and track cap risk from *catalogue coverage* instead: distinct cards
+viewed per month × widths in use. The authoritative unique count is the **Images usage
+panel in the Cloudflare dashboard**.
+
+If coverage approaches the cap, buy the **Cloudflare Images** paid tier. Do **not** buy
 Cloudflare Pro for this — Pro is a separate $20/mo zone subscription and **does not lift
 the Images cap**.
 

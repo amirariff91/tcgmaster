@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { Activity, Database, Sparkles, Trophy, ExternalLink, BarChart3, Bot, Terminal } from 'lucide-react';
 import { formatDistanceToNow, formatDistanceToNowStrict } from 'date-fns';
@@ -32,6 +33,13 @@ function formatPrice(price: number, source: string) {
 }
 
 export default async function AdminHealthDashboard() {
+  // This page reports exact card/price row counts, artist coverage and scraper
+  // pipeline health. It had no auth check of any kind and /admin was never in the
+  // middleware's protectedPaths, so it was reachable by anyone who guessed the path.
+  const authClient = await createClient();
+  const { data: { user } } = await authClient.auth.getUser();
+  if (!user) redirect('/login?redirectTo=/admin/health');
+
   const supabase = await createClient();
 
   // 1. Fetch Global Vitals

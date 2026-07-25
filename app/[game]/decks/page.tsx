@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
-import { createClient } from '@/lib/supabase/server';
+// Cookie-free anon client keeps this route statically renderable (see card page).
+import { createPublicClient } from '@/lib/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FormattedPrice } from '@/components/ui/formatted-price';
 import { Trophy, Calendar, Users, Target } from 'lucide-react';
@@ -13,13 +14,19 @@ export const metadata: Metadata = {
 
 export const revalidate = 60; // Revalidate every minute to keep meta fresh
 
+// Next 16 only puts a dynamic segment on the ISR path when it declares
+// generateStaticParams. Prerender nothing; generate and cache on first request.
+export async function generateStaticParams() {
+  return [];
+}
+
 export default async function DecksPage({
   params,
 }: {
   params: Promise<{ game: string }>;
 }) {
   const { game } = await params;
-  const supabase = await createClient();
+  const supabase = createPublicClient();
 
   // 1. Fetch recent tournaments
   const { data: tournaments } = await supabase
