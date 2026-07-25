@@ -2,8 +2,9 @@
 
 import * as React from 'react';
 import {
-  LineChart,
+  ComposedChart,
   Line,
+  Area,
   XAxis,
   YAxis,
   Tooltip,
@@ -49,16 +50,15 @@ const SOURCE_COLORS: Record<string, string> = {
 export function CollectrChart({ priceHistory, gradeInfos, className }: CollectrChartProps) {
   const { format } = useCurrencyContext();
 
-  const hasRaw = gradeInfos.some(g => g.grade === 'raw');
+  const hasRaw = priceHistory.some(h => h.grade === 'raw');
   const gradedList = gradeInfos.filter(g => g.grade !== 'raw');
-  const hasGraded = true; // Graded tab is permanently accessible
+  const hasGraded = priceHistory.some(h => h.grade !== 'raw');
 
-  const [activeTab, setActiveTab] = React.useState<ChartType>('RAW');
+  const [activeTab, setActiveTab] = React.useState<ChartType>(hasRaw ? 'RAW' : (hasGraded ? 'GRADED' : 'RAW'));
   
   const defaultGrade = gradedList.find(g => g.grade === '10')?.grade 
     || gradedList.find(g => g.grade === '9')?.grade 
-    || gradedList[0]?.grade 
-    || 'raw';
+    || gradedList[0]?.grade;
 
   const [activeGrade, setActiveGrade] = React.useState<string>(defaultGrade);
   const [timeRange, setTimeRange] = React.useState<TimeRange>('1W');
@@ -91,10 +91,17 @@ export function CollectrChart({ priceHistory, gradeInfos, className }: CollectrC
     if (activeTab === 'RAW') {
       setActiveGrade('raw');
     } else if (activeTab === 'GRADED') {
-      const bestGraded = gradedList.find(g => g.grade === '10')?.grade 
+      let bestGraded = gradedList.find(g => g.grade === '10')?.grade 
         || gradedList.find(g => g.grade === '9')?.grade 
         || gradedList[0]?.grade;
-      if (bestGraded) setActiveGrade(bestGraded);
+      
+      if (!bestGraded) {
+        const historyGrades = priceHistory.filter(h => h.grade !== 'raw').map(h => h.grade);
+        if (historyGrades.includes('psa10') || historyGrades.includes('10')) bestGraded = '10';
+        else if (historyGrades.includes('psa9') || historyGrades.includes('9')) bestGraded = '9';
+        else bestGraded = historyGrades[0]?.replace('psa', '');
+      }
+      setActiveGrade(bestGraded || 'none');
     }
   }, [activeTab]);
 
@@ -113,38 +120,74 @@ export function CollectrChart({ priceHistory, gradeInfos, className }: CollectrC
     const daysAgo = ranges[timeRange];
     const cutoff = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
 
-    const relevantHistory = filteredByGrade.filter(point => {
-      return new Date(point.recorded_at) >= cutoff;
+    // Identify all unique sources that have data in this grade
+    const activeSourcesSet = new Set<string>();
+    filteredByGrade.forEach(p => activeSourcesSet.add(p.source || 'default'));
+    const activeSourcesArr = Array.from(activeSourcesSet);
+
+    // Sort all history chronologically
+    const sortedHistory = [...filteredByGrade].sort((a, b) => new Date(a.recorded_at).getTime() - new Date(b.recorded_at).getTime());
+
+    // Find the baseline price for each source right before the cutoff date
+    const lastKnownPrices: Record<string, number> = {};
+    sortedHistory.forEach(point => {
+      if (new Date(point.recorded_at) < cutoff) {
+        lastKnownPrices[point.source || 'default'] = point.price;
+      }
     });
 
-    const chartDataMap = new Map<string, Record<string, string | number>>();
     let min = Infinity;
     let max = -Infinity;
-    const activeSourcesSet = new Set<string>();
 
-    relevantHistory.forEach(point => {
+    // Group all history points by day so we can apply them during our day-by-day iteration
+    const historyByDay: Record<string, Record<string, number>> = {};
+    sortedHistory.forEach(point => {
       const dateStr = point.recorded_at.split('T')[0];
-      const source = point.source || 'default';
-      activeSourcesSet.add(source);
+      if (!historyByDay[dateStr]) historyByDay[dateStr] = {};
+      historyByDay[dateStr][point.source || 'default'] = point.price;
+    });
 
-      if (!chartDataMap.has(dateStr)) {
-        chartDataMap.set(dateStr, { dateDisplay: dateStr });
+    const chartDataArr: any[] = [];
+
+    // Iterate day by day from cutoff to today
+    for (let i = 0; i <= daysAgo; i++) {
+      const currentDate = new Date(cutoff.getTime() + i * 24 * 60 * 60 * 1000);
+      const dateStr = currentDate.toISOString().split('T')[0];
+      
+      // Update lastKnownPrices if there are new historical data points on this exact day
+      if (historyByDay[dateStr]) {
+        for (const [src, price] of Object.entries(historyByDay[dateStr])) {
+          lastKnownPrices[src] = price;
+        }
       }
 
-      const entry = chartDataMap.get(dateStr)!;
-      entry[source] = point.price;
+      // Create the entry for this day using the forward-filled lastKnownPrices
+      const entry: any = { dateDisplay: dateStr };
+      let sum = 0;
+      let count = 0;
 
-      if (point.price < min) min = point.price;
-      if (point.price > max) max = point.price;
-    });
+      for (const src of activeSourcesArr) {
+        if (lastKnownPrices[src] !== undefined) {
+          const p = lastKnownPrices[src];
+          entry[src] = p;
+          sum += p;
+          count++;
+          if (p < min) min = p;
+          if (p > max) max = p;
+        }
+      }
 
-    const sortedData = Array.from(chartDataMap.values()).sort((a, b) => {
-      return new Date(a.dateDisplay as string).getTime() - new Date(b.dateDisplay as string).getTime();
-    });
+      // Only set average price if we have data, otherwise leave undefined so Recharts doesn't drop to 0
+      if (count > 0) {
+        entry.price = sum / count;
+      }
+
+      chartDataArr.push(entry);
+    }
 
     return {
-      chartData: sortedData,
-      activeSources: Array.from(activeSourcesSet),
+      chartData: chartDataArr,
+      activeSources: activeSourcesArr,
       minPrice: min === Infinity ? 0 : min,
       maxPrice: max === -Infinity ? 100 : max
     };
@@ -209,9 +252,15 @@ export function CollectrChart({ priceHistory, gradeInfos, className }: CollectrC
 
       {/* The Multi-Line Chart */}
       <div className="relative z-10 h-[240px] w-full mt-2 -ml-2">
-        {chartData.length >= 2 ? (
+        {chartData.length >= 2 && chartData.some(d => d.price !== undefined) ? (
             <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
-            <LineChart data={chartData} margin={{ top: 15, right: 10, left: 10, bottom: 0 }}>
+            <ComposedChart data={chartData} margin={{ top: 15, right: 10, left: 10, bottom: 0 }}>
+                <defs>
+                    <linearGradient id="colorTeal" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#2dd4bf" stopOpacity={0.4}/>
+                        <stop offset="95%" stopColor="#2dd4bf" stopOpacity={0}/>
+                    </linearGradient>
+                </defs>
                 <XAxis 
                     dataKey="dateDisplay" 
                     tickFormatter={(value) => {
@@ -241,7 +290,7 @@ export function CollectrChart({ priceHistory, gradeInfos, className }: CollectrC
                         return (
                         <div className="rounded-lg border border-[#3f3f46] bg-[#18181b] p-3 shadow-xl min-w-[120px]">
                             <p className="mb-2 text-xs text-zinc-400 border-b border-zinc-700 pb-1">{label ? formatDate(String(label)) : ''}</p>
-                            {payload.map(item => (
+                            {payload.filter(item => item.dataKey !== 'price').map(item => (
                                 <div key={item.dataKey} className="flex justify-between items-center gap-4 mb-1 last:mb-0">
                                     <div className="flex items-center gap-1.5">
                                         <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
@@ -257,6 +306,15 @@ export function CollectrChart({ priceHistory, gradeInfos, className }: CollectrC
                     }}
                 />
                 
+                <Area 
+                    type="monotone" 
+                    dataKey="price" 
+                    stroke="none" 
+                    fillOpacity={1} 
+                    fill="url(#colorTeal)" 
+                    isAnimationActive={false}
+                />
+                
                 {activeSources.map(source => (
                     <Line
                         key={source}
@@ -270,7 +328,7 @@ export function CollectrChart({ priceHistory, gradeInfos, className }: CollectrC
                         connectNulls
                     />
                 ))}
-            </LineChart>
+            </ComposedChart>
             </ResponsiveContainer>
         ) : (
             <div className="w-full h-full flex items-center justify-center">

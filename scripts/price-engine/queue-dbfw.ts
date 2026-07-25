@@ -44,7 +44,7 @@ async function run() {
 
     // 2. PriceCharting (Puppeteer-based)
     console.log('[DBFW] Fetching from PriceCharting...');
-    const pcResult = await fetchPriceChartingPrice(`${card.number} japanese`);
+    const pcResult = await fetchPriceChartingPrice(`${card.name} ${card.number} Dragon Ball Japanese`);
     if (pcResult !== null) {
       results.push({ price: pcResult.price, source: 'pricecharting', grade: 'raw' });
       console.log(`[DBFW] PriceCharting: $${pcResult.price}`);

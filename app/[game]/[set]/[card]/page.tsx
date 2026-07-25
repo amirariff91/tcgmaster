@@ -14,6 +14,7 @@ import { getCardWithPrices } from '@/lib/ppt/service';
 // silently defeats `revalidate` — that is why card pages served no-store.
 import { createPublicClient, createServerClient } from '@/lib/supabase/client';
 import { calculatePriceChange24h } from '@/lib/pricing/trending';
+import { redis } from '@/lib/redis/client';
 
 // `price_history.source` values are lowercase enum members; match on substring so
 // display casing and multi-word names ("TCG Republic") still resolve.
@@ -336,9 +337,20 @@ export default async function CardDetailPage({ params }: PageProps) {
   }
   const psa10Pop = population['psa-10'] || 0;
 
+  const getGradedPrice = (gradeObj: any): number => {
+    if (!gradeObj) return 0;
+    if (typeof gradeObj.average === 'number') return gradeObj.average;
+    const vals = Object.values(gradeObj).filter(v => typeof v === 'number') as number[];
+    if (vals.length > 0) return Math.min(...vals);
+    return 0;
+  };
+
+  const psa10Price = getGradedPrice(gradedPrices.psa10);
+  const psa9Price = getGradedPrice(gradedPrices.psa9);
+
   const priceHistoryData = (cardData?.price_history || []).filter((h) => h.source !== 'ppt-api');
-  const gradeLabel = gradedPrices.psa10?.average ? 'PSA 10' : (gradedPrices.psa9?.average ? 'PSA 9' : 'Raw');
-  const activeGradeForChart = gradedPrices.psa10?.average ? '10' : (gradedPrices.psa9?.average ? '9' : 'raw');
+  const gradeLabel = psa10Price > 0 ? 'PSA 10' : (psa9Price > 0 ? 'PSA 9' : 'Raw');
+  const activeGradeForChart = psa10Price > 0 ? '10' : (psa9Price > 0 ? '9' : 'raw');
 
   const relevantHistory = priceHistoryData.filter(h => h.grade === activeGradeForChart || h.grade === `psa${activeGradeForChart}`);
 
@@ -347,7 +359,7 @@ export default async function CardDetailPage({ params }: PageProps) {
   // collapsed the list to a single row on every card that had a SnkrDunk graded price.
   const rawHistory = priceHistoryData.filter(h => h.grade === 'raw');
 
-  let featuredPrice = gradedPrices.psa10?.average || gradedPrices.psa9?.average || rawPrices.nearMint || null;
+  let featuredPrice = psa10Price || psa9Price || rawPrices.nearMint || null;
   let winningSource = 'Market';
 
   if (relevantHistory.length > 0) {
@@ -358,7 +370,7 @@ export default async function CardDetailPage({ params }: PageProps) {
 
   // --- Start DB Sync (Self-Healing) ---
   const currentTtl = cardData.price_cache_ttl;
-  const newTtl = featuredPrice ? Math.round(featuredPrice * 100) : null;
+  const newTtl = rawPrices.nearMint ? Math.round(rawPrices.nearMint * 100) : null;
   
   if (currentTtl !== newTtl) {
     const adminClient = createServerClient();
@@ -395,16 +407,16 @@ export default async function CardDetailPage({ params }: PageProps) {
 
   const priceLadderEntries = [
     { grade: 'raw' as const, grading_company: null, price: rawPrices.nearMint || 0, confidence: 'high' as const, last_sale_date: null, population: null },
-    { grade: '7' as const, grading_company: 'psa' as const, price: gradedPrices.psa7?.average || 0, confidence: 'high' as const, last_sale_date: null, population: population['psa-7'] || null },
-    { grade: '8' as const, grading_company: 'psa' as const, price: gradedPrices.psa8?.average || 0, confidence: 'high' as const, last_sale_date: null, population: population['psa-8'] || null },
-    { grade: '9' as const, grading_company: 'psa' as const, price: gradedPrices.psa9?.average || 0, confidence: 'high' as const, last_sale_date: null, population: population['psa-9'] || null },
-    { grade: '10' as const, grading_company: 'psa' as const, price: gradedPrices.psa10?.average || 0, confidence: 'medium' as const, last_sale_date: null, population: population['psa-10'] || null },
+    { grade: '7' as const, grading_company: 'psa' as const, price: getGradedPrice(gradedPrices.psa7) || 0, confidence: 'high' as const, last_sale_date: null, population: population['psa-7'] || null },
+    { grade: '8' as const, grading_company: 'psa' as const, price: getGradedPrice(gradedPrices.psa8) || 0, confidence: 'high' as const, last_sale_date: null, population: population['psa-8'] || null },
+    { grade: '9' as const, grading_company: 'psa' as const, price: psa9Price || 0, confidence: 'high' as const, last_sale_date: null, population: population['psa-9'] || null },
+    { grade: '10' as const, grading_company: 'psa' as const, price: psa10Price || 0, confidence: 'medium' as const, last_sale_date: null, population: population['psa-10'] || null },
   ].filter(e => e.price > 0);
 
   const availableGrades = [
     { grade: 'raw' as const, grading_company: null, hasData: rawPrices.nearMint !== null },
-    { grade: '9' as const, grading_company: 'psa' as const, hasData: !!gradedPrices.psa9?.average },
-    { grade: '10' as const, grading_company: 'psa' as const, hasData: !!gradedPrices.psa10?.average },
+    { grade: '9' as const, grading_company: 'psa' as const, hasData: psa9Price > 0 },
+    { grade: '10' as const, grading_company: 'psa' as const, hasData: psa10Price > 0 },
   ].filter(g => g.hasData);
   
   const ebaySales = dbPriceCache?.ebay_sales;
@@ -448,13 +460,40 @@ export default async function CardDetailPage({ params }: PageProps) {
   // Vendor URLs are stored per card and drive the scrapers; reuse them so each
   // "Compared Markets" row links out to the listing the price came from.
   const marketUrls: Record<string, string> = {};
+  
+  // Read URL verification status
+  let urlStatus: Record<string, string> = {};
+  try {
+    const statusStr = await redis.get(`source_status:${card.id}`);
+    if (statusStr) {
+      if (typeof statusStr === 'string' && statusStr.startsWith('{')) {
+        urlStatus = JSON.parse(statusStr);
+      } else if (typeof statusStr === 'object') {
+        urlStatus = statusStr as Record<string, string>;
+      }
+    }
+  } catch (e) {
+    console.error('Failed to parse source status from Redis', e);
+  }
+
   for (const [source, url] of Object.entries({
     tcgplayer: cardData.tcgplayer_url,
     snkrdunk: cardData.snkrdunk_url,
     yuyutei: cardData.yuyutei_url,
     cardrush: cardData.cardrush_url,
   })) {
-    if (url) marketUrls[source] = url;
+    if (url) {
+      // Only require verification for image-based Japanese sources that are prone to errors
+      if (source === 'snkrdunk' || source === 'yuyutei') {
+        if (urlStatus[source] === 'verified') {
+          marketUrls[source] = url;
+        }
+        // If 'rejected' or unverified, it won't be added to marketUrls, falling back to search
+      } else {
+        // TCGPlayer and Cardrush are currently trusted
+        marketUrls[source] = url;
+      }
+    }
   }
 
   const { baseName: cleanName, variantInfo } = splitCardName(card.name);
@@ -633,7 +672,20 @@ export default async function CardDetailPage({ params }: PageProps) {
                     const logo = MARKET_LOGOS.find(m => s.includes(m.match))?.logo ?? null;
                     // Logos with transparent backgrounds need a white plate to stay legible on the dark card.
                     const needsWhitePlate = !s.includes('snkrdunk');
-                    const href = marketUrls[item.source] ?? null;
+                    let href = marketUrls[s] ?? null;
+                    if (!href) {
+                      if (s.includes('pricecharting')) {
+                        href = `https://www.pricecharting.com/search-products?q=${encodeURIComponent(cleanName)}&type=prices`;
+                      } else if (s.includes('ebay')) {
+                        href = `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(cleanName + ' ' + card.number)}`;
+                      } else if (s.includes('tcg republic')) {
+                        href = `https://tcgrepublic.com/product/text_search.html?q=${encodeURIComponent(cleanName)}`;
+                      } else if (s.includes('tcgplayer')) {
+                        href = `https://www.tcgplayer.com/search/all/product?q=${encodeURIComponent(cleanName)}`;
+                      } else {
+                        href = `https://www.google.com/search?q=${encodeURIComponent(cleanName + ' ' + card.number + ' ' + item.source)}`;
+                      }
+                    }
 
                     const body = (
                       <>

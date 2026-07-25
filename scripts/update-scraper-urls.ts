@@ -39,7 +39,7 @@ async function run() {
     const formattedNumber = card.number.toUpperCase();
     
     // Snkrdunk URL
-    const snkrdunkUrl = card.snkrdunk_url || `https://snkrdunk.com/en/search/result?keyword=${formattedNumber}`;
+    const snkrdunkUrl = card.snkrdunk_url || `https://snkrdunk.com/en/search/result?keyword=${encodeURIComponent(card.name + ' ' + formattedNumber + ' One Piece')}`;
     // Yuyutei URL
     const yuyuteiUrl = card.yuyutei_url || `https://yuyu-tei.jp/sell/opc/s/search?search_word=${formattedNumber}`;
     // Cardrush URL

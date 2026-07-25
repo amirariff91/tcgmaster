@@ -46,7 +46,7 @@ async function run() {
 
     // 2. SnkrDunk (Puppeteer-based)
     console.log('[Japanese OP] Fetching from SnkrDunk...');
-    const snkrdunkResult = await fetchSnkrdunkPrice(card.snkrdunk_url || card.number);
+    const snkrdunkResult = await fetchSnkrdunkPrice(card.snkrdunk_url || `${card.name} ${card.number} One Piece`);
     if (snkrdunkResult !== null) {
       results.push({ price: snkrdunkResult.price, source: 'snkrdunk', grade: 'raw' });
       console.log(`[Japanese OP] SnkrDunk: $${snkrdunkResult.price}`);
@@ -61,7 +61,7 @@ async function run() {
 
     // 3. PriceCharting (Puppeteer-based)
     console.log('[Japanese OP] Fetching from PriceCharting...');
-    const pcResult = await fetchPriceChartingPrice(`${card.number} japanese`);
+    const pcResult = await fetchPriceChartingPrice(`${card.name} ${card.number} One Piece Japanese`);
     if (pcResult !== null) {
       results.push({ price: pcResult.price, source: 'pricecharting', grade: 'raw' });
       console.log(`[Japanese OP] PriceCharting: $${pcResult.price}`);

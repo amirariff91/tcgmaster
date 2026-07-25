@@ -51,7 +51,7 @@ async function run() {
       // 2. PriceCharting (Graceful Fallback)
       try {
         console.log(`[English DBFW] Fetching PriceCharting for ${card.number}...`);
-        const pcResult = await fetchPriceChartingPrice(card.number);
+        const pcResult = await fetchPriceChartingPrice(`${card.name} ${card.number} Dragon Ball`);
         if (pcResult !== null) {
           results.push({ price: pcResult.price, source: 'pricecharting', grade: 'raw' });
           console.log(`  ✓ PriceCharting: $${pcResult.price}`);

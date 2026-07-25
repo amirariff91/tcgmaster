@@ -98,11 +98,12 @@ async function fetchHistoricalSalesForCard(cardId: string, snkrdunkId: string) {
     }
   }
 
-  // Refresh latest prices from newly inserted history
+  // Refresh latest prices from newly inserted history (strictly raw)
   const { data: latestPrices } = await supabase
     .from('price_history')
     .select('price, grade')
     .eq('card_id', cardId)
+    .eq('grade', 'raw')
     .order('recorded_at', { ascending: false })
     .limit(20);
 
