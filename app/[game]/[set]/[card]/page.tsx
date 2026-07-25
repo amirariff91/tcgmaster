@@ -4,6 +4,7 @@ import { notFound, permanentRedirect } from 'next/navigation';
 import { ChevronRight, ExternalLink } from 'lucide-react';
 import { CardImage } from '@/components/card/card-image';
 import { CardDetailActions } from '@/components/card/card-detail-actions';
+import { RelatedCards, type RelatedCard } from '@/components/card/related-cards';
 import { FormattedPrice } from '@/components/ui/formatted-price';
 import { CollectrChart } from '@/components/charts/collectr-chart';
 import { formatPrice, formatNumber, getRarityDisplay, formatDate, formatDisplayNumber, formatSetName, splitCardName } from '@/lib/utils';
@@ -173,6 +174,23 @@ async function getCardData(gameSlug: string, setSlug: string, cardSlug: string):
   return card as unknown as CardData;
 }
 
+// A handful of siblings from the same set, so the card page is not a dead end.
+async function getRelatedCards(setId: string, excludeCardId: string): Promise<RelatedCard[]> {
+  const supabase = createPublicClient();
+
+  const { data } = await supabase
+    .from('cards')
+    .select('id, slug, name, number, image_url, local_image_url, price_cache_ttl')
+    .eq('set_id', setId)
+    .neq('id', excludeCardId)
+    // price_cache_ttl holds the featured price in cents, so this surfaces the
+    // set's most valuable cards rather than an arbitrary slice.
+    .order('price_cache_ttl', { ascending: false, nullsFirst: false })
+    .limit(6);
+
+  return (data ?? []) as unknown as RelatedCard[];
+}
+
 // Retired `one-piece-<code>` slugs (deduped 2026-07-22, merged into `op-<code>`) resolve
 // to their canonical `op-<code>` card so old/indexed URLs 308-redirect instead of 404.
 async function resolveRetiredOnePieceSlug(
@@ -253,6 +271,7 @@ export default async function CardDetailPage({ params }: PageProps) {
 
   const setData = cardData.sets;
   const gameData = setData.games;
+  const relatedCards = await getRelatedCards(setData.id, cardData.id);
 
   const card = {
     id: cardData.id,
@@ -557,7 +576,16 @@ export default async function CardDetailPage({ params }: PageProps) {
               </dl>
             </div>
 
-            {/* Pulse / Quick Stats (Relocated here to replace Card Text) */}
+            {/* Card text. Already fetched but never rendered until now — it is the only
+                non-price content on the page and gives the URL something to rank on. */}
+            {card.description && (
+              <div className="bg-[#0b1329]/80 backdrop-blur-sm rounded-2xl border border-white/10 p-5 lg:p-6">
+                <h2 className="text-sm font-bold text-white uppercase tracking-wider mb-3">Card Text</h2>
+                <p className="text-sm leading-relaxed text-zinc-300 whitespace-pre-line">{card.description}</p>
+              </div>
+            )}
+
+            {/* Pulse / Quick Stats */}
             <div className="grid grid-cols-3 divide-x divide-white/10 bg-[#0b1329]/80 backdrop-blur-sm rounded-2xl border border-white/10 py-4 lg:py-6 px-2">
               <div className="px-4 flex flex-col items-center text-center">
                 <span className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest mb-2">PSA 10 Pop</span>
@@ -657,6 +685,13 @@ export default async function CardDetailPage({ params }: PageProps) {
             
           </div>
         </div>
+
+        <RelatedCards
+          cards={relatedCards}
+          gameSlug={game}
+          setSlug={set}
+          setName={card.set.name}
+        />
       </div>
     </div>
   );

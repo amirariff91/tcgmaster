@@ -149,6 +149,19 @@ export function CollectrChart({ priceHistory, gradeInfos, className }: CollectrC
     return groups;
   }, [gradedList]);
 
+  // Share of graded copies that came back a 10 — the standard collector read on how
+  // hard a card is to gem. Null (and hidden) unless we actually hold population counts.
+  const gemRate = React.useMemo(() => {
+    let tenPop = 0;
+    let totalPop = 0;
+    for (const g of gradedList) {
+      if (g.population == null) continue;
+      totalPop += g.population;
+      if (parseFloat(g.grade) === 10) tenPop += g.population;
+    }
+    return totalPop > 0 ? (tenPop / totalPop) * 100 : null;
+  }, [gradedList]);
+
   return (
     <div className={cn('flex flex-col space-y-4 rounded-3xl bg-[#0b1329]/80 backdrop-blur-sm border border-white/10 text-white p-5 shadow-2xl relative overflow-hidden', className)}>
       
@@ -157,8 +170,10 @@ export function CollectrChart({ priceHistory, gradeInfos, className }: CollectrC
         {/* Title */}
         <div className="flex items-center gap-2">
           <div className="w-4 h-1.5 rounded-full bg-[#2dd4bf]" />
+          {/* Label the series by what it actually is. "Holofoil" was hardcoded and
+              asserted a finish we do not track for One Piece or Dragon Ball. */}
           <h2 className="text-sm font-medium text-gray-300">
-              Holofoil {activeTab === 'GRADED' && activeGrade !== 'raw' ? `PSA ${activeGrade}` : ''}
+              {activeTab === 'GRADED' && activeGrade !== 'raw' ? `PSA ${activeGrade}` : 'Raw'}
           </h2>
         </div>
 
@@ -274,7 +289,7 @@ export function CollectrChart({ priceHistory, gradeInfos, className }: CollectrC
           <div className="mt-4 border-t border-[#222222] pt-4">
             {Object.entries(gradedByCompany).map(([company, grades]) => (
                 <div key={company} className="mb-4 last:mb-0">
-                    <h3 className="text-[13px] font-bold text-white mb-2 ml-1">{company} - Holofoil</h3>
+                    <h3 className="text-[13px] font-bold text-white mb-2 ml-1">{company}</h3>
                     <div className="flex overflow-x-auto gap-[1px] bg-[#222] p-[1px] rounded-lg border border-[#333] no-scrollbar">
                         {grades.map(g => {
                             const isSelected = activeGrade === g.grade;
@@ -296,9 +311,14 @@ export function CollectrChart({ priceHistory, gradeInfos, className }: CollectrC
                     </div>
                 </div>
             ))}
-            <div className="mt-3 flex items-center justify-center text-xs text-[#2dd4bf] hover:text-[#5eead4] cursor-pointer">
-                <span className="mr-1">💎</span> Gem Rate: Holofoil (N/A)
-            </div>
+            {/* Real gem rate from population counts. This used to render a
+                clickable-looking "Gem Rate: Holofoil (N/A)" that was inert and
+                had no data behind it; now it only appears when we can compute it. */}
+            {gemRate !== null && (
+              <div className="mt-3 flex items-center justify-center text-xs text-[#2dd4bf]">
+                  <span className="mr-1">💎</span> Gem rate: {gemRate.toFixed(1)}% graded PSA 10
+              </div>
+            )}
           </div>
       )}
 
