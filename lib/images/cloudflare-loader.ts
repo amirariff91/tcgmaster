@@ -39,6 +39,22 @@ const CDN_HOST = CDN_URL ? CDN_URL.host : '';
 const BYPASS_EXTENSION_RE = /\.(svg|gif)(?:$|\?)/i;
 const ANIMATED_HINT_RE = /(?:^|[?&])(?:anim|animated)=/i;
 
+/**
+ * Cloudflare bills — and on the Free plan hard-caps at 5,000/month (error 9422) —
+ * *unique* transformations, keyed on the full option string. Next's default srcset
+ * spans 8 device widths + 8 image widths, so 15k card images could mint six figures
+ * of distinct variants and start failing site-wide.
+ *
+ * Snapping to four buckets bounds the whole catalogue at 4 variants per image. Source
+ * art is ~600px, and `fit=scale-down` never upscales, so 1280 covers retina without
+ * paying for widths the origin cannot fill.
+ */
+const WIDTH_BUCKETS = [160, 320, 640, 1280] as const;
+
+function snapWidth(width: number): number {
+  return WIDTH_BUCKETS.find((bucket) => width <= bucket) ?? WIDTH_BUCKETS[WIDTH_BUCKETS.length - 1];
+}
+
 export default function cloudflareImageLoader({
   src,
   width,
@@ -62,7 +78,7 @@ export default function cloudflareImageLoader({
   }
 
   // fit=scale-down never upscales past the source (~600px card art).
-  const opts = `width=${width},quality=${quality ?? 75},format=auto,fit=scale-down`;
+  const opts = `width=${snapWidth(width)},quality=${quality ?? 75},format=auto,fit=scale-down`;
   // pathname/search are already percent-encoded by URL — do NOT re-encode.
   return `${CDN_ORIGIN}/cdn-cgi/image/${opts}${url.pathname}${url.search}`;
 }

@@ -2,7 +2,8 @@ import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getSetBySlug, getRelatedSets, mockSets } from '@/lib/mock-data';
 import { SetPageClient } from './set-page-client';
-import { createClient } from '@/lib/supabase/server';
+// Cookie-free anon client keeps this route statically renderable (see card page).
+import { createPublicClient } from '@/lib/supabase/client';
 import { formatSetName } from '@/lib/utils';
 import type { MockSet, MockCard } from '@/lib/mock-data';
 
@@ -11,16 +12,12 @@ interface SetPageProps {
     game: string;
     set: string;
   }>;
-  searchParams: Promise<{
-    q?: string;
-    sort?: string;
-  }>;
 }
 
 // Fetch set + cards from Supabase
 async function getSetFromDB(gameSlug: string, setSlug: string): Promise<MockSet | null> {
   try {
-    const supabase = await createClient();
+    const supabase = createPublicClient();
 
     // Fetch set with game info (use any to avoid Supabase join typing issues)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -161,9 +158,8 @@ export async function generateMetadata({ params }: SetPageProps): Promise<Metada
 
 export const revalidate = 3600;
 
-export default async function SetPage({ params, searchParams }: SetPageProps) {
+export default async function SetPage({ params }: SetPageProps) {
   const { game, set: setSlug } = await params;
-  const { q, sort } = await searchParams;
 
   // Try real DB first, fall back to mock data
   let setData = await getSetFromDB(game, setSlug);
@@ -191,8 +187,6 @@ export default async function SetPage({ params, searchParams }: SetPageProps) {
       setData={setData}
       relatedSets={relatedSets}
       gameSlug={game}
-      initialQuery={q}
-      initialSort={sort}
     />
   );
 }

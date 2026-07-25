@@ -2,6 +2,12 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
+    // Card art is ~600px and every card <Image> goes through the Cloudflare loader,
+    // which snaps to 160/320/640/1280. Narrowing the candidate widths here keeps the
+    // generated srcset aligned with those buckets instead of Next's default 8+8
+    // widths, which would multiply unique Cloudflare transformations (Free cap: 5,000/mo).
+    deviceSizes: [640, 1280],
+    imageSizes: [160, 320],
     remotePatterns: [
       // Supabase Storage (local_image_url) — retain during R2 cutover/rollback window
       {
@@ -54,9 +60,8 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
+  // `eslint` was removed from NextConfig in Next 16 — keeping it is a type error
+  // and it no longer does anything. Lint is not part of `next build` any more.
   typescript: {
     ignoreBuildErrors: true,
   },

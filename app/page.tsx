@@ -4,7 +4,8 @@ import { HeroCardsAnimation } from '@/components/home/hero-cards-animation';
 import { MarketMovers, type MarketMover } from '@/components/home/market-movers';
 import { CategoryCards, type Category } from '@/components/home/category-cards';
 import { CardsMarquee } from '@/components/home/cards-marquee';
-import { createClient } from '@/lib/supabase/server';
+// Cookie-free anon client keeps this route statically renderable (see card page).
+import { createPublicClient } from '@/lib/supabase/client';
 
 // Mock data (same as before)
 const marketMovers: { gainers: MarketMover[]; losers: MarketMover[] } = {
@@ -25,7 +26,7 @@ const categories: Category[] = [
 ];
 
 export default async function HomePage() {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   
   // Database-level scan for all high-end hits across the entire table
   const { data: rawCards } = await supabase

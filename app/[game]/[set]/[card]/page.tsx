@@ -7,9 +7,11 @@ import { CardDetailActions } from '@/components/card/card-detail-actions';
 import { FormattedPrice } from '@/components/ui/formatted-price';
 import { CollectrChart } from '@/components/charts/collectr-chart';
 import { formatPrice, formatNumber, getRarityDisplay, formatDate, formatDisplayNumber, formatSetName, splitCardName } from '@/lib/utils';
-import { createClient } from '@/lib/supabase/server';
 import { getCardWithPrices } from '@/lib/ppt/service';
-import { createServerClient } from '@/lib/supabase/client';
+// Public catalog data only, so use the cookie-free anon client. Reading cookies()
+// (which lib/supabase/server does) opts the route into dynamic rendering and
+// silently defeats `revalidate` — that is why card pages served no-store.
+import { createPublicClient, createServerClient } from '@/lib/supabase/client';
 import { calculatePriceChange24h } from '@/lib/pricing/trending';
 
 // `price_history.source` values are lowercase enum members; match on substring so
@@ -96,7 +98,7 @@ interface CardData {
 }
 
 async function getCardData(gameSlug: string, setSlug: string, cardSlug: string): Promise<CardData | null> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
 
   const { data: card, error } = await supabase
     .from('cards')
@@ -180,7 +182,7 @@ async function resolveRetiredOnePieceSlug(
   if (!cardSlug.startsWith('one-piece-')) return null;
   const winnerSlug = `op-${cardSlug.slice('one-piece-'.length).toLowerCase()}`;
 
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase
     .from('cards')
     .select('slug, sets!inner ( slug, games!inner ( slug ) )')
@@ -203,7 +205,16 @@ interface PageProps {
   }>;
 }
 
-export const revalidate = 300; 
+export const revalidate = 300;
+
+// Next 16 only puts a dynamic segment on the ISR path when it declares
+// generateStaticParams. The catalogue is ~15k cards, so prerender nothing at build
+// time and let `dynamicParams` (default true) generate + cache each page on first
+// request, then serve it from the cache until `revalidate` expires.
+export async function generateStaticParams() {
+  return [];
+}
+
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { game, set, card: cardSlug } = await params;
