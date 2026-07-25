@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
-import { createClient } from '@/lib/supabase/server';
+// Cookie-free anon client keeps this route statically renderable (see card page).
+import { createPublicClient } from '@/lib/supabase/client';
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -7,6 +8,12 @@ import { Trophy, Calendar, Users, ChevronRight, Coins } from 'lucide-react';
 import { format } from 'date-fns';
 
 export const revalidate = 60;
+
+// Next 16 only puts a dynamic segment on the ISR path when it declares
+// generateStaticParams. Prerender nothing; generate and cache on first request.
+export async function generateStaticParams() {
+  return [];
+}
 
 interface ArchetypePageProps {
   params: Promise<{
@@ -17,7 +24,7 @@ interface ArchetypePageProps {
 
 export async function generateMetadata({ params }: ArchetypePageProps): Promise<Metadata> {
   const { id } = await params;
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data: leader } = await supabase.from('cards').select('name').eq('id', id).single();
   const leaderName = (leader as any)?.name || 'Archetype';
   
@@ -29,7 +36,7 @@ export async function generateMetadata({ params }: ArchetypePageProps): Promise<
 
 export default async function ArchetypePage({ params }: ArchetypePageProps) {
   const { game, id } = await params;
-  const supabase = await createClient();
+  const supabase = createPublicClient();
 
   // Fetch the Leader Card
   const { data: leaderCard } = await supabase

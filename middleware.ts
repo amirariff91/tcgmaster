@@ -6,14 +6,22 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
+  /*
+   * Only the routes that actually need a session: the gated pages `updateSession`
+   * redirects, plus the auth flow itself (where the token refresh must run).
+   *
+   * The previous catch-all matched every public catalog page too, so every card,
+   * set, and search view paid a `supabase.auth.getUser()` round-trip and could not
+   * be served from the edge cache.
+   */
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
-     */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/collection/:path*',
+    '/portfolio/:path*',
+    '/alerts/:path*',
+    '/achievements/:path*',
+    '/settings/:path*',
+    '/login',
+    '/signup',
+    '/auth/:path*',
   ],
 };

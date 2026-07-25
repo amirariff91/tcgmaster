@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ChevronRight,
   Search,
@@ -25,8 +25,6 @@ interface SetPageClientProps {
   setData: MockSet;
   relatedSets: MockSet[];
   gameSlug: string;
-  initialQuery?: string;
-  initialSort?: string;
 }
 
 // Helper to get initial sort from localStorage or props
@@ -47,10 +45,14 @@ export function SetPageClient({
   setData,
   relatedSets,
   gameSlug,
-  initialQuery,
-  initialSort,
 }: SetPageClientProps) {
   const router = useRouter();
+  // Read ?q and ?sort here rather than taking them from the server page. Awaiting
+  // searchParams in a server component opts the whole route out of static rendering,
+  // and these two values only ever seeded client state.
+  const searchParams = useSearchParams();
+  const initialQuery = searchParams.get('q') ?? undefined;
+  const initialSort = searchParams.get('sort') ?? undefined;
 
   // State with lazy initialization for sort
   const [searchQuery, setSearchQuery] = useState(initialQuery || '');

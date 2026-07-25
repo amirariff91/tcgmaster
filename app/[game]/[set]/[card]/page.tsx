@@ -1,16 +1,31 @@
 import Link from 'next/link';
 import { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
-import { Bell, Plus, Share2, Info, ChevronRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { ChevronRight, ExternalLink } from 'lucide-react';
 import { CardImage } from '@/components/card/card-image';
+import { CardDetailActions } from '@/components/card/card-detail-actions';
+import { RelatedCards, type RelatedCard } from '@/components/card/related-cards';
 import { FormattedPrice } from '@/components/ui/formatted-price';
 import { CollectrChart } from '@/components/charts/collectr-chart';
 import { formatPrice, formatNumber, getRarityDisplay, formatDate, formatDisplayNumber, formatSetName, splitCardName } from '@/lib/utils';
-import { createPublicClient as createClient, createServerClient } from '@/lib/supabase/client';
 import { getCardWithPrices } from '@/lib/ppt/service';
+// Public catalog data only, so use the cookie-free anon client. Reading cookies()
+// (which lib/supabase/server does) opts the route into dynamic rendering and
+// silently defeats `revalidate` — that is why card pages served no-store.
+import { createPublicClient, createServerClient } from '@/lib/supabase/client';
 import { calculatePriceChange24h } from '@/lib/pricing/trending';
+
+// `price_history.source` values are lowercase enum members; match on substring so
+// display casing and multi-word names ("TCG Republic") still resolve.
+const MARKET_LOGOS = [
+  { match: 'snkrdunk', logo: '/logos/snkrdunk.png' },
+  { match: 'yuyutei', logo: '/logos/yuyutei.png' },
+  { match: 'cardrush', logo: '/logos/cardrush.png' },
+  { match: 'tcgplayer', logo: '/logos/tcgplayer.png' },
+  { match: 'pricecharting', logo: '/logos/pricecharting.png' },
+  { match: 'tcgrepublic', logo: '/logos/tcgrepublic.png' },
+  { match: 'tcg republic', logo: '/logos/tcgrepublic.png' },
+] as const;
 
 interface CardDataSet {
   id: string;
@@ -36,7 +51,7 @@ interface GradedPriceData {
 
 interface CardDataPriceCache {
   raw_prices: Record<string, number | null>;
-  graded_prices: Record<string, any>;
+  graded_prices: Record<string, GradedPriceData>;
   ebay_sales: Record<string, unknown>;
   fetched_at: string;
   expires_at: string;
@@ -83,8 +98,8 @@ interface CardData {
   yuyutei_url?: string;
 }
 
-async function getCardData(gameSlug: string, setSlug: string, cardSlug: string) {
-  const supabase = createClient();
+async function getCardData(gameSlug: string, setSlug: string, cardSlug: string): Promise<CardData | null> {
+  const supabase = createPublicClient();
 
   const { data: card, error } = await supabase
     .from('cards')
@@ -101,6 +116,10 @@ async function getCardData(gameSlug: string, setSlug: string, cardSlug: string) 
       tcg_player_id,
       price_cache_ttl,
       print_run_info,
+      tcgplayer_url,
+      snkrdunk_url,
+      yuyutei_url,
+      cardrush_url,
       sets!inner (
         id,
         name,
@@ -155,6 +174,23 @@ async function getCardData(gameSlug: string, setSlug: string, cardSlug: string) 
   return card as unknown as CardData;
 }
 
+// A handful of siblings from the same set, so the card page is not a dead end.
+async function getRelatedCards(setId: string, excludeCardId: string): Promise<RelatedCard[]> {
+  const supabase = createPublicClient();
+
+  const { data } = await supabase
+    .from('cards')
+    .select('id, slug, name, number, image_url, local_image_url, price_cache_ttl')
+    .eq('set_id', setId)
+    .neq('id', excludeCardId)
+    // price_cache_ttl holds the featured price in cents, so this surfaces the
+    // set's most valuable cards rather than an arbitrary slice.
+    .order('price_cache_ttl', { ascending: false, nullsFirst: false })
+    .limit(6);
+
+  return (data ?? []) as unknown as RelatedCard[];
+}
+
 // Retired `one-piece-<code>` slugs (deduped 2026-07-22, merged into `op-<code>`) resolve
 // to their canonical `op-<code>` card so old/indexed URLs 308-redirect instead of 404.
 async function resolveRetiredOnePieceSlug(
@@ -164,7 +200,7 @@ async function resolveRetiredOnePieceSlug(
   if (!cardSlug.startsWith('one-piece-')) return null;
   const winnerSlug = `op-${cardSlug.slice('one-piece-'.length).toLowerCase()}`;
 
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase
     .from('cards')
     .select('slug, sets!inner ( slug, games!inner ( slug ) )')
@@ -187,7 +223,16 @@ interface PageProps {
   }>;
 }
 
-export const revalidate = 900; 
+export const revalidate = 300;
+
+// Next 16 only puts a dynamic segment on the ISR path when it declares
+// generateStaticParams. The catalogue is ~15k cards, so prerender nothing at build
+// time and let `dynamicParams` (default true) generate + cache each page on first
+// request, then serve it from the cache until `revalidate` expires.
+export async function generateStaticParams() {
+  return [];
+}
+
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { game, set, card: cardSlug } = await params;
@@ -226,6 +271,7 @@ export default async function CardDetailPage({ params }: PageProps) {
 
   const setData = cardData.sets;
   const gameData = setData.games;
+  const relatedCards = await getRelatedCards(setData.id, cardData.id);
 
   const card = {
     id: cardData.id,
@@ -271,31 +317,14 @@ export default async function CardDetailPage({ params }: PageProps) {
   }
 
   const rawPrices = {
-    nearMint: dbPriceCache?.raw_prices?.nearMint ?? dbPriceCache?.raw_prices?.market ?? dbPriceCache?.raw_prices?.yuyutei ?? dbPriceCache?.raw_prices?.snkrdunk ?? dbPriceCache?.raw_prices?.tcgplayer ?? dbPriceCache?.raw_prices?.cardrush ?? livePrices?.raw?.nearMint ?? null,
+    nearMint: dbPriceCache?.raw_prices?.nearMint ?? dbPriceCache?.raw_prices?.market ?? livePrices?.raw?.nearMint ?? null,
     lightlyPlayed: dbPriceCache?.raw_prices?.lightlyPlayed ?? dbPriceCache?.raw_prices?.low ?? livePrices?.raw?.lightlyPlayed ?? null,
     moderatelyPlayed: dbPriceCache?.raw_prices?.moderatelyPlayed ?? livePrices?.raw?.moderatelyPlayed ?? null,
     heavilyPlayed: dbPriceCache?.raw_prices?.heavilyPlayed ?? livePrices?.raw?.heavilyPlayed ?? null,
   };
 
-  let gradedPrices: Record<string, GradedPriceData> = {};
-  if (livePrices?.graded) {
-    gradedPrices = livePrices.graded;
-  } else if (dbPriceCache?.graded_prices) {
-    for (const [grade, sources] of Object.entries(dbPriceCache.graded_prices)) {
-      if (sources && typeof sources === 'object') {
-        const prices = Object.values(sources).filter(v => typeof v === 'number') as number[];
-        if (prices.length > 0) {
-          gradedPrices[grade] = {
-            average: Math.min(...prices),
-            median: null,
-            low: Math.min(...prices),
-            high: Math.max(...prices),
-            count: prices.length
-          };
-        }
-      }
-    }
-  }
+  const gradedPrices: Record<string, GradedPriceData> =
+    dbPriceCache?.graded_prices || livePrices?.graded || {};
 
 
   const populationReports = cardData?.population_reports || [];
@@ -311,11 +340,13 @@ export default async function CardDetailPage({ params }: PageProps) {
   const gradeLabel = gradedPrices.psa10?.average ? 'PSA 10' : (gradedPrices.psa9?.average ? 'PSA 9' : 'Raw');
   const activeGradeForChart = gradedPrices.psa10?.average ? '10' : (gradedPrices.psa9?.average ? '9' : 'raw');
 
-  // Ensure "Compared Markets" always uses raw prices
-  const rawHistoryData = priceHistoryData.filter(h => h.grade === 'raw');
-  
   const relevantHistory = priceHistoryData.filter(h => h.grade === activeGradeForChart || h.grade === `psa${activeGradeForChart}`);
-  
+
+  // "Compared Markets" must always list every provider, so it reads raw prices only.
+  // SnkrDunk is the sole source that writes psa10, so filtering by the active grade
+  // collapsed the list to a single row on every card that had a SnkrDunk graded price.
+  const rawHistory = priceHistoryData.filter(h => h.grade === 'raw');
+
   let featuredPrice = gradedPrices.psa10?.average || gradedPrices.psa9?.average || rawPrices.nearMint || null;
   let winningSource = 'Market';
 
@@ -368,7 +399,7 @@ export default async function CardDetailPage({ params }: PageProps) {
     { grade: '8' as const, grading_company: 'psa' as const, price: gradedPrices.psa8?.average || 0, confidence: 'high' as const, last_sale_date: null, population: population['psa-8'] || null },
     { grade: '9' as const, grading_company: 'psa' as const, price: gradedPrices.psa9?.average || 0, confidence: 'high' as const, last_sale_date: null, population: population['psa-9'] || null },
     { grade: '10' as const, grading_company: 'psa' as const, price: gradedPrices.psa10?.average || 0, confidence: 'medium' as const, last_sale_date: null, population: population['psa-10'] || null },
-  ];
+  ].filter(e => e.price > 0);
 
   const availableGrades = [
     { grade: 'raw' as const, grading_company: null, hasData: rawPrices.nearMint !== null },
@@ -387,7 +418,7 @@ export default async function CardDetailPage({ params }: PageProps) {
   }
 
   const latestPricesMap = new Map<string, { price: number; date: string }>();
-  rawHistoryData.forEach(h => {
+  rawHistory.forEach(h => {
     const source = h.source || 'Market';
     if (source === 'Market') return; // Skip Market from compared markets
     const current = latestPricesMap.get(source);
@@ -399,6 +430,32 @@ export default async function CardDetailPage({ params }: PageProps) {
   const latestPricesList = Array.from(latestPricesMap.entries())
     .map(([source, data]) => ({ source, price: data.price, date: data.date }))
     .sort((a, b) => a.price - b.price);
+
+  // Freshness of the newest raw price we hold, so the page states how current it is
+  // instead of asserting a hardcoded "Availability: High".
+  const newestPriceAt = latestPricesList.reduce<string | null>(
+    (newest, item) => (!newest || new Date(item.date) > new Date(newest) ? item.date : newest),
+    null,
+  );
+  const priceFreshness = (() => {
+    if (!newestPriceAt) return { label: '--', isStale: false };
+    const hours = (Date.now() - new Date(newestPriceAt).getTime()) / 36e5;
+    if (hours < 1) return { label: '<1h', isStale: false };
+    if (hours < 48) return { label: `${Math.round(hours)}h`, isStale: hours >= 24 };
+    return { label: `${Math.round(hours / 24)}d`, isStale: true };
+  })();
+
+  // Vendor URLs are stored per card and drive the scrapers; reuse them so each
+  // "Compared Markets" row links out to the listing the price came from.
+  const marketUrls: Record<string, string> = {};
+  for (const [source, url] of Object.entries({
+    tcgplayer: cardData.tcgplayer_url,
+    snkrdunk: cardData.snkrdunk_url,
+    yuyutei: cardData.yuyutei_url,
+    cardrush: cardData.cardrush_url,
+  })) {
+    if (url) marketUrls[source] = url;
+  }
 
   const { baseName: cleanName, variantInfo } = splitCardName(card.name);
 
@@ -433,13 +490,12 @@ export default async function CardDetailPage({ params }: PageProps) {
                 <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/10 to-white/0 opacity-0 group-hover:opacity-100 rounded-2xl pointer-events-none transition-opacity duration-500" />
               </div>
               
-              <div className="mt-8 flex justify-center gap-3">
-                <Button className="w-full shadow-[0_0_15px_rgba(255,255,255,0.1)] rounded-full bg-white text-[#060c18] hover:bg-zinc-200 hover:shadow-[0_0_25px_rgba(255,255,255,0.2)] transition-all duration-200 h-12 text-sm font-bold tracking-wide">
-                  <Plus className="h-4 w-4 mr-2" /> Add to Portfolio
-                </Button>
-                <Button variant="outline" size="icon" className="h-12 w-12 rounded-full border-white/10 bg-white/5 hover:bg-white/10 transition-colors duration-200">
-                  <Share2 className="h-4 w-4 text-zinc-300" />
-                </Button>
+              <div className="mt-8">
+                <CardDetailActions
+                  cardId={card.id}
+                  cardName={cleanName}
+                  defaultGrade={activeGradeForChart}
+                />
               </div>
             </div>
           </div>
@@ -520,7 +576,16 @@ export default async function CardDetailPage({ params }: PageProps) {
               </dl>
             </div>
 
-            {/* Pulse / Quick Stats (Relocated here to replace Card Text) */}
+            {/* Card text. Already fetched but never rendered until now — it is the only
+                non-price content on the page and gives the URL something to rank on. */}
+            {card.description && (
+              <div className="bg-[#0b1329]/80 backdrop-blur-sm rounded-2xl border border-white/10 p-5 lg:p-6">
+                <h2 className="text-sm font-bold text-white uppercase tracking-wider mb-3">Card Text</h2>
+                <p className="text-sm leading-relaxed text-zinc-300 whitespace-pre-line">{card.description}</p>
+              </div>
+            )}
+
+            {/* Pulse / Quick Stats */}
             <div className="grid grid-cols-3 divide-x divide-white/10 bg-[#0b1329]/80 backdrop-blur-sm rounded-2xl border border-white/10 py-4 lg:py-6 px-2">
               <div className="px-4 flex flex-col items-center text-center">
                 <span className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest mb-2">PSA 10 Pop</span>
@@ -533,9 +598,15 @@ export default async function CardDetailPage({ params }: PageProps) {
                 <span className="text-zinc-500 text-[10px] mt-1 font-medium">Tracked volume</span>
               </div>
               <div className="px-4 flex flex-col items-center text-center">
-                <span className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest mb-2">Availability</span>
-                <span className="text-2xl font-black text-white">High</span>
-                <span className="text-zinc-500 text-[10px] mt-1 font-medium">Liquid market</span>
+                <span className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest mb-2">Last Updated</span>
+                <span className={`text-2xl font-black ${priceFreshness.isStale ? 'text-amber-400' : 'text-white'}`}>
+                  {priceFreshness.label}
+                </span>
+                <span className="text-zinc-500 text-[10px] mt-1 font-medium">
+                  {latestPricesList.length > 0
+                    ? `${latestPricesList.length} source${latestPricesList.length === 1 ? '' : 's'}`
+                    : 'No sources yet'}
+                </span>
               </div>
             </div>
             
@@ -558,49 +629,69 @@ export default async function CardDetailPage({ params }: PageProps) {
                 </div>
                 <div className="divide-y divide-white/10">
                   {latestPricesList.map((item) => {
-                    const getMarketLogo = (source: string) => {
-                      const s = source.toLowerCase();
-                      if (s.includes('snkrdunk')) return '/logos/snkrdunk.png';
-                      if (s.includes('yuyutei')) return '/logos/yuyutei.png';
-                      if (s.includes('cardrush')) return '/logos/cardrush.png';
-                      if (s.includes('tcgplayer')) return '/logos/tcgplayer.png';
-                      if (s.includes('pricecharting')) return '/logos/pricecharting.png';
-                      if (s.includes('tcg republic')) return '/logos/tcgrepublic.png';
-                      return null;
-                    };
-                    const logo = getMarketLogo(item.source);
-                    const isWhiteBg = ['pricecharting', 'yuyutei', 'cardrush', 'tcgplayer', 'tcgrepublic'].some(s => item.source.toLowerCase().includes(s));
-                    
-                    return (
-                    <div key={item.source} className="flex justify-between items-center px-5 py-4 hover:bg-white/5 transition-colors">
-                      <div className="flex items-center gap-3">
-                        {logo ? (
-                          <img 
-                            src={logo} 
-                            alt={item.source} 
-                            className={`w-8 h-8 rounded-md border border-white/10 shadow-sm ${
-                              isWhiteBg ? 'bg-white object-contain p-1' : 'bg-white/5 object-cover p-0 overflow-hidden'
-                            }`} 
-                          />
-                        ) : (
-                          <div className="w-8 h-8 rounded-md border border-white/10 shadow-sm bg-white/5 flex items-center justify-center text-zinc-400">
-                            <span className="text-xs font-bold">{item.source.charAt(0).toUpperCase()}</span>
-                          </div>
-                        )}
-                        <span className="text-white font-bold capitalize">{item.source}</span>
-                      </div>
-                      <div className="text-right flex flex-col items-end">
-                        <FormattedPrice price={item.price} className="text-orange-400 font-bold text-lg tabular-nums leading-none" />
-                        <span className="text-[10px] text-zinc-500 mt-1 font-medium uppercase tracking-wider">{formatDate(item.date)}</span>
-                      </div>
-                    </div>
-                  )})}
+                    const s = item.source.toLowerCase();
+                    const logo = MARKET_LOGOS.find(m => s.includes(m.match))?.logo ?? null;
+                    // Logos with transparent backgrounds need a white plate to stay legible on the dark card.
+                    const needsWhitePlate = !s.includes('snkrdunk');
+                    const href = marketUrls[item.source] ?? null;
+
+                    const body = (
+                      <>
+                        <div className="flex items-center gap-3">
+                          {logo ? (
+                            <img
+                              src={logo}
+                              alt={item.source}
+                              className={`w-8 h-8 rounded-md border border-white/10 shadow-sm ${
+                                needsWhitePlate
+                                  ? 'bg-white object-contain p-1'
+                                  : 'bg-white/5 object-cover p-0 overflow-hidden'
+                              }`}
+                            />
+                          ) : (
+                            <div className="w-8 h-8 rounded-md border border-white/10 shadow-sm bg-white/5 flex items-center justify-center text-zinc-400">
+                              <span className="text-xs font-bold">{item.source.charAt(0).toUpperCase()}</span>
+                            </div>
+                          )}
+                          <span className="text-white font-bold capitalize">{item.source}</span>
+                          {href && <ExternalLink className="h-3.5 w-3.5 text-zinc-500" aria-hidden />}
+                        </div>
+                        <div className="text-right flex flex-col items-end">
+                          <FormattedPrice price={item.price} className="text-orange-400 font-bold text-lg tabular-nums leading-none" />
+                          <span className="text-[10px] text-zinc-500 mt-1 font-medium uppercase tracking-wider">{formatDate(item.date)}</span>
+                        </div>
+                      </>
+                    );
+
+                    const rowClass = 'flex justify-between items-center px-5 py-4 hover:bg-white/5 transition-colors';
+
+                    return href ? (
+                      <a
+                        key={item.source}
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer nofollow sponsored"
+                        className={rowClass}
+                      >
+                        {body}
+                      </a>
+                    ) : (
+                      <div key={item.source} className={rowClass}>{body}</div>
+                    );
+                  })}
                 </div>
               </div>
             )}
             
           </div>
         </div>
+
+        <RelatedCards
+          cards={relatedCards}
+          gameSlug={game}
+          setSlug={set}
+          setName={card.set.name}
+        />
       </div>
     </div>
   );

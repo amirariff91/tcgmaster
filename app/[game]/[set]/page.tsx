@@ -2,27 +2,22 @@ import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getSetBySlug, getRelatedSets, mockSets } from '@/lib/mock-data';
 import { SetPageClient } from './set-page-client';
-import { createPublicClient as createClient } from '@/lib/supabase/client';
+// Cookie-free anon client keeps this route statically renderable (see card page).
+import { createPublicClient } from '@/lib/supabase/client';
 import { formatSetName } from '@/lib/utils';
 import type { MockSet, MockCard } from '@/lib/mock-data';
-
-export const revalidate = 900;
 
 interface SetPageProps {
   params: Promise<{
     game: string;
     set: string;
   }>;
-  searchParams: Promise<{
-    q?: string;
-    sort?: string;
-  }>;
 }
 
 // Fetch set + cards from Supabase
 async function getSetFromDB(gameSlug: string, setSlug: string): Promise<MockSet | null> {
   try {
-    const supabase = createClient();
+    const supabase = createPublicClient();
 
     // Fetch set with game info (use any to avoid Supabase join typing issues)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -85,7 +80,7 @@ async function getSetFromDB(gameSlug: string, setSlug: string): Promise<MockSet 
         // so it moves to R2 on cutover, falling back to the source image_url.
         image_url: c.local_image_url ?? c.image_url,
         prices: {
-          raw: raw?.nearMint ?? raw?.market ?? raw?.yuyutei ?? raw?.snkrdunk ?? raw?.tcgplayer ?? raw?.cardrush ?? null,
+          raw: raw?.nearMint ?? null,
           psa7: graded?.psa7?.average ?? null,
           psa8: graded?.psa8?.average ?? null,
           psa9: graded?.psa9?.average ?? null,
@@ -161,10 +156,10 @@ export async function generateMetadata({ params }: SetPageProps): Promise<Metada
   };
 }
 
+export const revalidate = 3600;
 
-export default async function SetPage({ params, searchParams }: SetPageProps) {
+export default async function SetPage({ params }: SetPageProps) {
   const { game, set: setSlug } = await params;
-  const { q, sort } = await searchParams;
 
   // Try real DB first, fall back to mock data
   let setData = await getSetFromDB(game, setSlug);
@@ -192,8 +187,6 @@ export default async function SetPage({ params, searchParams }: SetPageProps) {
       setData={setData}
       relatedSets={relatedSets}
       gameSlug={game}
-      initialQuery={q}
-      initialSort={sort}
     />
   );
 }

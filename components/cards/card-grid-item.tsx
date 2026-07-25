@@ -81,6 +81,9 @@ export function CardGridItem({
               alt={cleanName}
               width={80}
               height={112}
+              // Fixed 80px thumbnail; without `sizes` Next emits a srcset across every
+              // device width, which multiplies unique Cloudflare transformations.
+              sizes="80px"
               className="w-20 h-28 object-cover rounded"
               loading="lazy"
               loader={cloudflareImageLoader}

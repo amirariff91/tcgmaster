@@ -21,6 +21,9 @@ const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID;
 const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY;
 const R2_BUCKET = process.env.R2_BUCKET || 'tcgmaster-card-images';
 const IMAGE_CDN = (process.env.NEXT_PUBLIC_IMAGE_CDN || 'https://images.tcgmaster.com').replace(/\/+$/, '');
+// Card art is effectively immutable (write-once, keyed by id/slug). Browser caches 30d;
+// the CDN edge caches 1y (s-maxage) — purge the specific key on the rare re-fetch.
+const CARD_IMAGE_CACHE_CONTROL = 'public, max-age=2592000, s-maxage=31536000';
 
 export function isR2Configured(): boolean {
   return Boolean(R2_ACCOUNT_ID && R2_ACCESS_KEY_ID && R2_SECRET_ACCESS_KEY);
@@ -58,7 +61,7 @@ export async function putToR2(key: string, body: Body, contentType: string): Pro
   const res = await client().fetch(endpoint, {
     method: 'PUT',
     body: payload as BodyInit,
-    headers: { 'Content-Type': contentType },
+    headers: { 'Content-Type': contentType, 'Cache-Control': CARD_IMAGE_CACHE_CONTROL },
   });
   if (!res.ok) {
     // Don't echo R2's error body — it can contain the Access Key Id. Status is enough.

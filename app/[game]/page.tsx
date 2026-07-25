@@ -6,9 +6,8 @@ import { SearchBar } from '@/components/search/search-bar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatDate, formatPrice, formatSetName, splitCardName } from '@/lib/utils';
-import { createPublicClient as createClient } from '@/lib/supabase/client';
-
-export const revalidate = 900;
+// Cookie-free anon client keeps this route statically renderable (see card page).
+import { createPublicClient } from '@/lib/supabase/client';
 import { Badge } from '@/components/ui/badge';
 
 interface GameData {
@@ -77,7 +76,7 @@ function getMarketPrice(market: unknown): number | null {
   return null;
 }
 
-type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
+type SupabaseClient = ReturnType<typeof createPublicClient>;
 
 async function getAllSets(supabase: SupabaseClient, gameId: string): Promise<SetRow[]> {
   const sets: SetRow[] = [];
@@ -124,7 +123,7 @@ async function getAllSetPrices(supabase: SupabaseClient, gameId: string): Promis
 }
 
 async function getGameBySlug(gameSlug: string): Promise<GameData | null> {
-  const supabase = createClient();
+  const supabase = createPublicClient();
   const { data: game, error } = await supabase
     .from('games')
     .select('id, name, slug, display_name')
@@ -141,7 +140,7 @@ async function getGamePageData(gameSlug: string): Promise<GamePageData | null> {
 
   if (!gameData) return null;
 
-  const supabase = createClient();
+  const supabase = createPublicClient();
 
   const [sets, cardsCount, topCardsResult, latestPriceResult, setPrices] = await Promise.all([
     getAllSets(supabase, gameData.id),
@@ -249,6 +248,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     title: `${gameData.display_name} Price Guide`,
     description: `Explore ${gameData.display_name} card prices and set data.`,
   };
+}
+
+// This route had neither revalidate nor generateStaticParams, so the cookie-free client
+// swap alone left it rendering per request. Both are needed for a dynamic segment to
+// join the ISR path in Next 16.
+export const revalidate = 3600;
+
+export async function generateStaticParams() {
+  return [];
 }
 
 export default async function GamePage({ params }: PageProps) {

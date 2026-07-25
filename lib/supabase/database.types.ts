@@ -16,6 +16,8 @@ export type VariantType =
   | 'promo'
   | 'error';
 
+// Mirrors the `price_source` enum in Postgres, in enumsortorder.
+// Keep in sync with supabase/migrations/{001,005,006}_*.sql.
 export type PriceSource =
   | 'ebay'
   | 'tcgplayer'
@@ -23,7 +25,12 @@ export type PriceSource =
   | 'goldin'
   | 'heritage'
   | 'user-submitted'
-  | 'ppt-api';
+  | 'ppt-api'
+  | 'yuyutei'
+  | 'cardrush'
+  | 'tcgrepublic'
+  | 'snkrdunk'
+  | 'pricecharting';
 
 export type PriceConfidence = 'high' | 'medium' | 'low';
 

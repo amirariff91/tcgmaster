@@ -4,9 +4,8 @@ import { HeroCardsAnimation } from '@/components/home/hero-cards-animation';
 import { MarketMovers, type MarketMover } from '@/components/home/market-movers';
 import { CategoryCards, type Category } from '@/components/home/category-cards';
 import { CardsMarquee } from '@/components/home/cards-marquee';
-import { createPublicClient as createClient } from '@/lib/supabase/client';
-
-export const revalidate = 900; // Cache for 15 minutes
+// Cookie-free anon client keeps this route statically renderable (see card page).
+import { createPublicClient } from '@/lib/supabase/client';
 
 // Mock data (same as before)
 const marketMovers: { gainers: MarketMover[]; losers: MarketMover[] } = {
@@ -26,16 +25,22 @@ const categories: Category[] = [
   { name: 'Dragon Ball', slug: 'dragon-ball', description: 'Fusion World, Awakened Pulse, Super Rares', cardCount: '2,100+', change: '+5.7%', topMover: 'Goku SCR' }
 ];
 
+// Without this the page has no dynamic API left after the cookie-free client swap, so
+// Next bakes it once at build and freezes it until the next manual Coolify deploy —
+// pinning the Math.random() shuffle below to one permanent set of 60 cards and hiding
+// every newly ingested card. An hourly window keeps the marquee rotating.
+export const revalidate = 3600;
+
 export default async function HomePage() {
-  const supabase = createClient();
+  const supabase = createPublicClient();
   
-  // Database-level query targeted for OP and DBFW cards
+  // Database-level scan for all high-end hits across the entire table
   const { data: rawCards } = await supabase
     .from('cards')
     .select('id, name, image_url, local_image_url, slug, rarity')
     .not('image_url', 'is', null)
-    .or('slug.like.op-%,slug.like.dbfw-%')
-    .limit(100);
+    .or('rarity.ilike.%sp%,rarity.ilike.%sec%,rarity.ilike.%scr%,name.ilike.%manga%,name.ilike.%tournament%,name.ilike.%wanted%')
+    .limit(500);
 
   // In-memory filter to strictly enforce the OP and DBFW rules
   const filteredCards = (rawCards || []).filter((card: any) => {

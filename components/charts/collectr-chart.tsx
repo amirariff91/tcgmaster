@@ -2,8 +2,8 @@
 
 import * as React from 'react';
 import {
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   Tooltip,
@@ -33,27 +33,17 @@ export interface CollectrChartProps {
   className?: string;
 }
 
-type TimeRange = '1W' | '1M' | '3M';
+type TimeRange = '1M' | '3M' | '6M' | '12M' | 'MAX';
 type ChartType = 'RAW' | 'GRADED';
-
-const SOURCE_COLORS: Record<string, string> = {
-  yuyutei: '#2dd4bf', // Teal
-  tcgplayer: '#10b981', // Green
-  snkrdunk: '#3b82f6', // Blue
-  cardrush: '#a855f7', // Purple
-  ebay: '#f59e0b', // Orange
-  pricecharting: '#ef4444', // Red
-  default: '#a1a1aa' // Gray
-};
 
 export function CollectrChart({ priceHistory, gradeInfos, className }: CollectrChartProps) {
   const { format } = useCurrencyContext();
 
   const hasRaw = gradeInfos.some(g => g.grade === 'raw');
   const gradedList = gradeInfos.filter(g => g.grade !== 'raw');
-  const hasGraded = true; // Graded tab is now permanently accessible, matching Collectr app behavior
+  const hasGraded = gradedList.length > 0;
 
-  const [activeTab, setActiveTab] = React.useState<ChartType>('RAW');
+  const [activeTab, setActiveTab] = React.useState<ChartType>(hasGraded ? 'GRADED' : 'RAW');
   
   const defaultGrade = gradedList.find(g => g.grade === '10')?.grade 
     || gradedList.find(g => g.grade === '9')?.grade 
@@ -61,7 +51,7 @@ export function CollectrChart({ priceHistory, gradeInfos, className }: CollectrC
     || 'raw';
 
   const [activeGrade, setActiveGrade] = React.useState<string>(defaultGrade);
-  const [timeRange, setTimeRange] = React.useState<TimeRange>('1W');
+  const [timeRange, setTimeRange] = React.useState<TimeRange>('3M');
 
   // When tab changes, ensure correct active grade
   React.useEffect(() => {
@@ -79,32 +69,31 @@ export function CollectrChart({ priceHistory, gradeInfos, className }: CollectrC
     return priceHistory.filter(h => h.grade === activeGrade || h.grade === `psa${activeGrade}` || h.grade === `psa-${activeGrade}`);
   }, [priceHistory, activeGrade]);
 
-  const { chartData, activeSources, minPrice, maxPrice } = React.useMemo(() => {
+  const { chartData, minPrice, maxPrice } = React.useMemo(() => {
     const now = new Date();
     const ranges: Record<TimeRange, number> = {
-      '1W': 7,
       '1M': 30,
       '3M': 90,
+      '6M': 180,
+      '12M': 365,
+      MAX: Infinity,
     };
 
     const daysAgo = ranges[timeRange];
     const cutoff = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
 
     const relevantHistory = filteredByGrade.filter(point => {
+      if (timeRange === 'MAX') return true;
       return new Date(point.recorded_at) >= cutoff;
     });
 
     const chartDataMap = new Map<string, Record<string, string | number>>();
     let min = Infinity;
     let max = -Infinity;
-    const activeSourcesSet = new Set<string>();
 
     relevantHistory.forEach(h => {
-      // Use exact timestamp to allow multiple intra-day data points to be drawn
-      const date = h.recorded_at; 
-      const source = (h.source || 'yuyutei').toLowerCase();
-      
-      activeSourcesSet.add(source);
+      const date = h.recorded_at.split('T')[0];
+      const source = h.source || 'Market';
 
       if (!chartDataMap.has(date)) {
         chartDataMap.set(date, { date });
@@ -116,33 +105,26 @@ export function CollectrChart({ priceHistory, gradeInfos, className }: CollectrC
       if (h.price > max) max = h.price;
     });
 
-    const initialData = Array.from(chartDataMap.values()).map(entry => {
+    // We need to create a single 'value' for the line chart (average of sources, or just pick one)
+    // For simplicity, we just take the first source's price or average them.
+    const finalData = Array.from(chartDataMap.values()).map(entry => {
+        let sum = 0;
+        let count = 0;
+        for (const [k, v] of Object.entries(entry)) {
+            if (k !== 'date' && typeof v === 'number') {
+                sum += v;
+                count++;
+            }
+        }
         return {
             ...entry,
+            price: count > 0 ? sum / count : 0,
             dateDisplay: entry.date
         };
     }).sort((a, b) => new Date(a.dateDisplay as string).getTime() - new Date(b.dateDisplay as string).getTime());
 
-    // Forward-fill algorithm
-    const activeSourcesArr = Array.from(activeSourcesSet);
-    const lastKnownPrices: Record<string, number> = {};
-    
-    const finalData = initialData.map(row => {
-        const r = row as Record<string, any>;
-        const newRow: Record<string, any> = { ...row };
-        activeSourcesArr.forEach(source => {
-            if (r[source] !== undefined) {
-                lastKnownPrices[source] = r[source] as number;
-            } else if (lastKnownPrices[source] !== undefined) {
-                newRow[source] = lastKnownPrices[source];
-            }
-        });
-        return newRow;
-    });
-
     return {
       chartData: finalData,
-      activeSources: Array.from(activeSourcesSet),
       minPrice: min === Infinity ? 0 : min,
       maxPrice: max === -Infinity ? 100 : max,
     };
@@ -167,28 +149,32 @@ export function CollectrChart({ priceHistory, gradeInfos, className }: CollectrC
     return groups;
   }, [gradedList]);
 
+  // Share of graded copies that came back a 10 — the standard collector read on how
+  // hard a card is to gem. Null (and hidden) unless we actually hold population counts.
+  const gemRate = React.useMemo(() => {
+    let tenPop = 0;
+    let totalPop = 0;
+    for (const g of gradedList) {
+      if (g.population == null) continue;
+      totalPop += g.population;
+      if (parseFloat(g.grade) === 10) tenPop += g.population;
+    }
+    return totalPop > 0 ? (tenPop / totalPop) * 100 : null;
+  }, [gradedList]);
+
   return (
     <div className={cn('flex flex-col space-y-4 rounded-3xl bg-[#0b1329]/80 backdrop-blur-sm border border-white/10 text-white p-5 shadow-2xl relative overflow-hidden', className)}>
       
       {/* Top Header Row */}
       <div className="relative z-10 flex items-center justify-between w-full">
-        {/* Time Range Toggles (Moved to Top Left) */}
-        <div className="flex bg-[#222222] rounded-full p-1 border border-white/5">
-          {(['1W', '1M', '3M'] as TimeRange[]).map((tr) => {
-              const isActive = timeRange === tr;
-              return (
-                  <button
-                      key={tr}
-                      onClick={() => setTimeRange(tr)}
-                      className={cn(
-                          "py-1.5 px-3 text-[11px] font-bold rounded-full transition-colors uppercase tracking-wider",
-                          isActive ? "bg-[#3f3f46] text-white" : "text-gray-400 hover:text-white"
-                      )}
-                  >
-                      {tr}
-                  </button>
-              );
-          })}
+        {/* Title */}
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-1.5 rounded-full bg-[#2dd4bf]" />
+          {/* Label the series by what it actually is. "Holofoil" was hardcoded and
+              asserted a finish we do not track for One Piece or Dragon Ball. */}
+          <h2 className="text-sm font-medium text-gray-300">
+              {activeTab === 'GRADED' && activeGrade !== 'raw' ? `PSA ${activeGrade}` : 'Raw'}
+          </h2>
         </div>
 
         {/* Top Pill Selector */}
@@ -203,32 +189,28 @@ export function CollectrChart({ priceHistory, gradeInfos, className }: CollectrC
               Raw
           </button>
           <button 
-              onClick={() => { setActiveTab('GRADED'); }}
+              onClick={() => setActiveTab('GRADED')}
+              disabled={!hasGraded}
               className={cn("flex-1 py-1.5 text-[11px] font-bold rounded-full transition-colors uppercase tracking-wider", 
-                  activeTab === 'GRADED' ? "bg-[#3f3f46] text-white" : "text-gray-400 hover:text-white")}
+                  activeTab === 'GRADED' ? "bg-[#3f3f46] text-white" : "text-gray-400 hover:text-white",
+                  !hasGraded && "opacity-30 cursor-not-allowed")}
           >
               Graded
           </button>
         </div>
       </div>
 
-      {/* Dynamic Legend */}
-      {activeSources.length > 0 && (
-          <div className="relative z-10 flex items-center flex-wrap gap-4 mt-2 px-1">
-              {activeSources.map(source => (
-                  <div key={source} className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: SOURCE_COLORS[source] || SOURCE_COLORS.default }} />
-                      <span className="text-[11px] font-bold text-gray-300 uppercase tracking-wider">{source}</span>
-                  </div>
-              ))}
-          </div>
-      )}
-
       {/* The Chart */}
       <div className="relative z-10 h-[240px] w-full mt-2 -ml-2">
         {chartData.length >= 2 ? (
-            <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
-            <LineChart data={chartData} margin={{ top: 15, right: 10, left: 10, bottom: 0 }}>
+            <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={chartData} margin={{ top: 15, right: 10, left: 10, bottom: 0 }}>
+                <defs>
+                    <linearGradient id="colorTeal" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#2dd4bf" stopOpacity={0.4}/>
+                        <stop offset="95%" stopColor="#2dd4bf" stopOpacity={0}/>
+                    </linearGradient>
+                </defs>
                 <XAxis 
                     dataKey="dateDisplay" 
                     tickFormatter={(value) => {
@@ -256,38 +238,25 @@ export function CollectrChart({ priceHistory, gradeInfos, className }: CollectrC
                     content={({ active, payload, label }) => {
                         if (!active || !payload?.length) return null;
                         return (
-                        <div className="rounded-lg border border-[#3f3f46] bg-[#18181b] p-3 shadow-xl min-w-[120px]">
-                            <p className="mb-2 text-xs text-zinc-400 border-b border-zinc-700 pb-1">{label ? formatDate(String(label)) : ''}</p>
-                            {payload.map(item => (
-                                <div key={item.dataKey} className="flex justify-between items-center gap-4 mb-1 last:mb-0">
-                                    <div className="flex items-center gap-1.5">
-                                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
-                                        <span className="text-xs text-zinc-300 capitalize">{item.dataKey}</span>
-                                    </div>
-                                    <span className="font-bold text-white tabular-nums text-sm">
-                                        {(item.value as number) > 0 ? format(item.value as number) : '—'}
-                                    </span>
-                                </div>
-                            ))}
+                        <div className="rounded-lg border border-[#3f3f46] bg-[#18181b] p-3 shadow-xl">
+                            <p className="mb-1 text-xs text-zinc-400">{label ? formatDate(String(label)) : ''}</p>
+                            <span className="font-bold text-white tabular-nums">
+                            {format(payload[0].value as number)}
+                            </span>
                         </div>
                         );
                     }}
                 />
-                
-                {activeSources.map(source => (
-                    <Line
-                        key={source}
-                        type="monotone"
-                        dataKey={source}
-                        stroke={SOURCE_COLORS[source] || SOURCE_COLORS.default}
-                        strokeWidth={2}
-                        dot={false}
-                        activeDot={{ r: 4, fill: SOURCE_COLORS[source] || SOURCE_COLORS.default, stroke: '#fff', strokeWidth: 1 }}
-                        isAnimationActive={false}
-                        connectNulls
-                    />
-                ))}
-            </LineChart>
+                <Area 
+                    type="monotone" 
+                    dataKey="price" 
+                    stroke="#2dd4bf" 
+                    strokeWidth={2.5}
+                    fillOpacity={1} 
+                    fill="url(#colorTeal)" 
+                    isAnimationActive={false}
+                />
+            </AreaChart>
             </ResponsiveContainer>
         ) : (
             <div className="w-full h-full flex items-center justify-center">
@@ -296,37 +265,60 @@ export function CollectrChart({ priceHistory, gradeInfos, className }: CollectrC
         )}
       </div>
 
-      {/* Original Time Range Toggles Removed */}
+      {/* Time Range Toggles */}
+      <div className="relative z-10 flex items-center justify-center gap-1 sm:gap-3 text-sm font-bold mt-2">
+        {(['1M', '3M', '6M', '12M', 'MAX'] as TimeRange[]).map((tr) => {
+            const isActive = timeRange === tr;
+            return (
+                <button
+                    key={tr}
+                    onClick={() => setTimeRange(tr)}
+                    className={cn(
+                        "w-11 h-11 rounded-full flex items-center justify-center transition-all",
+                        isActive ? "bg-white text-black" : "text-gray-400 hover:text-white"
+                    )}
+                >
+                    {tr}
+                </button>
+            );
+        })}
+      </div>
 
       {/* Graded Swipe Box */}
       {activeTab === 'GRADED' && hasGraded && (
-          <div className="mt-4 border-t border-[#222222] pt-4 overflow-hidden">
-            <div className="flex overflow-x-auto gap-4 no-scrollbar pb-1">
-              {Object.entries(gradedByCompany).map(([company, grades]) => (
-                  <div key={company} className="flex flex-col min-w-max">
-                      <h3 className="text-[13px] font-bold text-white mb-2 ml-1">{company}</h3>
-                      <div className="flex gap-[1px] bg-[#222] p-[1px] rounded-lg border border-[#333]">
-                          {grades.map(g => {
-                              const isSelected = activeGrade === g.grade;
-                              return (
-                                  <button
-                                      key={g.grade}
-                                      onClick={() => setActiveGrade(g.grade)}
-                                      className={cn(
-                                          "w-[76px] h-[76px] flex flex-col items-center justify-center transition-all",
-                                          isSelected ? "bg-[#2dd4bf]/20 text-[#2dd4bf] shadow-inner" : "bg-transparent text-zinc-400 hover:bg-white/5"
-                                      )}
-                                  >
-                                      <span className="text-[15px] font-bold mb-1">{g.grade}</span>
-                                      <span className="text-[12px] font-medium tracking-tight mb-0.5">{g.price > 0 ? format(g.price) : '—'}</span>
-                                      <span className="text-[11px] text-gray-500 font-medium">{g.population ?? '--'}</span>
-                                  </button>
-                              );
-                          })}
-                      </div>
-                  </div>
-              ))}
-            </div>
+          <div className="mt-4 border-t border-[#222222] pt-4">
+            {Object.entries(gradedByCompany).map(([company, grades]) => (
+                <div key={company} className="mb-4 last:mb-0">
+                    <h3 className="text-[13px] font-bold text-white mb-2 ml-1">{company}</h3>
+                    <div className="flex overflow-x-auto gap-[1px] bg-[#222] p-[1px] rounded-lg border border-[#333] no-scrollbar">
+                        {grades.map(g => {
+                            const isSelected = activeGrade === g.grade;
+                            return (
+                                <button
+                                    key={g.grade}
+                                    onClick={() => setActiveGrade(g.grade)}
+                                    className={cn(
+                                        "flex-1 min-w-[72px] flex flex-col items-center justify-center py-3 px-1 transition-all",
+                                        isSelected ? "bg-orange-500/20 text-orange-400 shadow-inner" : "bg-transparent text-zinc-400 hover:bg-white/5"
+                                    )}
+                                >
+                                    <span className="text-sm font-bold mb-1">{g.grade}</span>
+                                    <span className="text-[12px] font-medium tracking-tight mb-0.5">{format(g.price)}</span>
+                                    <span className="text-[11px] text-gray-500 font-medium">{g.population ?? '--'}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            ))}
+            {/* Real gem rate from population counts. This used to render a
+                clickable-looking "Gem Rate: Holofoil (N/A)" that was inert and
+                had no data behind it; now it only appears when we can compute it. */}
+            {gemRate !== null && (
+              <div className="mt-3 flex items-center justify-center text-xs text-[#2dd4bf]">
+                  <span className="mr-1">💎</span> Gem rate: {gemRate.toFixed(1)}% graded PSA 10
+              </div>
+            )}
           </div>
       )}
 
