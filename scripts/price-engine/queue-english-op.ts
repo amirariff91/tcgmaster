@@ -1,6 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
 import { fetchEnglishPrice } from '../../lib/price-engine/tcgcsv';
-import { fetchTcgRepublicPrice } from '../../lib/price-engine/tcgrepublic';
 import { fetchPriceChartingPrice } from '../../lib/price-engine/pricecharting';
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!);

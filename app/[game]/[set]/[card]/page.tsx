@@ -1,10 +1,9 @@
 import Link from 'next/link';
 import { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
-import { Bell, Plus, Share2, Info, ChevronRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { ChevronRight, ExternalLink } from 'lucide-react';
 import { CardImage } from '@/components/card/card-image';
+import { CardDetailActions } from '@/components/card/card-detail-actions';
 import { FormattedPrice } from '@/components/ui/formatted-price';
 import { CollectrChart } from '@/components/charts/collectr-chart';
 import { formatPrice, formatNumber, getRarityDisplay, formatDate, formatDisplayNumber, formatSetName, splitCardName } from '@/lib/utils';
@@ -12,6 +11,18 @@ import { createClient } from '@/lib/supabase/server';
 import { getCardWithPrices } from '@/lib/ppt/service';
 import { createServerClient } from '@/lib/supabase/client';
 import { calculatePriceChange24h } from '@/lib/pricing/trending';
+
+// `price_history.source` values are lowercase enum members; match on substring so
+// display casing and multi-word names ("TCG Republic") still resolve.
+const MARKET_LOGOS = [
+  { match: 'snkrdunk', logo: '/logos/snkrdunk.png' },
+  { match: 'yuyutei', logo: '/logos/yuyutei.png' },
+  { match: 'cardrush', logo: '/logos/cardrush.png' },
+  { match: 'tcgplayer', logo: '/logos/tcgplayer.png' },
+  { match: 'pricecharting', logo: '/logos/pricecharting.png' },
+  { match: 'tcgrepublic', logo: '/logos/tcgrepublic.png' },
+  { match: 'tcg republic', logo: '/logos/tcgrepublic.png' },
+] as const;
 
 interface CardDataSet {
   id: string;
@@ -102,6 +113,10 @@ async function getCardData(gameSlug: string, setSlug: string, cardSlug: string):
       tcg_player_id,
       price_cache_ttl,
       print_run_info,
+      tcgplayer_url,
+      snkrdunk_url,
+      yuyutei_url,
+      cardrush_url,
       sets!inner (
         id,
         name,
@@ -296,7 +311,12 @@ export default async function CardDetailPage({ params }: PageProps) {
   const activeGradeForChart = gradedPrices.psa10?.average ? '10' : (gradedPrices.psa9?.average ? '9' : 'raw');
 
   const relevantHistory = priceHistoryData.filter(h => h.grade === activeGradeForChart || h.grade === `psa${activeGradeForChart}`);
-  
+
+  // "Compared Markets" must always list every provider, so it reads raw prices only.
+  // SnkrDunk is the sole source that writes psa10, so filtering by the active grade
+  // collapsed the list to a single row on every card that had a SnkrDunk graded price.
+  const rawHistory = priceHistoryData.filter(h => h.grade === 'raw');
+
   let featuredPrice = gradedPrices.psa10?.average || gradedPrices.psa9?.average || rawPrices.nearMint || null;
   let winningSource = 'Market';
 
@@ -368,7 +388,7 @@ export default async function CardDetailPage({ params }: PageProps) {
   }
 
   const latestPricesMap = new Map<string, { price: number; date: string }>();
-  relevantHistory.forEach(h => {
+  rawHistory.forEach(h => {
     const source = h.source || 'Market';
     if (source === 'Market') return; // Skip Market from compared markets
     const current = latestPricesMap.get(source);
@@ -380,6 +400,32 @@ export default async function CardDetailPage({ params }: PageProps) {
   const latestPricesList = Array.from(latestPricesMap.entries())
     .map(([source, data]) => ({ source, price: data.price, date: data.date }))
     .sort((a, b) => a.price - b.price);
+
+  // Freshness of the newest raw price we hold, so the page states how current it is
+  // instead of asserting a hardcoded "Availability: High".
+  const newestPriceAt = latestPricesList.reduce<string | null>(
+    (newest, item) => (!newest || new Date(item.date) > new Date(newest) ? item.date : newest),
+    null,
+  );
+  const priceFreshness = (() => {
+    if (!newestPriceAt) return { label: '--', isStale: false };
+    const hours = (Date.now() - new Date(newestPriceAt).getTime()) / 36e5;
+    if (hours < 1) return { label: '<1h', isStale: false };
+    if (hours < 48) return { label: `${Math.round(hours)}h`, isStale: hours >= 24 };
+    return { label: `${Math.round(hours / 24)}d`, isStale: true };
+  })();
+
+  // Vendor URLs are stored per card and drive the scrapers; reuse them so each
+  // "Compared Markets" row links out to the listing the price came from.
+  const marketUrls: Record<string, string> = {};
+  for (const [source, url] of Object.entries({
+    tcgplayer: cardData.tcgplayer_url,
+    snkrdunk: cardData.snkrdunk_url,
+    yuyutei: cardData.yuyutei_url,
+    cardrush: cardData.cardrush_url,
+  })) {
+    if (url) marketUrls[source] = url;
+  }
 
   const { baseName: cleanName, variantInfo } = splitCardName(card.name);
 
@@ -414,13 +460,12 @@ export default async function CardDetailPage({ params }: PageProps) {
                 <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/10 to-white/0 opacity-0 group-hover:opacity-100 rounded-2xl pointer-events-none transition-opacity duration-500" />
               </div>
               
-              <div className="mt-8 flex justify-center gap-3">
-                <Button className="w-full shadow-[0_0_15px_rgba(255,255,255,0.1)] rounded-full bg-white text-[#060c18] hover:bg-zinc-200 hover:shadow-[0_0_25px_rgba(255,255,255,0.2)] transition-all duration-200 h-12 text-sm font-bold tracking-wide">
-                  <Plus className="h-4 w-4 mr-2" /> Add to Portfolio
-                </Button>
-                <Button variant="outline" size="icon" className="h-12 w-12 rounded-full border-white/10 bg-white/5 hover:bg-white/10 transition-colors duration-200">
-                  <Share2 className="h-4 w-4 text-zinc-300" />
-                </Button>
+              <div className="mt-8">
+                <CardDetailActions
+                  cardId={card.id}
+                  cardName={cleanName}
+                  defaultGrade={activeGradeForChart}
+                />
               </div>
             </div>
           </div>
@@ -514,9 +559,15 @@ export default async function CardDetailPage({ params }: PageProps) {
                 <span className="text-zinc-500 text-[10px] mt-1 font-medium">Tracked volume</span>
               </div>
               <div className="px-4 flex flex-col items-center text-center">
-                <span className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest mb-2">Availability</span>
-                <span className="text-2xl font-black text-white">High</span>
-                <span className="text-zinc-500 text-[10px] mt-1 font-medium">Liquid market</span>
+                <span className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest mb-2">Last Updated</span>
+                <span className={`text-2xl font-black ${priceFreshness.isStale ? 'text-amber-400' : 'text-white'}`}>
+                  {priceFreshness.label}
+                </span>
+                <span className="text-zinc-500 text-[10px] mt-1 font-medium">
+                  {latestPricesList.length > 0
+                    ? `${latestPricesList.length} source${latestPricesList.length === 1 ? '' : 's'}`
+                    : 'No sources yet'}
+                </span>
               </div>
             </div>
             
@@ -535,47 +586,60 @@ export default async function CardDetailPage({ params }: PageProps) {
             {latestPricesList.length > 0 && (
               <div className="bg-[#0b1329]/80 backdrop-blur-sm rounded-2xl border border-white/10 overflow-hidden shadow-sm">
                 <div className="bg-white/5 px-5 py-3 border-b border-white/10">
-                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">Compared Markets ({gradeLabel})</h3>
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">Compared Markets (Raw)</h3>
                 </div>
                 <div className="divide-y divide-white/10">
                   {latestPricesList.map((item) => {
-                    const getMarketLogo = (source: string) => {
-                      const s = source.toLowerCase();
-                      if (s.includes('snkrdunk')) return '/logos/snkrdunk.png';
-                      if (s.includes('yuyutei')) return '/logos/yuyutei.png';
-                      if (s.includes('cardrush')) return '/logos/cardrush.png';
-                      if (s.includes('tcgplayer')) return '/logos/tcgplayer.png';
-                      if (s.includes('tcg republic')) return '/logos/tcgrepublic.png';
-                      return null;
-                    };
-                    const logo = getMarketLogo(item.source);
-                    
-                    return (
-                    <div key={item.source} className="flex justify-between items-center px-5 py-4 hover:bg-white/5 transition-colors">
-                      <div className="flex items-center gap-3">
-                        {logo ? (
-                          <img 
-                            src={logo} 
-                            alt={item.source} 
-                            className={`w-8 h-8 rounded-md border border-white/10 shadow-sm bg-white/5 ${
-                              item.source.toLowerCase().includes('snkrdunk') 
-                                ? 'object-cover p-0 overflow-hidden' 
-                                : 'object-contain p-1'
-                            }`} 
-                          />
-                        ) : (
-                          <div className="w-8 h-8 rounded-md border border-white/10 shadow-sm bg-white/5 flex items-center justify-center text-zinc-400">
-                            <span className="text-xs font-bold">{item.source.charAt(0).toUpperCase()}</span>
-                          </div>
-                        )}
-                        <span className="text-white font-bold capitalize">{item.source}</span>
-                      </div>
-                      <div className="text-right flex flex-col items-end">
-                        <FormattedPrice price={item.price} className="text-orange-400 font-bold text-lg tabular-nums leading-none" />
-                        <span className="text-[10px] text-zinc-500 mt-1 font-medium uppercase tracking-wider">{formatDate(item.date)}</span>
-                      </div>
-                    </div>
-                  )})}
+                    const s = item.source.toLowerCase();
+                    const logo = MARKET_LOGOS.find(m => s.includes(m.match))?.logo ?? null;
+                    // Logos with transparent backgrounds need a white plate to stay legible on the dark card.
+                    const needsWhitePlate = !s.includes('snkrdunk');
+                    const href = marketUrls[item.source] ?? null;
+
+                    const body = (
+                      <>
+                        <div className="flex items-center gap-3">
+                          {logo ? (
+                            <img
+                              src={logo}
+                              alt={item.source}
+                              className={`w-8 h-8 rounded-md border border-white/10 shadow-sm ${
+                                needsWhitePlate
+                                  ? 'bg-white object-contain p-1'
+                                  : 'bg-white/5 object-cover p-0 overflow-hidden'
+                              }`}
+                            />
+                          ) : (
+                            <div className="w-8 h-8 rounded-md border border-white/10 shadow-sm bg-white/5 flex items-center justify-center text-zinc-400">
+                              <span className="text-xs font-bold">{item.source.charAt(0).toUpperCase()}</span>
+                            </div>
+                          )}
+                          <span className="text-white font-bold capitalize">{item.source}</span>
+                          {href && <ExternalLink className="h-3.5 w-3.5 text-zinc-500" aria-hidden />}
+                        </div>
+                        <div className="text-right flex flex-col items-end">
+                          <FormattedPrice price={item.price} className="text-orange-400 font-bold text-lg tabular-nums leading-none" />
+                          <span className="text-[10px] text-zinc-500 mt-1 font-medium uppercase tracking-wider">{formatDate(item.date)}</span>
+                        </div>
+                      </>
+                    );
+
+                    const rowClass = 'flex justify-between items-center px-5 py-4 hover:bg-white/5 transition-colors';
+
+                    return href ? (
+                      <a
+                        key={item.source}
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer nofollow sponsored"
+                        className={rowClass}
+                      >
+                        {body}
+                      </a>
+                    ) : (
+                      <div key={item.source} className={rowClass}>{body}</div>
+                    );
+                  })}
                 </div>
               </div>
             )}
