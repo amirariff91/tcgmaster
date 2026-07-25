@@ -24473,3 +24473,337 @@
 2026-07-23T10:33:45:   DATA_CLONE_ERR: 25,
 2026-07-23T10:33:45:   toString: [Function: toString],
 2026-07-23T10:33:45: }
+2026-07-23T17:51:56: [scraper-rate-limit] Redis unavailable; using local fallback: Redis rate limiter timed out
+2026-07-23T17:51:57: PriceCharting fetch error for OP08-115: 180 |                     ensureNewDocumentNavigation = !!response.loaderId;
+2026-07-23T17:51:57: 181 |                     if (response.errorText === 'net::ERR_HTTP_RESPONSE_CODE_FAILURE') {
+2026-07-23T17:51:57: 182 |                         return null;
+2026-07-23T17:51:57: 183 |                     }
+2026-07-23T17:51:57: 184 |                     return response.errorText
+2026-07-23T17:51:57: 185 |                         ? new Error(`${response.errorText} at ${url}`)
+2026-07-23T17:51:57:                                     ^
+2026-07-23T17:51:57: error: net::ERR_NETWORK_CHANGED at https://www.pricecharting.com/search-products?type=prices&q=OP08-115
+2026-07-23T17:51:57:       at navigate (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:185:31)
+2026-07-23T17:51:57:       at async race (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/util/Deferred.js:33:34)
+2026-07-23T17:51:57:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:151:40)
+2026-07-23T17:51:57:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/api/Page.js:576:43)
+2026-07-23T17:51:57:       at async fetchPriceChartingPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/pricecharting.ts:23:16)
+2026-07-23T17:51:57:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-english-op.ts:46:28)
+2026-07-23T17:51:57: 
+2026-07-23T18:46:22: PriceCharting fetch error for OP07-070: 180 |                     ensureNewDocumentNavigation = !!response.loaderId;
+2026-07-23T18:46:22: 181 |                     if (response.errorText === 'net::ERR_HTTP_RESPONSE_CODE_FAILURE') {
+2026-07-23T18:46:22: 182 |                         return null;
+2026-07-23T18:46:22: 183 |                     }
+2026-07-23T18:46:22: 184 |                     return response.errorText
+2026-07-23T18:46:22: 185 |                         ? new Error(`${response.errorText} at ${url}`)
+2026-07-23T18:46:22:                                     ^
+2026-07-23T18:46:22: error: net::ERR_NETWORK_CHANGED at https://www.pricecharting.com/search-products?type=prices&q=OP07-070
+2026-07-23T18:46:22:       at navigate (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:185:31)
+2026-07-23T18:46:22:       at async race (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/util/Deferred.js:33:34)
+2026-07-23T18:46:22:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:151:40)
+2026-07-23T18:46:22:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/api/Page.js:576:43)
+2026-07-23T18:46:22:       at async fetchPriceChartingPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/pricecharting.ts:23:16)
+2026-07-23T18:46:22:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-english-op.ts:46:28)
+2026-07-23T18:46:22: 
+2026-07-23T19:06:01: PriceCharting fetch error for ST01-010_p1: 180 |                     ensureNewDocumentNavigation = !!response.loaderId;
+2026-07-23T19:06:01: 181 |                     if (response.errorText === 'net::ERR_HTTP_RESPONSE_CODE_FAILURE') {
+2026-07-23T19:06:01: 182 |                         return null;
+2026-07-23T19:06:01: 183 |                     }
+2026-07-23T19:06:01: 184 |                     return response.errorText
+2026-07-23T19:06:01: 185 |                         ? new Error(`${response.errorText} at ${url}`)
+2026-07-23T19:06:01:                                     ^
+2026-07-23T19:06:01: error: net::ERR_NETWORK_CHANGED at https://www.pricecharting.com/search-products?type=prices&q=ST01-010
+2026-07-23T19:06:01:       at navigate (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:185:31)
+2026-07-23T19:06:01:       at async race (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/util/Deferred.js:33:34)
+2026-07-23T19:06:01:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:151:40)
+2026-07-23T19:06:01:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/api/Page.js:576:43)
+2026-07-23T19:06:01:       at async fetchPriceChartingPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/pricecharting.ts:23:16)
+2026-07-23T19:06:01:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-english-op.ts:46:28)
+2026-07-23T19:06:01: 
+2026-07-23T19:13:48: PriceCharting fetch error for OP08-038: 180 |                     ensureNewDocumentNavigation = !!response.loaderId;
+2026-07-23T19:13:48: 181 |                     if (response.errorText === 'net::ERR_HTTP_RESPONSE_CODE_FAILURE') {
+2026-07-23T19:13:48: 182 |                         return null;
+2026-07-23T19:13:48: 183 |                     }
+2026-07-23T19:13:48: 184 |                     return response.errorText
+2026-07-23T19:13:48: 185 |                         ? new Error(`${response.errorText} at ${url}`)
+2026-07-23T19:13:48:                                     ^
+2026-07-23T19:13:48: error: net::ERR_NETWORK_CHANGED at https://www.pricecharting.com/search-products?type=prices&q=OP08-038
+2026-07-23T19:13:48:       at navigate (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:185:31)
+2026-07-23T19:13:48:       at async race (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/util/Deferred.js:33:34)
+2026-07-23T19:13:48:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:151:40)
+2026-07-23T19:13:48:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/api/Page.js:576:43)
+2026-07-23T19:13:48:       at async fetchPriceChartingPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/pricecharting.ts:23:16)
+2026-07-23T19:13:48:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-english-op.ts:46:28)
+2026-07-23T19:13:48: 
+2026-07-23T19:50:09: PriceCharting fetch error for EB03-046: 180 |                     ensureNewDocumentNavigation = !!response.loaderId;
+2026-07-23T19:50:09: 181 |                     if (response.errorText === 'net::ERR_HTTP_RESPONSE_CODE_FAILURE') {
+2026-07-23T19:50:09: 182 |                         return null;
+2026-07-23T19:50:09: 183 |                     }
+2026-07-23T19:50:09: 184 |                     return response.errorText
+2026-07-23T19:50:09: 185 |                         ? new Error(`${response.errorText} at ${url}`)
+2026-07-23T19:50:09:                                     ^
+2026-07-23T19:50:09: error: net::ERR_NETWORK_CHANGED at https://www.pricecharting.com/search-products?type=prices&q=EB03-046
+2026-07-23T19:50:09:       at navigate (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:185:31)
+2026-07-23T19:50:09:       at async race (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/util/Deferred.js:33:34)
+2026-07-23T19:50:09:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:151:40)
+2026-07-23T19:50:09:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/api/Page.js:576:43)
+2026-07-23T19:50:09:       at async fetchPriceChartingPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/pricecharting.ts:23:16)
+2026-07-23T19:50:09:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-english-op.ts:46:28)
+2026-07-23T19:50:09: 
+2026-07-23T20:10:16: PriceCharting fetch error for OP13-021: 180 |                     ensureNewDocumentNavigation = !!response.loaderId;
+2026-07-23T20:10:16: 181 |                     if (response.errorText === 'net::ERR_HTTP_RESPONSE_CODE_FAILURE') {
+2026-07-23T20:10:16: 182 |                         return null;
+2026-07-23T20:10:16: 183 |                     }
+2026-07-23T20:10:16: 184 |                     return response.errorText
+2026-07-23T20:10:16: 185 |                         ? new Error(`${response.errorText} at ${url}`)
+2026-07-23T20:10:16:                                     ^
+2026-07-23T20:10:16: error: net::ERR_NETWORK_CHANGED at https://www.pricecharting.com/search-products?type=prices&q=OP13-021
+2026-07-23T20:10:16:       at navigate (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:185:31)
+2026-07-23T20:10:16:       at async race (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/util/Deferred.js:33:34)
+2026-07-23T20:10:16:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:151:40)
+2026-07-23T20:10:16:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/api/Page.js:576:43)
+2026-07-23T20:10:16:       at async fetchPriceChartingPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/pricecharting.ts:23:16)
+2026-07-23T20:10:16:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-english-op.ts:46:28)
+2026-07-23T20:10:16: 
+2026-07-23T20:11:20: PriceCharting fetch error for OP13-013: 180 |                     ensureNewDocumentNavigation = !!response.loaderId;
+2026-07-23T20:11:20: 181 |                     if (response.errorText === 'net::ERR_HTTP_RESPONSE_CODE_FAILURE') {
+2026-07-23T20:11:20: 182 |                         return null;
+2026-07-23T20:11:20: 183 |                     }
+2026-07-23T20:11:20: 184 |                     return response.errorText
+2026-07-23T20:11:20: 185 |                         ? new Error(`${response.errorText} at ${url}`)
+2026-07-23T20:11:20:                                     ^
+2026-07-23T20:11:20: error: net::ERR_NETWORK_CHANGED at https://www.pricecharting.com/search-products?type=prices&q=OP13-013
+2026-07-23T20:11:20:       at navigate (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:185:31)
+2026-07-23T20:11:20:       at async race (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/util/Deferred.js:33:34)
+2026-07-23T20:11:20:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:151:40)
+2026-07-23T20:11:20:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/api/Page.js:576:43)
+2026-07-23T20:11:20:       at async fetchPriceChartingPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/pricecharting.ts:23:16)
+2026-07-23T20:11:20:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-english-op.ts:46:28)
+2026-07-23T20:11:20: 
+2026-07-24T01:18:17: [scraper-rate-limit] Redis unavailable; using local fallback: Redis rate limiter timed out
+2026-07-24T01:39:52: PriceCharting fetch error for ST22-015: 180 |                     ensureNewDocumentNavigation = !!response.loaderId;
+2026-07-24T01:39:52: 181 |                     if (response.errorText === 'net::ERR_HTTP_RESPONSE_CODE_FAILURE') {
+2026-07-24T01:39:52: 182 |                         return null;
+2026-07-24T01:39:52: 183 |                     }
+2026-07-24T01:39:52: 184 |                     return response.errorText
+2026-07-24T01:39:52: 185 |                         ? new Error(`${response.errorText} at ${url}`)
+2026-07-24T01:39:52:                                     ^
+2026-07-24T01:39:52: error: net::ERR_NETWORK_CHANGED at https://www.pricecharting.com/search-products?type=prices&q=ST22-015
+2026-07-24T01:39:52:       at navigate (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:185:31)
+2026-07-24T01:39:52:       at async race (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/util/Deferred.js:33:34)
+2026-07-24T01:39:52:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:151:40)
+2026-07-24T01:39:52:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/api/Page.js:576:43)
+2026-07-24T01:39:52:       at async fetchPriceChartingPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/pricecharting.ts:23:16)
+2026-07-24T01:39:52:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-english-op.ts:46:28)
+2026-07-24T01:39:52: 
+2026-07-24T07:33:03: PriceCharting fetch error for OP07-058: 180 |                     ensureNewDocumentNavigation = !!response.loaderId;
+2026-07-24T07:33:03: 181 |                     if (response.errorText === 'net::ERR_HTTP_RESPONSE_CODE_FAILURE') {
+2026-07-24T07:33:03: 182 |                         return null;
+2026-07-24T07:33:03: 183 |                     }
+2026-07-24T07:33:03: 184 |                     return response.errorText
+2026-07-24T07:33:03: 185 |                         ? new Error(`${response.errorText} at ${url}`)
+2026-07-24T07:33:03:                                     ^
+2026-07-24T07:33:03: error: net::ERR_NETWORK_CHANGED at https://www.pricecharting.com/search-products?type=prices&q=OP07-058
+2026-07-24T07:33:03:       at navigate (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:185:31)
+2026-07-24T07:33:03:       at async race (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/util/Deferred.js:33:34)
+2026-07-24T07:33:03:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:151:40)
+2026-07-24T07:33:03:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/api/Page.js:576:43)
+2026-07-24T07:33:03:       at async fetchPriceChartingPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/pricecharting.ts:23:16)
+2026-07-24T07:33:03:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-english-op.ts:46:28)
+2026-07-24T07:33:03: 
+2026-07-24T19:09:58: PriceCharting fetch error for OP08-001_p2: 180 |                     ensureNewDocumentNavigation = !!response.loaderId;
+2026-07-24T19:09:58: 181 |                     if (response.errorText === 'net::ERR_HTTP_RESPONSE_CODE_FAILURE') {
+2026-07-24T19:09:58: 182 |                         return null;
+2026-07-24T19:09:58: 183 |                     }
+2026-07-24T19:09:58: 184 |                     return response.errorText
+2026-07-24T19:09:58: 185 |                         ? new Error(`${response.errorText} at ${url}`)
+2026-07-24T19:09:58:                                     ^
+2026-07-24T19:09:58: error: net::ERR_NETWORK_CHANGED at https://www.pricecharting.com/search-products?type=prices&q=OP08-001
+2026-07-24T19:09:58:       at navigate (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:185:31)
+2026-07-24T19:09:58:       at async race (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/util/Deferred.js:33:34)
+2026-07-24T19:09:58:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:151:40)
+2026-07-24T19:09:58:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/api/Page.js:576:43)
+2026-07-24T19:09:58:       at async fetchPriceChartingPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/pricecharting.ts:23:16)
+2026-07-24T19:09:58:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-english-op.ts:46:28)
+2026-07-24T19:09:58: 
+2026-07-24T19:11:42: PriceCharting fetch error for EB03-054: 180 |                     ensureNewDocumentNavigation = !!response.loaderId;
+2026-07-24T19:11:42: 181 |                     if (response.errorText === 'net::ERR_HTTP_RESPONSE_CODE_FAILURE') {
+2026-07-24T19:11:42: 182 |                         return null;
+2026-07-24T19:11:42: 183 |                     }
+2026-07-24T19:11:42: 184 |                     return response.errorText
+2026-07-24T19:11:42: 185 |                         ? new Error(`${response.errorText} at ${url}`)
+2026-07-24T19:11:42:                                     ^
+2026-07-24T19:11:42: error: net::ERR_NETWORK_CHANGED at https://www.pricecharting.com/search-products?type=prices&q=EB03-054
+2026-07-24T19:11:42:       at navigate (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:185:31)
+2026-07-24T19:11:42:       at async race (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/util/Deferred.js:33:34)
+2026-07-24T19:11:42:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:151:40)
+2026-07-24T19:11:42:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/api/Page.js:576:43)
+2026-07-24T19:11:42:       at async fetchPriceChartingPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/pricecharting.ts:23:16)
+2026-07-24T19:11:42:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-english-op.ts:46:28)
+2026-07-24T19:11:42: 
+2026-07-24T19:22:50: PriceCharting fetch error for EB03-053_p1: 180 |                     ensureNewDocumentNavigation = !!response.loaderId;
+2026-07-24T19:22:50: 181 |                     if (response.errorText === 'net::ERR_HTTP_RESPONSE_CODE_FAILURE') {
+2026-07-24T19:22:50: 182 |                         return null;
+2026-07-24T19:22:50: 183 |                     }
+2026-07-24T19:22:50: 184 |                     return response.errorText
+2026-07-24T19:22:50: 185 |                         ? new Error(`${response.errorText} at ${url}`)
+2026-07-24T19:22:50:                                     ^
+2026-07-24T19:22:50: error: net::ERR_NETWORK_CHANGED at https://www.pricecharting.com/search-products?type=prices&q=EB03-053
+2026-07-24T19:22:50:       at navigate (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:185:31)
+2026-07-24T19:22:50:       at async race (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/util/Deferred.js:33:34)
+2026-07-24T19:22:50:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:151:40)
+2026-07-24T19:22:50:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/api/Page.js:576:43)
+2026-07-24T19:22:50:       at async fetchPriceChartingPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/pricecharting.ts:23:16)
+2026-07-24T19:22:50:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-english-op.ts:46:28)
+2026-07-24T19:22:50: 
+2026-07-24T19:56:39: [scraper-rate-limit] Redis unavailable; using local fallback: Redis rate limiter timed out
+2026-07-24T20:31:55: PriceCharting fetch error for OP02-048: 180 |                     ensureNewDocumentNavigation = !!response.loaderId;
+2026-07-24T20:31:55: 181 |                     if (response.errorText === 'net::ERR_HTTP_RESPONSE_CODE_FAILURE') {
+2026-07-24T20:31:55: 182 |                         return null;
+2026-07-24T20:31:55: 183 |                     }
+2026-07-24T20:31:55: 184 |                     return response.errorText
+2026-07-24T20:31:55: 185 |                         ? new Error(`${response.errorText} at ${url}`)
+2026-07-24T20:31:55:                                     ^
+2026-07-24T20:31:55: error: net::ERR_NETWORK_CHANGED at https://www.pricecharting.com/search-products?type=prices&q=OP02-048
+2026-07-24T20:31:55:       at navigate (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:185:31)
+2026-07-24T20:31:55:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/api/Page.js:576:43)
+2026-07-24T20:31:55: 
+2026-07-24T21:58:56: error: Unable to connect. Is the computer able to access the url?
+2026-07-24T21:58:56:   path: "https://mquqwlxqrsvfflsgfhmi.supabase.co/rest/v1/price_cache",
+2026-07-24T21:58:56:  errno: 0,
+2026-07-24T21:58:56:   code: "ConnectionRefused"
+2026-07-24T21:58:56: 
+2026-07-24T21:58:56: 
+2026-07-24T21:58:56: Bun v1.3.14 (macOS arm64)
+2026-07-24T23:31:19: TCGCSV fetch error for ST18-001: DOMException {
+2026-07-24T23:31:19:   stack: "",
+2026-07-24T23:31:19:   code: 23,
+2026-07-24T23:31:19:   name: "TimeoutError",
+2026-07-24T23:31:19:   message: "The operation timed out.",
+2026-07-24T23:31:19:   INDEX_SIZE_ERR: 1,
+2026-07-24T23:31:19:   DOMSTRING_SIZE_ERR: 2,
+2026-07-24T23:31:19:   HIERARCHY_REQUEST_ERR: 3,
+2026-07-24T23:31:19:   WRONG_DOCUMENT_ERR: 4,
+2026-07-24T23:31:19:   INVALID_CHARACTER_ERR: 5,
+2026-07-24T23:31:19:   NO_DATA_ALLOWED_ERR: 6,
+2026-07-24T23:31:19:   NO_MODIFICATION_ALLOWED_ERR: 7,
+2026-07-24T23:31:19:   NOT_FOUND_ERR: 8,
+2026-07-24T23:31:19:   NOT_SUPPORTED_ERR: 9,
+2026-07-24T23:31:19:   INUSE_ATTRIBUTE_ERR: 10,
+2026-07-24T23:31:19:   INVALID_STATE_ERR: 11,
+2026-07-24T23:31:19:   SYNTAX_ERR: 12,
+2026-07-24T23:31:19:   INVALID_MODIFICATION_ERR: 13,
+2026-07-24T23:31:19:   NAMESPACE_ERR: 14,
+2026-07-24T23:31:19:   INVALID_ACCESS_ERR: 15,
+2026-07-24T23:31:19:   VALIDATION_ERR: 16,
+2026-07-24T23:31:19:   TYPE_MISMATCH_ERR: 17,
+2026-07-24T23:31:19:   SECURITY_ERR: 18,
+2026-07-24T23:31:19:   NETWORK_ERR: 19,
+2026-07-24T23:31:19:   ABORT_ERR: 20,
+2026-07-24T23:31:19:   URL_MISMATCH_ERR: 21,
+2026-07-24T23:31:19:   QUOTA_EXCEEDED_ERR: 22,
+2026-07-24T23:31:19:   TIMEOUT_ERR: 23,
+2026-07-24T23:31:19:   INVALID_NODE_TYPE_ERR: 24,
+2026-07-24T23:31:19:   DATA_CLONE_ERR: 25,
+2026-07-24T23:31:19:   toString: [Function: toString],
+2026-07-24T23:31:19: }
+2026-07-24T23:46:31: [scraper-rate-limit] Redis unavailable; using local fallback: Redis rate limiter timed out
+2026-07-24T23:47:01: PriceCharting fetch error for ST18-001: 180 |                     ensureNewDocumentNavigation = !!response.loaderId;
+2026-07-24T23:47:01: 181 |                     if (response.errorText === 'net::ERR_HTTP_RESPONSE_CODE_FAILURE') {
+2026-07-24T23:47:01: 182 |                         return null;
+2026-07-24T23:47:01: 183 |                     }
+2026-07-24T23:47:01: 184 |                     return response.errorText
+2026-07-24T23:47:01: 185 |                         ? new Error(`${response.errorText} at ${url}`)
+2026-07-24T23:47:01:                                     ^
+2026-07-24T23:47:01: error: net::ERR_NETWORK_CHANGED at https://www.pricecharting.com/search-products?type=prices&q=ST18-001
+2026-07-24T23:47:01:       at navigate (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:185:31)
+2026-07-24T23:47:01:       at async race (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/util/Deferred.js:33:34)
+2026-07-24T23:47:01:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:151:40)
+2026-07-24T23:47:01:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/api/Page.js:576:43)
+2026-07-24T23:47:01:       at async fetchPriceChartingPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/pricecharting.ts:23:16)
+2026-07-24T23:47:01:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-english-op.ts:46:28)
+2026-07-24T23:47:01: 
+2026-07-25T01:31:53: TCGCSV fetch error for OP03-035: DOMException {
+2026-07-25T01:31:53:   stack: "",
+2026-07-25T01:31:53:   code: 23,
+2026-07-25T01:31:53:   name: "TimeoutError",
+2026-07-25T01:31:53:   message: "The operation timed out.",
+2026-07-25T01:31:53:   INDEX_SIZE_ERR: 1,
+2026-07-25T01:31:53:   DOMSTRING_SIZE_ERR: 2,
+2026-07-25T01:31:53:   HIERARCHY_REQUEST_ERR: 3,
+2026-07-25T01:31:53:   WRONG_DOCUMENT_ERR: 4,
+2026-07-25T01:31:53:   INVALID_CHARACTER_ERR: 5,
+2026-07-25T01:31:53:   NO_DATA_ALLOWED_ERR: 6,
+2026-07-25T01:31:53:   NO_MODIFICATION_ALLOWED_ERR: 7,
+2026-07-25T01:31:53:   NOT_FOUND_ERR: 8,
+2026-07-25T01:31:53:   NOT_SUPPORTED_ERR: 9,
+2026-07-25T01:31:53:   INUSE_ATTRIBUTE_ERR: 10,
+2026-07-25T01:31:53:   INVALID_STATE_ERR: 11,
+2026-07-25T01:31:53:   SYNTAX_ERR: 12,
+2026-07-25T01:31:53:   INVALID_MODIFICATION_ERR: 13,
+2026-07-25T01:31:53:   NAMESPACE_ERR: 14,
+2026-07-25T01:31:53:   INVALID_ACCESS_ERR: 15,
+2026-07-25T01:31:53:   VALIDATION_ERR: 16,
+2026-07-25T01:31:53:   TYPE_MISMATCH_ERR: 17,
+2026-07-25T01:31:53:   SECURITY_ERR: 18,
+2026-07-25T01:31:53:   NETWORK_ERR: 19,
+2026-07-25T01:31:53:   ABORT_ERR: 20,
+2026-07-25T01:31:53:   URL_MISMATCH_ERR: 21,
+2026-07-25T01:31:53:   QUOTA_EXCEEDED_ERR: 22,
+2026-07-25T01:31:53:   TIMEOUT_ERR: 23,
+2026-07-25T01:31:53:   INVALID_NODE_TYPE_ERR: 24,
+2026-07-25T01:31:53:   DATA_CLONE_ERR: 25,
+2026-07-25T01:31:53:   toString: [Function: toString],
+2026-07-25T01:31:53: }
+2026-07-25T03:33:35: TCGCSV fetch error for OP06-083: DOMException {
+2026-07-25T03:33:35:   stack: "",
+2026-07-25T03:33:35:   code: 23,
+2026-07-25T03:33:35:   name: "TimeoutError",
+2026-07-25T03:33:35:   message: "The operation timed out.",
+2026-07-25T03:33:35:   INDEX_SIZE_ERR: 1,
+2026-07-25T03:33:35:   DOMSTRING_SIZE_ERR: 2,
+2026-07-25T03:33:35:   HIERARCHY_REQUEST_ERR: 3,
+2026-07-25T03:33:35:   WRONG_DOCUMENT_ERR: 4,
+2026-07-25T03:33:35:   INVALID_CHARACTER_ERR: 5,
+2026-07-25T03:33:35:   NO_DATA_ALLOWED_ERR: 6,
+2026-07-25T03:33:35:   NO_MODIFICATION_ALLOWED_ERR: 7,
+2026-07-25T03:33:35:   NOT_FOUND_ERR: 8,
+2026-07-25T03:33:35:   NOT_SUPPORTED_ERR: 9,
+2026-07-25T03:33:35:   INUSE_ATTRIBUTE_ERR: 10,
+2026-07-25T03:33:35:   INVALID_STATE_ERR: 11,
+2026-07-25T03:33:35:   SYNTAX_ERR: 12,
+2026-07-25T03:33:35:   INVALID_MODIFICATION_ERR: 13,
+2026-07-25T03:33:35:   NAMESPACE_ERR: 14,
+2026-07-25T03:33:35:   INVALID_ACCESS_ERR: 15,
+2026-07-25T03:33:35:   VALIDATION_ERR: 16,
+2026-07-25T03:33:35:   TYPE_MISMATCH_ERR: 17,
+2026-07-25T03:33:35:   SECURITY_ERR: 18,
+2026-07-25T03:33:35:   NETWORK_ERR: 19,
+2026-07-25T03:33:35:   ABORT_ERR: 20,
+2026-07-25T03:33:35:   URL_MISMATCH_ERR: 21,
+2026-07-25T03:33:35:   QUOTA_EXCEEDED_ERR: 22,
+2026-07-25T03:33:35:   TIMEOUT_ERR: 23,
+2026-07-25T03:33:35:   INVALID_NODE_TYPE_ERR: 24,
+2026-07-25T03:33:35:   DATA_CLONE_ERR: 25,
+2026-07-25T03:33:35:   toString: [Function: toString],
+2026-07-25T03:33:35: }
+2026-07-25T03:35:06: PriceCharting fetch error for OP10-046_p1: 180 |                     ensureNewDocumentNavigation = !!response.loaderId;
+2026-07-25T03:35:06: 181 |                     if (response.errorText === 'net::ERR_HTTP_RESPONSE_CODE_FAILURE') {
+2026-07-25T03:35:06: 182 |                         return null;
+2026-07-25T03:35:06: 183 |                     }
+2026-07-25T03:35:06: 184 |                     return response.errorText
+2026-07-25T03:35:06: 185 |                         ? new Error(`${response.errorText} at ${url}`)
+2026-07-25T03:35:06:                                     ^
+2026-07-25T03:35:06: error: net::ERR_NETWORK_CHANGED at https://www.pricecharting.com/search-products?type=prices&q=OP10-046
+2026-07-25T03:35:06:       at navigate (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:185:31)
+2026-07-25T03:35:06:       at async race (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/util/Deferred.js:33:34)
+2026-07-25T03:35:06:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:151:40)
+2026-07-25T03:35:06:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/api/Page.js:576:43)
+2026-07-25T03:35:06:       at async fetchPriceChartingPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/pricecharting.ts:23:16)
+2026-07-25T03:35:06:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-english-op.ts:46:28)
+2026-07-25T03:35:06: 
+2026-07-26T02:11:27: Failed to fetch queue {
+2026-07-26T02:11:27:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-26T02:11:27:   details: "",
+2026-07-26T02:11:27:   hint: "",
+2026-07-26T02:11:27:   code: "",
+2026-07-26T02:11:27: }
