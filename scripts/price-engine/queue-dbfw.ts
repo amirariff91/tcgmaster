@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { fetchCardrushPrice } from '../../lib/price-engine/cardrush';
 import { fetchPriceChartingPrice } from '../../lib/price-engine/pricecharting';
+import { revalidateCardPage } from '../../lib/price-engine/revalidate';
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!);
 
@@ -8,10 +9,28 @@ const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env
 const SAFE_MODE = process.env.SAFE_MODE === '1';
 const SLEEP_MS = SAFE_MODE ? 40000 : 17000; // 40s in safe mode, 17s normal
 
+const LABEL = '[DBFW]';
+
 async function run() {
   console.log(`Starting Continuous Scrape Engine (Dragon Ball FW) [SAFE_MODE=${SAFE_MODE}]...`);
-  
+
+  // Race fence: a page render that began before our write can finish after the
+  // purge and be cached as fresh for the full TTL, because Next only expires
+  // entries whose timestamp predates the invalidation. Re-purging the previous
+  // card one iteration later fences that window with SLEEP_MS of slack.
+  //
+  // Not free, but close: the two purge POSTs sit outside the sleep, so a hung web
+  // app adds up to 2x the 3s timeout per iteration. Bounded cadence drift, never a
+  // stall. Not durable either — a PM2 restart between the write and the next
+  // iteration drops the fence, leaving the 24h TTL as the backstop.
+  let previousCardId: string | null = null;
+
   while (true) {
+    if (previousCardId) {
+      await revalidateCardPage(previousCardId, `${LABEL} [fence]`);
+      previousCardId = null;
+    }
+
     const { data: cards, error } = await supabase
       .from('cards')
       .select('id, name, slug, number, cardrush_url')
@@ -89,7 +108,7 @@ async function run() {
         cacheRawPrices.market = Math.min(...rawVals);
       }
       
-      await supabase.from('price_cache').upsert({
+      const { error: cacheError } = await supabase.from('price_cache').upsert({
         card_id: card.id,
         variant_id: null,
         raw_prices: cacheRawPrices,
@@ -97,6 +116,10 @@ async function run() {
         fetched_at: new Date().toISOString(),
         expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
       }, { onConflict: 'card_id' });
+
+      if (cacheError) {
+        console.error(`${LABEL} Failed to upsert price_cache for ${card.number}:`, cacheError);
+      }
 
       for (const result of results) {
         const { error: insertError } = await supabase
@@ -111,6 +134,14 @@ async function run() {
           console.error(`[DBFW] Failed to insert ${result.source} ${result.grade} price for ${card.number}:`, insertError);
         }
       }
+
+      // Purge unconditionally: the `cards` update and the price_history inserts
+      // above are independent of the price_cache upsert, and the page's featured
+      // price comes from price_history — so even with cacheError set there is new
+      // data on screen. A wasted purge is cheap; a skipped one hides a price for
+      // 24h.
+      await revalidateCardPage(card.id, LABEL);
+      previousCardId = card.id;
     } else {
       console.log(`[DBFW] Failed to find any prices, skipping...`);
       await supabase

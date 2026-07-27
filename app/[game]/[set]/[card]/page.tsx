@@ -7,6 +7,7 @@ import { CardDetailActions } from '@/components/card/card-detail-actions';
 import { RelatedCards, type RelatedCard } from '@/components/card/related-cards';
 import { FormattedPrice } from '@/components/ui/formatted-price';
 import { CollectrChart } from '@/components/charts/collectr-chart';
+import { PriceFreshness } from '@/components/card/price-freshness';
 import { formatPrice, formatNumber, getRarityDisplay, formatDate, formatDisplayNumber, formatSetName, splitCardName } from '@/lib/utils';
 import { getCardWithPrices } from '@/lib/ppt/service';
 // Public catalog data only, so use the cookie-free anon client. Reading cookies()
@@ -223,7 +224,17 @@ interface PageProps {
   }>;
 }
 
-export const revalidate = 300;
+// Prices change roughly once every couple of days per card, while a card gets ~5
+// views/day — so a short TTL never catches a second view and just re-renders on
+// almost every request. Instead this is a long ceiling plus on-demand purging:
+// the price scrapers POST to /api/revalidate/card and the Inngest price jobs call
+// revalidatePath directly, so a page is invalidated when its price actually
+// changes rather than on a timer. That is both a real cache hit rate and better
+// freshness than a 5-minute TTL delivered.
+//
+// Anything derived from Date.now() during render now freezes for up to a day —
+// see components/card/price-freshness.tsx.
+export const revalidate = 86400;
 
 // Next 16 only puts a dynamic segment on the ISR path when it declares
 // generateStaticParams. The catalogue is ~15k cards, so prerender nothing at build
@@ -431,19 +442,28 @@ export default async function CardDetailPage({ params }: PageProps) {
     .map(([source, data]) => ({ source, price: data.price, date: data.date }))
     .sort((a, b) => a.price - b.price);
 
-  // Freshness of the newest raw price we hold, so the page states how current it is
+  // Freshness of the newest price we hold, so the page states how current it is
   // instead of asserting a hardcoded "Availability: High".
-  const newestPriceAt = latestPricesList.reduce<string | null>(
-    (newest, item) => (!newest || new Date(item.date) > new Date(newest) ? item.date : newest),
+  //
+  // price_history alone is not enough: the Inngest price jobs (inngest/functions/
+  // sync-prices.ts) upsert price_cache without writing history, so a card can get a
+  // new displayed price while the newest history row stays old — showing a fresh
+  // price beside a stale timestamp. Take whichever of the two is newer.
+  // Reduce over the full history, not latestPricesList — that one is raw-only and
+  // drops source === 'Market', so a graded-only observation (SnkrDunk psa10 is the
+  // usual case) would leave the timestamp looking older than the price on screen.
+  const newestHistoryAt = priceHistoryData.reduce<string | null>(
+    (newest, item) =>
+      !newest || new Date(item.recorded_at) > new Date(newest) ? item.recorded_at : newest,
     null,
   );
-  const priceFreshness = (() => {
-    if (!newestPriceAt) return { label: '--', isStale: false };
-    const hours = (Date.now() - new Date(newestPriceAt).getTime()) / 36e5;
-    if (hours < 1) return { label: '<1h', isStale: false };
-    if (hours < 48) return { label: `${Math.round(hours)}h`, isStale: hours >= 24 };
-    return { label: `${Math.round(hours / 24)}d`, isStale: true };
-  })();
+  const cacheFetchedAt = dbPriceCache?.fetched_at ?? null;
+  const newestPriceAt =
+    [newestHistoryAt, cacheFetchedAt]
+      .filter((value): value is string => !!value && !Number.isNaN(new Date(value).getTime()))
+      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0] ?? null;
+  // The label itself is computed client-side — at revalidate=86400 a server-rendered
+  // relative time would freeze into the cached payload for up to a day.
 
   // Vendor URLs are stored per card and drive the scrapers; reuse them so each
   // "Compared Markets" row links out to the listing the price came from.
@@ -599,9 +619,7 @@ export default async function CardDetailPage({ params }: PageProps) {
               </div>
               <div className="px-4 flex flex-col items-center text-center">
                 <span className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest mb-2">Last Updated</span>
-                <span className={`text-2xl font-black ${priceFreshness.isStale ? 'text-amber-400' : 'text-white'}`}>
-                  {priceFreshness.label}
-                </span>
+                <PriceFreshness newestPriceAt={newestPriceAt} />
                 <span className="text-zinc-500 text-[10px] mt-1 font-medium">
                   {latestPricesList.length > 0
                     ? `${latestPricesList.length} source${latestPricesList.length === 1 ? '' : 's'}`
