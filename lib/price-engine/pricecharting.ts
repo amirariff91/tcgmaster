@@ -7,21 +7,42 @@ function normalizeToken(value: string): string {
   return value.toUpperCase().replace(/[^A-Z0-9]/g, '');
 }
 
+/**
+ * Variant printings use BOTH separators in this catalogue: One Piece writes
+ * "OP05-119_p4" and Dragon Ball writes "E01-08-p1" (919 cards). Splitting on "_"
+ * alone let every dash variant through to the matcher.
+ */
+const VARIANT_SUFFIX = /[-_][pr]\d+$/i;
+
+/**
+ * PriceCharting titles end with the card number ("Tsuru OP16-067", "Krillin
+ * [Holo] FB01-008"), so compare against that trailing token rather than testing
+ * for a substring anywhere in the title. Substring matching has no boundary:
+ * "E-01" normalises to "E01", which is a prefix of "E01-09" -> "E0109", so a
+ * card would silently price off a different one in the same set.
+ */
+function titleNumberMatches(rawTitle: string, wantedNumber: string): boolean {
+  if (!wantedNumber) return false;
+  const tokens = rawTitle.trim().split(/\s+/);
+  const last = tokens[tokens.length - 1] ?? '';
+  return normalizeToken(last) === wantedNumber;
+}
+
 // Returns both raw and PSA 10 graded prices
 export async function fetchPriceChartingPrice(query: string): Promise<{ price: number; gradedPrice?: number } | null> {
   let page;
 
-  let suffix = '';
-  let baseQuery = query;
-  if (query.includes('_')) {
-    [baseQuery, suffix] = query.split('_');
-  }
+  // The number is the leading token; callers may append a qualifier
+  // ("FB01-001 japanese"). Strip that before testing for a variant suffix.
+  const [numberToken = '', ...restTokens] = query.trim().split(/\s+/);
+  const isVariant = VARIANT_SUFFIX.test(numberToken);
 
-  // Variant printings (_p1.._pN, _rN) cannot be mapped onto PriceCharting's
-  // naming reliably — see the note below. Bail before the rate-limit wait and the
-  // Puppeteer page load rather than scraping ~6,300 variant cards to discard the
-  // result.
-  if (suffix) return null;
+  // Variant printings cannot be mapped onto PriceCharting's naming reliably —
+  // see the note below. Bail before the rate-limit wait and the Puppeteer page
+  // load rather than scraping ~7,200 variant cards to discard the result.
+  if (isVariant) return null;
+
+  const baseQuery = [numberToken, ...restTokens].join(' ');
 
   try {
     await waitForSourceRateLimit('pricecharting');
@@ -60,13 +81,13 @@ export async function fetchPriceChartingPrice(query: string): Promise<{ price: n
     //       — the same rule tcgcsv.ts already applies to TCGPlayer variants.
     //
     // Returning null costs a price; returning the wrong one misprices the card.
-    const wantedNumber = normalizeToken(baseQuery.trim().split(/\s+/)[0] || '');
+    const wantedNumber = normalizeToken(numberToken);
 
     results.each((_, el) => {
       if (selectedResult) return;
       const rawTitle = $(el).find('td.title a').text().trim();
 
-      if (wantedNumber && !normalizeToken(rawTitle).includes(wantedNumber)) return;
+      if (!titleNumberMatches(rawTitle, wantedNumber)) return;
       if (/\[[^\]]*\]/.test(rawTitle)) return; // a qualified printing, not the base card
 
       selectedResult = el;
