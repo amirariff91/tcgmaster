@@ -15,17 +15,31 @@ function normalizeToken(value: string): string {
 const VARIANT_SUFFIX = /[-_][pr]\d+$/i;
 
 /**
- * PriceCharting titles end with the card number ("Tsuru OP16-067", "Krillin
- * [Holo] FB01-008"), so compare against that trailing token rather than testing
- * for a substring anywhere in the title. Substring matching has no boundary:
- * "E-01" normalises to "E01", which is a prefix of "E01-09" -> "E0109", so a
- * card would silently price off a different one in the same set.
+ * True when some whitespace token of the title IS the card number.
+ *
+ * Compare token-wise, never as a substring: "E-01" normalises to "E01", which is
+ * a prefix of "E01-09" -> "E0109", so substring matching would silently price a
+ * card off a different one in its own set.
+ *
+ * Position varies by page — search rows end with the number ("Tsuru OP16-067")
+ * while a product page puts it mid-heading ("Roronoa Zoro OP07-034 One Piece
+ * Japanese 500 Years in the Future") — so match any token rather than the last.
  */
-function titleNumberMatches(rawTitle: string, wantedNumber: string): boolean {
+function titleHasNumberToken(rawTitle: string, wantedNumber: string): boolean {
   if (!wantedNumber) return false;
-  const tokens = rawTitle.trim().split(/\s+/);
-  const last = tokens[tokens.length - 1] ?? '';
-  return normalizeToken(last) === wantedNumber;
+  return rawTitle.trim().split(/\s+/).some((t) => normalizeToken(t) === wantedNumber);
+}
+
+/** A bracketed qualifier ("[SP Gold]", "[Holo]") marks a specific printing, not the base card. */
+function isQualifiedPrinting(rawTitle: string): boolean {
+  return /\[[^\]]*\]/.test(rawTitle);
+}
+
+function parsePrice(text: string): number | undefined {
+  const match = text.match(/([0-9.,]+)/);
+  if (!match) return undefined;
+  const value = parseFloat(match[1].replace(/,/g, ''));
+  return Number.isNaN(value) || value <= 0 ? undefined : value;
 }
 
 // Returns both raw and PSA 10 graded prices
@@ -83,12 +97,30 @@ export async function fetchPriceChartingPrice(query: string): Promise<{ price: n
     // Returning null costs a price; returning the wrong one misprices the card.
     const wantedNumber = normalizeToken(numberToken);
 
+    // When the search has exactly one strong match, PriceCharting 302s straight to
+    // the product page and there is no results table at all — so the selector below
+    // found nothing and we discarded a price. That is the *most* reliable case:
+    // "OP07-034 japanese" redirects to a page quoting $1.59 while the table parser
+    // sees zero rows. Verify the heading names our number, then read it directly.
+    //
+    // Only the ungraded price is taken here. The product page's graded cells carry
+    // no usable labels, and guessing which tier is PSA 10 would recreate exactly the
+    // mislabelling this function exists to prevent.
+    if (results.length === 0) {
+      const heading = $('h1').first().text().trim();
+      if (!titleHasNumberToken(heading, wantedNumber)) return null;
+      if (isQualifiedPrinting(heading)) return null;
+
+      const productPrice = parsePrice($('#used_price').find('.price').first().text());
+      return productPrice === undefined ? null : { price: productPrice };
+    }
+
     results.each((_, el) => {
       if (selectedResult) return;
       const rawTitle = $(el).find('td.title a').text().trim();
 
-      if (!titleNumberMatches(rawTitle, wantedNumber)) return;
-      if (/\[[^\]]*\]/.test(rawTitle)) return; // a qualified printing, not the base card
+      if (!titleHasNumberToken(rawTitle, wantedNumber)) return;
+      if (isQualifiedPrinting(rawTitle)) return; // a specific printing, not the base card
 
       selectedResult = el;
     });
