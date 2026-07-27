@@ -133,7 +133,7 @@ function generateCardHistory(
   const totalDays = CONFIG.dailyDays + CONFIG.weeklyWeeks * 7;
   const annualGrowthRate = CONFIG.dailyTrend * 365;
   const yearsBack = totalDays / 365;
-  let historicalPrice = currentPrice / Math.pow(1 + annualGrowthRate, yearsBack);
+  const historicalPrice = currentPrice / Math.pow(1 + annualGrowthRate, yearsBack);
 
   // Generate weekly data first (older period)
   const weeklyStartDate = new Date(now);

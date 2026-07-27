@@ -14,7 +14,7 @@ async function run() {
   while (true) {
     const { data: cards, error } = await supabase
       .from('cards')
-      .select('id, name, slug, number, cardrush_url')
+      .select('id, name, slug, number, cardrush_url, pricecharting_url')
       .ilike('slug', 'dbfw-%')
       .order('last_price_fetch', { ascending: true, nullsFirst: true })
       .limit(1);
@@ -44,13 +44,17 @@ async function run() {
 
     // 2. PriceCharting (Puppeteer-based)
     console.log('[DBFW] Fetching from PriceCharting...');
-    const pcResult = await fetchPriceChartingPrice(`${card.name} ${card.number} Dragon Ball Japanese`);
+    const pcQueryOrUrl = card.pricecharting_url || `${card.name} ${card.number} Dragon Ball Japanese`;
+    const pcResult = await fetchPriceChartingPrice(pcQueryOrUrl);
     if (pcResult !== null) {
       results.push({ price: pcResult.price, source: 'pricecharting', grade: 'raw' });
       console.log(`[DBFW] PriceCharting: $${pcResult.price}`);
       if (pcResult.gradedPrice) {
         results.push({ price: pcResult.gradedPrice, source: 'pricecharting', grade: 'psa10' });
         console.log(`[DBFW] PriceCharting PSA 10: $${pcResult.gradedPrice}`);
+      }
+      if (pcResult.url && pcResult.url !== card.pricecharting_url) {
+        updatePayload.pricecharting_url = pcResult.url;
       }
     }
     
@@ -99,13 +103,24 @@ async function run() {
       }).throwOnError();
 
       for (const result of results) {
+        let finalGrade = result.grade;
+        let finalCompany = null;
+        if (finalGrade.startsWith('psa')) {
+          finalCompany = '74c51627-cc4b-4a82-a1c0-52b3975b47b7';
+          finalGrade = finalGrade.replace('psa', '');
+        } else if (finalGrade.startsWith('bgs')) {
+          finalCompany = 'cda2045f-5d78-49e7-b1c8-de04dac9888d';
+          finalGrade = finalGrade.replace('bgs', '');
+        }
+        
         const { error: insertError } = await supabase
           .from('price_history')
           .insert({
             card_id: card.id,
             price: result.price,
             source: result.source,
-            grade: result.grade
+            grade: finalGrade,
+            grading_company_id: finalCompany
           });
         if (insertError) {
           console.error(`[DBFW] Failed to insert ${result.source} ${result.grade} price for ${card.number}:`, insertError);

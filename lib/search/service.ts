@@ -23,6 +23,7 @@ interface CardSearchRow {
     games: { slug: string };
   };
   price_cache_ttl: number | null;
+  curation_status: string | null;
 }
 
 interface CardSuggestionRow {
@@ -61,6 +62,7 @@ export interface SearchResult {
   marketPrice: number | null;
   slug: string;
   game: string;
+  curationStatus: string | null;
   score: number;
 }
 
@@ -144,6 +146,7 @@ export async function searchCards(
           image_url,
           local_image_url,
           price_cache_ttl,
+          curation_status,
           sets!inner (
             id,
             name,
@@ -155,6 +158,11 @@ export async function searchCards(
         `;
         
     let dbQuery = supabase.from('cards').select(columns, { count: 'estimated', head });
+
+    // Apply Verified Only filter from NLP
+    if (parsed.isVerifiedOnly) {
+      dbQuery = dbQuery.eq('curation_status', 'curated');
+    }
 
     // Apply text search
     if (parsed.cardName && parsed.cardName.length >= 2) {
@@ -289,6 +297,7 @@ export async function searchCards(
       marketPrice: card.price_cache_ttl ? card.price_cache_ttl / 100 : null,
       slug: card.slug,
       game: game?.slug || 'pokemon',
+      curationStatus: card.curation_status || null,
       score: 0,
     };
 

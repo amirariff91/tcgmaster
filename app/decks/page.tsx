@@ -54,7 +54,7 @@ export default async function GlobalDecksHub() {
     .select('*')
     .eq('is_active', true);
 
-  let games = (gamesData as any[]) || [];
+  const games = (gamesData as any[]) || [];
 
   // Enforce strict order: One Piece (left), DBFW (middle), Pokemon (right)
   const order = ['one-piece', 'dbfw', 'pokemon'];

@@ -3,18 +3,24 @@ import { getSharedBrowser } from './browser';
 import { waitForSourceRateLimit } from './rate-limiter';
 
 // Returns both raw and PSA 10 graded prices
-export async function fetchPriceChartingPrice(query: string): Promise<{ price: number; gradedPrice?: number } | null> {
+export async function fetchPriceChartingPrice(queryOrUrl: string): Promise<{ price: number; gradedPrice?: number; url?: string } | null> {
   let page;
   try {
     await waitForSourceRateLimit('pricecharting');
 
+    let searchUrl = '';
+    const isDirectUrl = queryOrUrl.startsWith('http');
     let suffix = '';
-    let baseQuery = query;
-    if (query.includes('_')) {
-      [baseQuery, suffix] = query.split('_');
-    }
+    let baseQuery = queryOrUrl;
 
-    const searchUrl = `https://www.pricecharting.com/search-products?type=prices&q=${encodeURIComponent(baseQuery)}`;
+    if (isDirectUrl) {
+      searchUrl = queryOrUrl;
+    } else {
+      if (queryOrUrl.includes('_')) {
+        [baseQuery, suffix] = queryOrUrl.split('_');
+      }
+      searchUrl = `https://www.pricecharting.com/search-products?type=prices&q=${encodeURIComponent(baseQuery)}`;
+    }
     
     const browser = await getSharedBrowser();
     page = await browser.newPage();
@@ -70,8 +76,16 @@ export async function fetchPriceChartingPrice(query: string): Promise<{ price: n
       }
     }
 
+    let finalUrl = searchUrl;
+    if (!isDirectUrl) {
+      const href = $(selectedResult).find('td.title a').attr('href');
+      if (href) {
+        finalUrl = href.startsWith('http') ? href : `https://www.pricecharting.com${href}`;
+      }
+    }
+
     if (rawPrice !== undefined) {
-      return { price: rawPrice, gradedPrice };
+      return { price: rawPrice, gradedPrice, url: finalUrl };
     }
 
   } catch (err) {

@@ -29,7 +29,7 @@ export async function fetchJapanesePrice(query: string, setName?: string): Promi
       const html = await response.text();
       const $ = cheerio.load(html);
       
-      let priceText = $('.lhs.mt-0').text() || $('body').text().replace(/\s+/g, ' ');
+      const priceText = $('.lhs.mt-0').text() || $('body').text().replace(/\s+/g, ' ');
       const match = priceText.match(/([0-9,]+)\s*円/);
       if (match) {
         const priceJpy = parseInt(match[1].replace(/,/g, ''), 10);
@@ -128,7 +128,7 @@ export async function fetchJapanesePrice(query: string, setName?: string): Promi
 
     if (!selectedProduct) return null;
     
-    let priceText = $(selectedProduct).text().replace(/\s+/g, ' ');
+    const priceText = $(selectedProduct).text().replace(/\s+/g, ' ');
     
     // Extract numbers before '円'
     const match = priceText.match(/([0-9,]+)\s*円/);

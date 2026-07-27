@@ -136,7 +136,7 @@ async function run() {
   // Find all Japanese cards with Japanese characters in name
   let page = 0;
   const pageSize = 1000;
-  let totalFixed = 0;
+  const totalFixed = 0;
   let totalSkipped = 0;
   let hasMore = true;
   

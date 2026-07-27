@@ -36,7 +36,7 @@ function decodeHtmlEntities(text: string): string {
 
 function formatSetName(rawTitle: string): string {
   const match = rawTitle.match(/\[(.*?)\]|【(.*?)】/);
-  let code = match ? (match[1] || match[2]) : null;
+  const code = match ? (match[1] || match[2]) : null;
   
   let name = rawTitle.replace(/\[.*?\]|【.*?】/, '').trim();
   name = name.replace(/^(BOOSTER PACK|EXTRA BOOSTER|PREMIUM BOOSTER|STARTER DECK(?: EX)?|ULTRA DECK)\s*-?/i, '');

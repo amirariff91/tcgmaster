@@ -77,7 +77,7 @@ export async function fetchCardrushData(cardNumber: string): Promise<CardrushRes
       }
       
       // Variant matching logic
-      let isSuperParallel = title.includes('スーパーパラレル') || title.includes('スペシャル') || title.includes('コミック') || title.includes('トレジャー') || title.includes('フラッグシップ') || title.includes('シリアル');
+      const isSuperParallel = title.includes('スーパーパラレル') || title.includes('スペシャル') || title.includes('コミック') || title.includes('トレジャー') || title.includes('フラッグシップ') || title.includes('シリアル');
       const isRegularParallel = title.includes('パラレル') || title.includes('パラ');
       const isParallel = isSuperParallel || isRegularParallel;
       

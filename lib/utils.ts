@@ -154,7 +154,7 @@ export function formatDisplayNumber(gameSlug: string | null | undefined, number:
   if (!number) return '';
   
   // Strip _pX, -pX, _rX, -rX suffixes for UI display
-  let cleanNumber = number.replace(/[_-][pr]\d+/g, '');
+  const cleanNumber = number.replace(/[_-][pr]\d+/g, '');
   
   // Pokemon cards append /total if not already present
   if (gameSlug === 'pokemon') {

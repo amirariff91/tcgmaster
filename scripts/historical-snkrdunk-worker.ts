@@ -64,16 +64,49 @@ async function fetchHistoricalSalesForCard(cardId: string, snkrdunkId: string) {
 
       const insertRows = soldListings.map((l: any) => {
         const recordedAt = decodeUlidTime(l.listingUID).toISOString();
+        
+        let parsedGrade = 'raw';
+        let gradingCompany = null;
+        const condition = l.condition || 'A';
+
+        // Filter out unwanted Raw conditions
+        if (['B', 'C', 'D'].includes(condition)) {
+          return null;
+        }
+        
+        // Regex to parse things like "PSA 10", "BGS 9.5", "CGC Pristine 10", "ARS 10+"
+        // It captures the company name and the numeric grade.
+        const gradeMatch = condition.match(/^(PSA|BGS|CGC|TAG|AGS|ARS)(?:\s+Pristine|\s+Perfect|\s+Black Label|\s+Gold Label)?\s+([0-9]+\.?[0-9]*\+?)$/i);
+        
+        if (gradeMatch) {
+           gradingCompany = gradeMatch[1].toLowerCase();
+           parsedGrade = gradeMatch[2].replace('+', ''); 
+        } else if (condition.includes('PSA')) {
+           // Fallback for weirdly formatted PSA
+           const m = condition.match(/PSA\s*([0-9]+\.?[0-9]*)/i);
+           if (m) { gradingCompany = 'psa'; parsedGrade = m[1]; }
+        }
+
+        const COMPANY_UUIDS: Record<string, string> = {
+          psa: '74c51627-cc4b-4a82-a1c0-52b3975b47b7',
+          bgs: 'cda2045f-5d78-49e7-b1c8-de04dac9888d',
+          cgc: 'dce6169f-8958-4229-861b-686a4644c984',
+          sgc: '7a7b5849-788b-40f6-9f42-14f2f27f68b3'
+        };
+        const finalCompanyId = gradingCompany ? COMPANY_UUIDS[gradingCompany] || null : null;
+
         return {
           card_id: cardId,
           source: 'snkrdunk',
+          grade: parsedGrade,
+          grading_company_id: finalCompanyId,
           price: l.priceAmount,
           raw_price: l.priceAmount,
           currency: l.currency || 'USD',
-          condition: l.condition || 'A',
+          condition: condition,
           recorded_at: recordedAt,
         };
-      });
+      }).filter(Boolean);
 
       if (insertRows.length > 0) {
         const { error } = await supabase
@@ -109,25 +142,16 @@ async function fetchHistoricalSalesForCard(cardId: string, snkrdunkId: string) {
 
   if (latestPrices && latestPrices.length > 0) {
     const rawVal = latestPrices[0].price;
-    await supabase.from('price_cache').upsert({
-      card_id: cardId,
-      raw_prices: { market: rawVal, snkrdunk: rawVal },
-      source: 'snkrdunk',
-      fetched_at: new Date().toISOString(),
-      expires_at: new Date(Date.now() + 86400000).toISOString(),
-    }, { onConflict: 'card_id' });
-
     await supabase.from('cards').update({
-      price_cache_ttl: Math.round(rawVal * 100),
       historical_fetched: true,
       last_price_fetch: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      curation_status: 'pending',
     }).eq('id', cardId);
   } else {
     await supabase.from('cards').update({
       historical_fetched: true,
       last_price_fetch: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      curation_status: 'pending',
     }).eq('id', cardId);
   }
 
@@ -154,7 +178,7 @@ async function run() {
         continue;
       }
 
-      let processQueue = cards || [];
+      const processQueue = cards || [];
 
       if (processQueue.length === 0) {
         console.log('Queue empty. Retrying in 15 seconds...');

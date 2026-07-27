@@ -15,7 +15,7 @@ async function run() {
   while (true) {
     const { data: cards, error } = await supabase
       .from('cards')
-      .select('id, name, slug, number, yuyutei_url, snkrdunk_url')
+      .select('id, name, slug, number, yuyutei_url, snkrdunk_url, pricecharting_url')
       .like('slug', 'op-%')
       .like('slug', '%-ja')
       .order('last_price_fetch', { ascending: true, nullsFirst: true })
@@ -61,13 +61,29 @@ async function run() {
 
     // 3. PriceCharting (Puppeteer-based)
     console.log('[Japanese OP] Fetching from PriceCharting...');
-    const pcResult = await fetchPriceChartingPrice(`${card.name} ${card.number} One Piece Japanese`);
+    
+    let pcQueryOrUrl = card.pricecharting_url;
+    if (!pcQueryOrUrl) {
+      // Deterministically construct the URL instead of fuzzy searching
+      let setSlug = card.slug.split('-')[1]; // e.g. op-op01-001-ja -> op01
+      if (setSlug === 'p' || card.number.startsWith('P-')) setSlug = 'promo';
+      
+      const cleanName = card.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      const cleanNum = card.number.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      
+      pcQueryOrUrl = `https://www.pricecharting.com/game/one-piece-japanese-${setSlug}/${cleanName}-${cleanNum}`;
+    }
+
+    const pcResult = await fetchPriceChartingPrice(pcQueryOrUrl);
     if (pcResult !== null) {
       results.push({ price: pcResult.price, source: 'pricecharting', grade: 'raw' });
       console.log(`[Japanese OP] PriceCharting: $${pcResult.price}`);
       if (pcResult.gradedPrice) {
         results.push({ price: pcResult.gradedPrice, source: 'pricecharting', grade: 'psa10' });
         console.log(`[Japanese OP] PriceCharting PSA 10: $${pcResult.gradedPrice}`);
+      }
+      if (pcResult.url && pcResult.url !== card.pricecharting_url) {
+        updatePayload.pricecharting_url = pcResult.url;
       }
     }
     
@@ -82,6 +98,11 @@ async function run() {
       }
       
       updatePayload.last_price_fetch = new Date().toISOString();
+      
+      // Only trigger a re-curation if we discovered or changed a source URL
+      if (updatePayload.snkrdunk_url || updatePayload.pricecharting_url || updatePayload.yuyutei_url) {
+        updatePayload.curation_status = 'pending';
+      }
       
       await supabase
         .from('cards')
@@ -116,13 +137,24 @@ async function run() {
       }).throwOnError();
 
       for (const result of results) {
+        let finalGrade = result.grade;
+        let finalCompany = null;
+        if (finalGrade.startsWith('psa')) {
+          finalCompany = '74c51627-cc4b-4a82-a1c0-52b3975b47b7';
+          finalGrade = finalGrade.replace('psa', '');
+        } else if (finalGrade.startsWith('bgs')) {
+          finalCompany = 'cda2045f-5d78-49e7-b1c8-de04dac9888d';
+          finalGrade = finalGrade.replace('bgs', '');
+        }
+        
         const { error: insertError } = await supabase
           .from('price_history')
           .insert({
             card_id: card.id,
             price: result.price,
             source: result.source,
-            grade: result.grade
+            grade: finalGrade,
+            grading_company_id: finalCompany
           });
         if (insertError) {
           console.error(`[Japanese OP] Failed to insert ${result.source} ${result.grade} price for ${card.number}:`, insertError);

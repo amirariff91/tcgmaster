@@ -1,7 +1,10 @@
+import path from 'path';
+import fs from 'fs';
+
 const DEFAULT_CATEGORY_ID = 68; // One Piece
 const DBFW_CATEGORY_ID = 80;
 
-let cachedGroups: Record<number, any[]> = {};
+const cachedGroups: Record<number, any[]> = {};
 const cachedProducts: Record<number, any[]> = {};
 const cachedPrices: Record<number, any[]> = {};
 
@@ -73,8 +76,8 @@ export async function fetchEnglishPrice(query: string, setName?: string, existin
     let mappedTcgId = existingTcgProductId;
     if (!mappedTcgId) {
       try {
-        const dictPath = require('path').resolve(process.cwd(), 'lib/price-engine/mapping-dictionary.json');
-        const dict = JSON.parse(require('fs').readFileSync(dictPath, 'utf8'));
+        const dictPath = path.resolve(process.cwd(), 'lib/price-engine/mapping-dictionary.json');
+        const dict = JSON.parse(fs.readFileSync(dictPath, 'utf8'));
         const slugKey = query.toLowerCase().startsWith('op-') ? query.toLowerCase() : `op-${query.toLowerCase()}`;
         if (dict[query]) {
           mappedTcgId = String(dict[query]);

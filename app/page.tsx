@@ -63,6 +63,7 @@ export default async function HomePage() {
   });
 
   // Perfectly shuffle OP and DBFW cards, then grab up to 60
+  // eslint-disable-next-line react-hooks/purity
   const dbCards = filteredCards.sort(() => Math.random() - 0.5).slice(0, 60);
 
   return (

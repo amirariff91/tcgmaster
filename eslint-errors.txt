@@ -1,0 +1,82 @@
+
+/Users/ioi/Documents/TcgMaster/tcgmaster/app/[game]/[set]/[card]/page.tsx
+   95:20  error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+  340:37  error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+  377:5   error  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
+  378:67  error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+
+/Users/ioi/Documents/TcgMaster/tcgmaster/app/[game]/decks/[id]/page.tsx
+   50:28  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  151:36  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/ioi/Documents/TcgMaster/tcgmaster/app/[game]/decks/archetype/[id]/page.tsx
+  29:33  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  59:31  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  80:39  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  87:22  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/ioi/Documents/TcgMaster/tcgmaster/app/[game]/decks/page.tsx
+   76:24  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  155:36  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/ioi/Documents/TcgMaster/tcgmaster/app/api/cron/trending/route.ts
+  56:42  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  91:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/ioi/Documents/TcgMaster/tcgmaster/app/api/sets/route.ts
+  40:35  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  57:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/ioi/Documents/TcgMaster/tcgmaster/app/decks/page.tsx
+  57:31  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  75:34  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/ioi/Documents/TcgMaster/tcgmaster/app/page.tsx
+  46:56  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/ioi/Documents/TcgMaster/tcgmaster/app/search/page.tsx
+  117:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  117:75  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  141:34  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  186:43  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/ioi/Documents/TcgMaster/tcgmaster/components/charts/collectr-chart.tsx
+  150:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  165:20  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/ioi/Documents/TcgMaster/tcgmaster/lib/api/dbfw-fetcher.ts
+  16:38  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/ioi/Documents/TcgMaster/tcgmaster/lib/api/one-piece-fetcher.ts
+  33:38  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/pricecharting.ts
+  29:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/snkrdunk.ts
+  84:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/tcgcsv.ts
+   4:36  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   5:38  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   6:36  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  38:33  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  41:46  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  76:26  error  A `require()` style import is forbidden   @typescript-eslint/no-require-imports
+  77:33  error  A `require()` style import is forbidden   @typescript-eslint/no-require-imports
+
+/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/vision-harvester.ts
+  36:41  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  54:46  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  74:47  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  75:50  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  78:31  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/yuyutei.ts
+  72:26  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/ioi/Documents/TcgMaster/tcgmaster/lib/search/service.ts
+  199:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+✖ 43 problems (43 errors, 0 warnings)
+

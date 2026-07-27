@@ -90,7 +90,7 @@ async function run() {
         }
 
         // Get the English image URL from the JSON
-        let originalImgUrl = card.images?.large || card.images?.small;
+        const originalImgUrl = card.images?.large || card.images?.small;
         if (!originalImgUrl) {
           console.log(`[${processed}/${cards.length}] ${jaSlug} - No image found in JSON.`);
           continue;

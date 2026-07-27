@@ -17,7 +17,7 @@ async function main() {
     const dbPriceCache = Array.isArray(cards.price_cache) ? cards.price_cache[0] : cards.price_cache;
     console.log("DB Cache Graded Prices:", JSON.stringify(dbPriceCache?.graded_prices, null, 2));
 
-    let gradedPrices: any = {};
+    const gradedPrices: any = {};
     if (dbPriceCache?.graded_prices) {
       for (const [grade, sources] of Object.entries(dbPriceCache.graded_prices)) {
         if (sources && typeof sources === 'object') {

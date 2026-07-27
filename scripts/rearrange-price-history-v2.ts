@@ -38,7 +38,7 @@ async function run() {
   
   for (const card of allCards) {
     // To find the base slug, we remove any _pX or _rX or _aa from the slug
-    let baseSlug = card.slug.replace(/_[a-zA-Z0-9]+/, '');
+    const baseSlug = card.slug.replace(/_[a-zA-Z0-9]+/, '');
     
     const group = cardsByBaseSlug.get(baseSlug) || [];
     group.push(card);

@@ -37,7 +37,7 @@ async function run() {
     // For Japanese: intercept Snkrdunk GraphQL timeline data.
     
     let currentPrice = card.market_price || 0;
-    let source = card.language === 'en' ? 'tcgplayer' : 'snkrdunk';
+    const source = card.language === 'en' ? 'tcgplayer' : 'snkrdunk';
     
     if (card.language === 'en') {
       console.log(`Fetching PriceCharting data for ${card.slug}...`);

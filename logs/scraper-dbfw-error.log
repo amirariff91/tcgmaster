@@ -1074,3 +1074,33 @@
 2026-07-25T01:50:49:       at async fetchPriceChartingPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/pricecharting.ts:23:16)
 2026-07-25T01:50:49:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-dbfw.ts:47:28)
 2026-07-25T01:50:49: 
+2026-07-26T08:38:31: PriceCharting fetch error for FB03-136_p1 japanese: 180 |                     ensureNewDocumentNavigation = !!response.loaderId;
+2026-07-26T08:38:31: 181 |                     if (response.errorText === 'net::ERR_HTTP_RESPONSE_CODE_FAILURE') {
+2026-07-26T08:38:31: 182 |                         return null;
+2026-07-26T08:38:31: 183 |                     }
+2026-07-26T08:38:31: 184 |                     return response.errorText
+2026-07-26T08:38:31: 185 |                         ? new Error(`${response.errorText} at ${url}`)
+2026-07-26T08:38:31:                                     ^
+2026-07-26T08:38:31: error: net::ERR_NETWORK_CHANGED at https://www.pricecharting.com/search-products?type=prices&q=FB03-136
+2026-07-26T08:38:31:       at navigate (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:185:31)
+2026-07-26T08:38:31:       at async race (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/util/Deferred.js:33:34)
+2026-07-26T08:38:31:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:151:40)
+2026-07-26T08:38:31:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/api/Page.js:576:43)
+2026-07-26T08:38:31:       at async fetchPriceChartingPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/pricecharting.ts:23:16)
+2026-07-26T08:38:31:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-dbfw.ts:47:28)
+2026-07-26T08:38:31: 
+2026-07-26T09:45:11: PriceCharting fetch error for SB02-037_p1 japanese: 180 |                     ensureNewDocumentNavigation = !!response.loaderId;
+2026-07-26T09:45:11: 181 |                     if (response.errorText === 'net::ERR_HTTP_RESPONSE_CODE_FAILURE') {
+2026-07-26T09:45:11: 182 |                         return null;
+2026-07-26T09:45:11: 183 |                     }
+2026-07-26T09:45:11: 184 |                     return response.errorText
+2026-07-26T09:45:11: 185 |                         ? new Error(`${response.errorText} at ${url}`)
+2026-07-26T09:45:11:                                     ^
+2026-07-26T09:45:11: error: net::ERR_NETWORK_CHANGED at https://www.pricecharting.com/search-products?type=prices&q=SB02-037
+2026-07-26T09:45:11:       at navigate (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:185:31)
+2026-07-26T09:45:11:       at async race (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/util/Deferred.js:33:34)
+2026-07-26T09:45:11:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:151:40)
+2026-07-26T09:45:11:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/api/Page.js:576:43)
+2026-07-26T09:45:11:       at async fetchPriceChartingPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/pricecharting.ts:23:16)
+2026-07-26T09:45:11:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-dbfw.ts:47:28)
+2026-07-26T09:45:11: 

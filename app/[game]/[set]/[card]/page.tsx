@@ -345,13 +345,61 @@ export default async function CardDetailPage({ params }: PageProps) {
     return 0;
   };
 
-  const psa10Price = getGradedPrice(gradedPrices.psa10);
-  const psa9Price = getGradedPrice(gradedPrices.psa9);
+  const psa10Price = getGradedPrice(gradedPrices['psa-10']) || getGradedPrice(gradedPrices.psa10) || getGradedPrice(gradedPrices['10']);
+  const psa9Price = getGradedPrice(gradedPrices['psa-9']) || getGradedPrice(gradedPrices.psa9) || getGradedPrice(gradedPrices['9']);
+  const COMPANY_UUIDS_TO_SLUG: Record<string, string> = {
+    '74c51627-cc4b-4a82-a1c0-52b3975b47b7': 'psa',
+    'cda2045f-5d78-49e7-b1c8-de04dac9888d': 'bgs',
+    'dce6169f-8958-4229-861b-686a4644c984': 'cgc',
+    '7a7b5849-788b-40f6-9f42-14f2f27f68b3': 'sgc'
+  };
 
-  const priceHistoryData = (cardData?.price_history || []).filter((h) => h.source !== 'ppt-api');
-  const gradeLabel = psa10Price > 0 ? 'PSA 10' : (psa9Price > 0 ? 'PSA 9' : 'Raw');
-  const activeGradeForChart = psa10Price > 0 ? '10' : (psa9Price > 0 ? '9' : 'raw');
+  const rawPriceHistory = cardData?.price_history || [];
+  const priceHistoryData = rawPriceHistory
+    .filter((h) => h.source !== 'ppt-api')
+    .map(h => ({
+      ...h,
+      grading_company_id: h.grading_company_id ? COMPANY_UUIDS_TO_SLUG[h.grading_company_id] || h.grading_company_id : null
+    }));
 
+  const rawPopulationReports = cardData?.population_reports || [];
+  const populationReportsData = rawPopulationReports.map(r => ({
+    ...r,
+    grading_company_id: r.grading_company_id ? COMPANY_UUIDS_TO_SLUG[r.grading_company_id] || r.grading_company_id : null
+  }));
+
+  const availableGradesMap = new Map<string, any>();
+  availableGradesMap.set('raw', { grade: 'raw', grading_company: null, hasData: rawPrices.nearMint !== null });
+  
+  if (psa10Price > 0) availableGradesMap.set('psa-10', { grade: '10', grading_company: 'psa', hasData: true });
+  if (psa9Price > 0) availableGradesMap.set('psa-9', { grade: '9', grading_company: 'psa', hasData: true });
+
+  priceHistoryData.forEach(h => {
+    if (h.grade !== 'raw' && h.grading_company_id) {
+       const key = `${h.grading_company_id}-${h.grade}`;
+       if (!availableGradesMap.has(key)) {
+         availableGradesMap.set(key, { grade: h.grade, grading_company: h.grading_company_id, hasData: true });
+       }
+    }
+  });
+
+  const availableGrades = Array.from(availableGradesMap.values()).filter(g => g.hasData);
+  
+  const hasPsa10 = availableGrades.find(g => g.grading_company === 'psa' && g.grade === '10');
+  const hasPsa9 = availableGrades.find(g => g.grading_company === 'psa' && g.grade === '9');
+  
+  let gradeLabel = 'Raw';
+  let activeGradeForChart = 'raw';
+  
+  if (hasPsa10) { gradeLabel = 'PSA 10'; activeGradeForChart = '10'; }
+  else if (hasPsa9) { gradeLabel = 'PSA 9'; activeGradeForChart = '9'; }
+  else if (availableGrades.length > 1) {
+     const firstGraded = availableGrades.find(g => g.grade !== 'raw');
+     if (firstGraded) {
+         gradeLabel = `${(firstGraded.grading_company || '').toUpperCase()} ${firstGraded.grade}`;
+         activeGradeForChart = firstGraded.grade;
+     }
+  }
   const relevantHistory = priceHistoryData.filter(h => h.grade === activeGradeForChart || h.grade === `psa${activeGradeForChart}`);
 
   // "Compared Markets" must always list every provider, so it reads raw prices only.
@@ -405,19 +453,46 @@ export default async function CardDetailPage({ params }: PageProps) {
 
   const priceChange24h = calculatePriceChange24h(relevantHistory);
 
-  const priceLadderEntries = [
-    { grade: 'raw' as const, grading_company: null, price: rawPrices.nearMint || 0, confidence: 'high' as const, last_sale_date: null, population: null },
-    { grade: '7' as const, grading_company: 'psa' as const, price: getGradedPrice(gradedPrices.psa7) || 0, confidence: 'high' as const, last_sale_date: null, population: population['psa-7'] || null },
-    { grade: '8' as const, grading_company: 'psa' as const, price: getGradedPrice(gradedPrices.psa8) || 0, confidence: 'high' as const, last_sale_date: null, population: population['psa-8'] || null },
-    { grade: '9' as const, grading_company: 'psa' as const, price: psa9Price || 0, confidence: 'high' as const, last_sale_date: null, population: population['psa-9'] || null },
-    { grade: '10' as const, grading_company: 'psa' as const, price: psa10Price || 0, confidence: 'medium' as const, last_sale_date: null, population: population['psa-10'] || null },
-  ].filter(e => e.price > 0);
+  const dynamicLadder = new Map<string, any>();
+  priceHistoryData.forEach(h => {
+     if (h.grade === 'raw') return; 
+     const company = h.grading_company_id || 'psa';
+     const key = `${company}-${h.grade}`;
+     if (!dynamicLadder.has(key) || new Date(h.recorded_at) > new Date(dynamicLadder.get(key).last_sale_date)) {
+        dynamicLadder.set(key, {
+           grade: h.grade,
+           grading_company: company,
+           price: h.price,
+           confidence: 'medium',
+           last_sale_date: h.recorded_at,
+           population: null // Population for non-PSA not fully supported yet
+        });
+     }
+  });
 
-  const availableGrades = [
-    { grade: 'raw' as const, grading_company: null, hasData: rawPrices.nearMint !== null },
-    { grade: '9' as const, grading_company: 'psa' as const, hasData: psa9Price > 0 },
-    { grade: '10' as const, grading_company: 'psa' as const, hasData: psa10Price > 0 },
-  ].filter(g => g.hasData);
+  const baseEntries = [
+    { grade: 'raw', grading_company: null, price: rawPrices.nearMint || 0, confidence: 'high', last_sale_date: null, population: null },
+    { grade: '7', grading_company: 'psa', price: getGradedPrice(gradedPrices.psa7) || 0, confidence: 'high', last_sale_date: null, population: population['psa-7'] || null },
+    { grade: '8', grading_company: 'psa', price: getGradedPrice(gradedPrices.psa8) || 0, confidence: 'high', last_sale_date: null, population: population['psa-8'] || null },
+    { grade: '9', grading_company: 'psa', price: psa9Price || 0, confidence: 'high', last_sale_date: null, population: population['psa-9'] || null },
+    { grade: '10', grading_company: 'psa', price: psa10Price || 0, confidence: 'medium', last_sale_date: null, population: population['psa-10'] || null },
+  ];
+
+  baseEntries.forEach(e => {
+     if (e.grade !== 'raw' && e.price > 0) {
+        const key = `${e.grading_company}-${e.grade}`;
+        const existing = dynamicLadder.get(key) || {};
+        dynamicLadder.set(key, {
+           ...existing,
+           ...e, 
+        });
+     }
+  });
+
+  const priceLadderEntries = [
+     baseEntries[0], // Keep raw at the top/front
+     ...Array.from(dynamicLadder.values())
+  ].filter(e => e.price > 0);
   
   const ebaySales = dbPriceCache?.ebay_sales;
   let totalSalesVolume = 0;
@@ -451,6 +526,7 @@ export default async function CardDetailPage({ params }: PageProps) {
   );
   const priceFreshness = (() => {
     if (!newestPriceAt) return { label: '--', isStale: false };
+    // eslint-disable-next-line react-hooks/purity
     const hours = (Date.now() - new Date(newestPriceAt).getTime()) / 36e5;
     if (hours < 1) return { label: '<1h', isStale: false };
     if (hours < 48) return { label: `${Math.round(hours)}h`, isStale: hours >= 24 };

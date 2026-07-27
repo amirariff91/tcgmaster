@@ -24807,3 +24807,46 @@
 2026-07-26T02:11:27:   hint: "",
 2026-07-26T02:11:27:   code: "",
 2026-07-26T02:11:27: }
+2026-07-26T08:38:28: PriceCharting fetch error for OP09-011_r1: 180 |                     ensureNewDocumentNavigation = !!response.loaderId;
+2026-07-26T08:38:28: 181 |                     if (response.errorText === 'net::ERR_HTTP_RESPONSE_CODE_FAILURE') {
+2026-07-26T08:38:28: 182 |                         return null;
+2026-07-26T08:38:28: 183 |                     }
+2026-07-26T08:38:28: 184 |                     return response.errorText
+2026-07-26T08:38:28: 185 |                         ? new Error(`${response.errorText} at ${url}`)
+2026-07-26T08:38:28:                                     ^
+2026-07-26T08:38:28: error: net::ERR_NETWORK_CHANGED at https://www.pricecharting.com/search-products?type=prices&q=OP09-011
+2026-07-26T08:38:28:       at navigate (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:185:31)
+2026-07-26T08:38:28:       at async race (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/util/Deferred.js:33:34)
+2026-07-26T08:38:28:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:151:40)
+2026-07-26T08:38:28:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/api/Page.js:576:43)
+2026-07-26T08:38:28:       at async fetchPriceChartingPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/pricecharting.ts:23:16)
+2026-07-26T08:38:28:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-english-op.ts:46:28)
+2026-07-26T08:38:28: 
+2026-07-26T10:07:35: PriceCharting fetch error for OP08-032: 52 |     });
+2026-07-26T10:07:35: 53 |     #timeoutId;
+2026-07-26T10:07:35: 54 |     #timeoutError;
+2026-07-26T10:07:35: 55 |     constructor(opts) {
+2026-07-26T10:07:35: 56 |         if (opts && opts.timeout > 0) {
+2026-07-26T10:07:35: 57 |             this.#timeoutError = new TimeoutError(opts.message);
+2026-07-26T10:07:35:                                       ^
+2026-07-26T10:07:35: TimeoutError: Navigation timeout of 60000 ms exceeded
+2026-07-26T10:07:35:       at new Deferred (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/util/Deferred.js:57:34)
+2026-07-26T10:07:35:       at create (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/util/Deferred.js:18:16)
+2026-07-26T10:07:35:       at new LifecycleWatcher (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/LifecycleWatcher.js:70:46)
+2026-07-26T10:07:35:       at goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:150:29)
+2026-07-26T10:07:35:       at goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/api/Page.js:576:43)
+2026-07-26T10:07:35:       at fetchPriceChartingPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/pricecharting.ts:23:16)
+2026-07-26T10:07:35:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-english-op.ts:46:28)
+2026-07-26T10:07:35: 
+2026-07-26T11:53:44: Failed to fetch queue {
+2026-07-26T11:53:44:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-26T11:53:44:   details: "",
+2026-07-26T11:53:44:   hint: "",
+2026-07-26T11:53:44:   code: "",
+2026-07-26T11:53:44: }
+2026-07-26T12:42:33: Failed to fetch queue {
+2026-07-26T12:42:33:   message: "Error: Unable to connect. Is the computer able to access the url?",
+2026-07-26T12:42:33:   details: "",
+2026-07-26T12:42:33:   hint: "",
+2026-07-26T12:42:33:   code: "",
+2026-07-26T12:42:33: }

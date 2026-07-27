@@ -57,6 +57,7 @@ export function SetPageClient({
   // State with lazy initialization for sort
   const [searchQuery, setSearchQuery] = useState(initialQuery || '');
   const [debouncedQuery, setDebouncedQuery] = useState(initialQuery || '');
+  const [showVerifiedOnly, setShowVerifiedOnly] = useState(false);
   const [sortBy, setSortBy] = useState<'number' | 'price' | 'name'>(() =>
     getInitialSort(initialSort, setData.slug)
   );
@@ -109,6 +110,10 @@ export function SetPageClient({
   // Filter and sort cards
   const filteredCards = useMemo(() => {
     let cards = [...setData.cards];
+
+    if (showVerifiedOnly) {
+      cards = cards.filter((card: any) => card.curation_status === 'curated');
+    }
 
     // Filter by search query
     if (debouncedQuery) {
@@ -270,7 +275,27 @@ export function SetPageClient({
                 {filteredCards.length} {filteredCards.length === 1 ? 'card' : 'cards'}
                 {debouncedQuery && ` matching "${debouncedQuery}"`}
               </p>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2 cursor-pointer group">
+                  <div className={cn(
+                    "w-4 h-4 rounded border flex items-center justify-center transition-colors",
+                    showVerifiedOnly ? "bg-yellow-400 border-yellow-400 text-black" : "bg-white border-zinc-300 group-hover:border-yellow-400"
+                  )}>
+                    {showVerifiedOnly && (
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </div>
+                  <span className="text-sm text-zinc-600 group-hover:text-zinc-900 font-medium">Verified Only</span>
+                  <input 
+                    type="checkbox" 
+                    className="hidden" 
+                    checked={showVerifiedOnly} 
+                    onChange={(e) => setShowVerifiedOnly(e.target.checked)} 
+                  />
+                </label>
+                <div className="w-px h-4 bg-zinc-200" />
                 <span className="text-sm text-zinc-500">Sort by:</span>
                 <select
                   value={sortBy}

@@ -41,7 +41,7 @@ export async function fetchSnkrdunkPrice(query: string, setName?: string): Promi
          }
       });
       
-      let priceText = $('.product-detail__textarea').text() || $('body').text();
+      const priceText = $('.product-detail__textarea').text() || $('body').text();
       const match = priceText.match(/US\s*\$([0-9.,]+)/);
       if (match) {
         const price = parseFloat(match[1].replace(/,/g, ''));

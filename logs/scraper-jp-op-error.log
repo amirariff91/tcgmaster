@@ -1093,3 +1093,360 @@
 2026-07-25T02:09:32:       at async fetchPriceChartingPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/pricecharting.ts:23:16)
 2026-07-25T02:09:32:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-jp-op.ts:64:28)
 2026-07-25T02:09:32: 
+2026-07-26T13:47:01: PriceCharting fetch error for OP04-046 japanese: 180 |                     ensureNewDocumentNavigation = !!response.loaderId;
+2026-07-26T13:47:01: 181 |                     if (response.errorText === 'net::ERR_HTTP_RESPONSE_CODE_FAILURE') {
+2026-07-26T13:47:01: 182 |                         return null;
+2026-07-26T13:47:01: 183 |                     }
+2026-07-26T13:47:01: 184 |                     return response.errorText
+2026-07-26T13:47:01: 185 |                         ? new Error(`${response.errorText} at ${url}`)
+2026-07-26T13:47:01:                                     ^
+2026-07-26T13:47:01: error: net::ERR_NETWORK_CHANGED at https://www.pricecharting.com/search-products?type=prices&q=OP04-046%20japanese
+2026-07-26T13:47:01:       at navigate (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:185:31)
+2026-07-26T13:47:01:       at async race (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/util/Deferred.js:33:34)
+2026-07-26T13:47:01:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:151:40)
+2026-07-26T13:47:01:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/api/Page.js:576:43)
+2026-07-26T13:47:01:       at async fetchPriceChartingPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/pricecharting.ts:23:16)
+2026-07-26T13:47:01: 
+2026-07-26T14:01:42: Yuyutei fetch error for https://yuyu-tei.jp/sell/opc/card/op04/10060: DOMException {
+2026-07-26T14:01:42:   stack: "",
+2026-07-26T14:01:42:   code: 23,
+2026-07-26T14:01:42:   name: "TimeoutError",
+2026-07-26T14:01:42:   message: "The operation timed out.",
+2026-07-26T14:01:42:   INDEX_SIZE_ERR: 1,
+2026-07-26T14:01:42:   DOMSTRING_SIZE_ERR: 2,
+2026-07-26T14:01:42:   HIERARCHY_REQUEST_ERR: 3,
+2026-07-26T14:01:42:   WRONG_DOCUMENT_ERR: 4,
+2026-07-26T14:01:42:   INVALID_CHARACTER_ERR: 5,
+2026-07-26T14:01:42:   NO_DATA_ALLOWED_ERR: 6,
+2026-07-26T14:01:42:   NO_MODIFICATION_ALLOWED_ERR: 7,
+2026-07-26T14:01:42:   NOT_FOUND_ERR: 8,
+2026-07-26T14:01:42:   NOT_SUPPORTED_ERR: 9,
+2026-07-26T14:01:42:   INUSE_ATTRIBUTE_ERR: 10,
+2026-07-26T14:01:42:   INVALID_STATE_ERR: 11,
+2026-07-26T14:01:42:   SYNTAX_ERR: 12,
+2026-07-26T14:01:42:   INVALID_MODIFICATION_ERR: 13,
+2026-07-26T14:01:42:   NAMESPACE_ERR: 14,
+2026-07-26T14:01:42:   INVALID_ACCESS_ERR: 15,
+2026-07-26T14:01:42:   VALIDATION_ERR: 16,
+2026-07-26T14:01:42:   TYPE_MISMATCH_ERR: 17,
+2026-07-26T14:01:42:   SECURITY_ERR: 18,
+2026-07-26T14:01:42:   NETWORK_ERR: 19,
+2026-07-26T14:01:42:   ABORT_ERR: 20,
+2026-07-26T14:01:42:   URL_MISMATCH_ERR: 21,
+2026-07-26T14:01:42:   QUOTA_EXCEEDED_ERR: 22,
+2026-07-26T14:01:42:   TIMEOUT_ERR: 23,
+2026-07-26T14:01:42:   INVALID_NODE_TYPE_ERR: 24,
+2026-07-26T14:01:42:   DATA_CLONE_ERR: 25,
+2026-07-26T14:01:42:   toString: [Function: toString],
+2026-07-26T14:01:42: }
+2026-07-26T16:13:34: [Japanese OP] Failed to insert snkrdunk psa10 price for OP13-118_p1: {
+2026-07-26T16:13:34:   code: "22P02",
+2026-07-26T16:13:34:   details: null,
+2026-07-26T16:13:34:   hint: null,
+2026-07-26T16:13:34:   message: "invalid input syntax for type uuid: \"psa\"",
+2026-07-26T16:13:34: }
+2026-07-26T16:16:06: [Japanese OP] Failed to insert snkrdunk psa10 price for P-101: {
+2026-07-26T16:16:06:   code: "22P02",
+2026-07-26T16:16:06:   details: null,
+2026-07-26T16:16:06:   hint: null,
+2026-07-26T16:16:06:   message: "invalid input syntax for type uuid: \"psa\"",
+2026-07-26T16:16:06: }
+2026-07-26T16:21:12: [Japanese OP] Failed to insert snkrdunk psa10 price for OP06-013_p1: {
+2026-07-26T16:21:12:   code: "22P02",
+2026-07-26T16:21:12:   details: null,
+2026-07-26T16:21:12:   hint: null,
+2026-07-26T16:21:12:   message: "invalid input syntax for type uuid: \"psa\"",
+2026-07-26T16:21:12: }
+2026-07-26T16:22:03: [Japanese OP] Failed to insert snkrdunk psa10 price for OP12-001_p1: {
+2026-07-26T16:22:03:   code: "22P02",
+2026-07-26T16:22:03:   details: null,
+2026-07-26T16:22:03:   hint: null,
+2026-07-26T16:22:03:   message: "invalid input syntax for type uuid: \"psa\"",
+2026-07-26T16:22:03: }
+2026-07-26T16:23:45: [Japanese OP] Failed to insert snkrdunk psa10 price for P-103: {
+2026-07-26T16:23:45:   code: "22P02",
+2026-07-26T16:23:45:   details: null,
+2026-07-26T16:23:45:   hint: null,
+2026-07-26T16:23:45:   message: "invalid input syntax for type uuid: \"psa\"",
+2026-07-26T16:23:45: }
+2026-07-26T16:24:36: [Japanese OP] Failed to insert snkrdunk psa10 price for EB04-001_p1: {
+2026-07-26T16:24:36:   code: "22P02",
+2026-07-26T16:24:36:   details: null,
+2026-07-26T16:24:36:   hint: null,
+2026-07-26T16:24:36:   message: "invalid input syntax for type uuid: \"psa\"",
+2026-07-26T16:24:36: }
+2026-07-26T16:27:09: [Japanese OP] Failed to insert snkrdunk psa10 price for ST10-017: {
+2026-07-26T16:27:09:   code: "22P02",
+2026-07-26T16:27:09:   details: null,
+2026-07-26T16:27:09:   hint: null,
+2026-07-26T16:27:09:   message: "invalid input syntax for type uuid: \"psa\"",
+2026-07-26T16:27:09: }
+2026-07-26T16:28:51: [Japanese OP] Failed to insert snkrdunk psa10 price for PRB02-011_p1: {
+2026-07-26T16:28:51:   code: "22P02",
+2026-07-26T16:28:51:   details: null,
+2026-07-26T16:28:51:   hint: null,
+2026-07-26T16:28:51:   message: "invalid input syntax for type uuid: \"psa\"",
+2026-07-26T16:28:51: }
+2026-07-26T16:32:16: [Japanese OP] Failed to insert snkrdunk psa10 price for OP07-045_p1: {
+2026-07-26T16:32:16:   code: "22P02",
+2026-07-26T16:32:16:   details: null,
+2026-07-26T16:32:16:   hint: null,
+2026-07-26T16:32:16:   message: "invalid input syntax for type uuid: \"psa\"",
+2026-07-26T16:32:16: }
+2026-07-26T16:33:58: [Japanese OP] Failed to insert snkrdunk psa10 price for OP09-004: {
+2026-07-26T16:33:58:   code: "22P02",
+2026-07-26T16:33:58:   details: null,
+2026-07-26T16:33:58:   hint: null,
+2026-07-26T16:33:58:   message: "invalid input syntax for type uuid: \"psa\"",
+2026-07-26T16:33:58: }
+2026-07-26T16:34:48: [Japanese OP] Failed to insert snkrdunk psa10 price for OP06-058_p1: {
+2026-07-26T16:34:48:   code: "22P02",
+2026-07-26T16:34:48:   details: null,
+2026-07-26T16:34:48:   hint: null,
+2026-07-26T16:34:48:   message: "invalid input syntax for type uuid: \"psa\"",
+2026-07-26T16:34:48: }
+2026-07-26T16:41:36: [Japanese OP] Failed to insert snkrdunk psa10 price for OP03-021_p1: {
+2026-07-26T16:41:36:   code: "22P02",
+2026-07-26T16:41:36:   details: null,
+2026-07-26T16:41:36:   hint: null,
+2026-07-26T16:41:36:   message: "invalid input syntax for type uuid: \"psa\"",
+2026-07-26T16:41:36: }
+2026-07-26T16:42:27: [Japanese OP] Failed to insert snkrdunk psa10 price for ST01-002_p1: {
+2026-07-26T16:42:27:   code: "22P02",
+2026-07-26T16:42:27:   details: null,
+2026-07-26T16:42:27:   hint: null,
+2026-07-26T16:42:27:   message: "invalid input syntax for type uuid: \"psa\"",
+2026-07-26T16:42:27: }
+2026-07-26T16:43:18: [Japanese OP] Failed to insert snkrdunk psa10 price for OP01-022_p1: {
+2026-07-26T16:43:18:   code: "22P02",
+2026-07-26T16:43:18:   details: null,
+2026-07-26T16:43:18:   hint: null,
+2026-07-26T16:43:18:   message: "invalid input syntax for type uuid: \"psa\"",
+2026-07-26T16:43:18: }
+2026-07-26T16:45:51: [Japanese OP] Failed to insert snkrdunk psa10 price for OP05-119_p8: {
+2026-07-26T16:45:51:   code: "22P02",
+2026-07-26T16:45:51:   details: null,
+2026-07-26T16:45:51:   hint: null,
+2026-07-26T16:45:51:   message: "invalid input syntax for type uuid: \"psa\"",
+2026-07-26T16:45:51: }
+2026-07-26T16:46:42: [Japanese OP] Failed to insert snkrdunk psa10 price for OP14-033_p1: {
+2026-07-26T16:46:42:   code: "22P02",
+2026-07-26T16:46:42:   details: null,
+2026-07-26T16:46:42:   hint: null,
+2026-07-26T16:46:42:   message: "invalid input syntax for type uuid: \"psa\"",
+2026-07-26T16:46:42: }
+2026-07-26T16:49:15: [Japanese OP] Failed to insert snkrdunk psa10 price for OP12-119: {
+2026-07-26T16:49:15:   code: "22P02",
+2026-07-26T16:49:15:   details: null,
+2026-07-26T16:49:15:   hint: null,
+2026-07-26T16:49:15:   message: "invalid input syntax for type uuid: \"psa\"",
+2026-07-26T16:49:15: }
+2026-07-26T16:50:06: [Japanese OP] Failed to insert snkrdunk psa10 price for OP07-038_p1: {
+2026-07-26T16:50:06:   code: "22P02",
+2026-07-26T16:50:06:   details: null,
+2026-07-26T16:50:06:   hint: null,
+2026-07-26T16:50:06:   message: "invalid input syntax for type uuid: \"psa\"",
+2026-07-26T16:50:06: }
+2026-07-26T16:52:39: [Japanese OP] Failed to insert snkrdunk psa10 price for OP13-086_p1: {
+2026-07-26T16:52:39:   code: "22P02",
+2026-07-26T16:52:39:   details: null,
+2026-07-26T16:52:39:   hint: null,
+2026-07-26T16:52:39:   message: "invalid input syntax for type uuid: \"psa\"",
+2026-07-26T16:52:39: }
+2026-07-26T20:04:04: 101 |     #id;
+2026-07-26T20:04:04: 102 |     #error = new ProtocolError();
+2026-07-26T20:04:04: 103 |     #deferred = Deferred.create();
+2026-07-26T20:04:04: 104 |     #timer;
+2026-07-26T20:04:04: 105 |     #label;
+2026-07-26T20:04:04: 106 |     constructor(id, label, timeout) {
+2026-07-26T20:04:04:                       ^
+2026-07-26T20:04:04: ProtocolError: Network.setUserAgentOverride timed out. Increase the 'protocolTimeout' setting in launch/connect calls for a higher timeout if needed.
+2026-07-26T20:04:04:       at Callback (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/common/CallbackRegistry.js:106:17)
+2026-07-26T20:04:04:       at create (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/common/CallbackRegistry.js:42:10)
+2026-07-26T20:04:04:       at send (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/CdpSession.js:113:13)
+2026-07-26T20:04:04:       at /Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-extra-plugin-stealth/evasions/sourceurl/index.js:60:31
+2026-07-26T20:04:04:       at /Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-extra-plugin-stealth/evasions/sourceurl/index.js:67:18
+2026-07-26T20:04:04:       at onPageCreated (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-extra-plugin-stealth/evasions/user-agent-override/index.js:182:12)
+2026-07-26T20:04:04:       at _onTargetCreated (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-extra-plugin/dist/index.cjs.js:496:32)
+2026-07-26T20:04:04:       at processTicksAndRejections (unknown:7:39)
+2026-07-26T20:04:04: Snkrdunk fetch error for Thunder Bagua OP01-119 One Piece: 101 |     #id;
+2026-07-26T20:04:04: 102 |     #error = new ProtocolError();
+2026-07-26T20:04:04: 103 |     #deferred = Deferred.create();
+2026-07-26T20:04:04: 104 |     #timer;
+2026-07-26T20:04:04: 105 |     #label;
+2026-07-26T20:04:04: 106 |     constructor(id, label, timeout) {
+2026-07-26T20:04:04:                       ^
+2026-07-26T20:04:04: ProtocolError: Emulation.setDeviceMetricsOverride timed out. Increase the 'protocolTimeout' setting in launch/connect calls for a higher timeout if needed.
+2026-07-26T20:04:04:       at new Callback (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/common/CallbackRegistry.js:106:17)
+2026-07-26T20:04:04:       at create (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/common/CallbackRegistry.js:25:26)
+2026-07-26T20:04:04:       at send (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/CdpSession.js:72:14)
+2026-07-26T20:04:04:       at <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-extra-plugin-stealth/evasions/sourceurl/index.js:34:41)
+2026-07-26T20:04:04:       at <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-extra-plugin-stealth/evasions/sourceurl/index.js:67:18)
+2026-07-26T20:04:04:       at <anonymous> (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/EmulationManager.js:135:30)
+2026-07-26T20:04:04:       at map (1:11)
+2026-07-26T20:04:04:       at sync (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/EmulationManager.js:65:58)
+2026-07-26T20:04:04:       at setState (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/EmulationManager.js:59:20)
+2026-07-26T20:04:04:       at emulateViewport (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/EmulationManager.js:337:39)
+2026-07-26T20:04:04:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-jp-op.ts:49:34)
+2026-07-26T20:04:04: 
+2026-07-26T20:04:04: 
+2026-07-26T20:04:04: Bun v1.3.14 (macOS arm64)
+2026-07-26T22:56:46: 87 |     if (rawPrice !== undefined) {
+2026-07-26T22:56:46: 88 |       return { price: rawPrice, gradedPrice, url: finalUrl };
+2026-07-26T22:56:46: 89 |     }
+2026-07-26T22:56:46: 90 | 
+2026-07-26T22:56:46: 91 |   } catch (err) {
+2026-07-26T22:56:46: 92 |     console.error(`PriceCharting fetch error for ${query}:`, err);
+2026-07-26T22:56:46:                                                         ^
+2026-07-26T22:56:46: ReferenceError: query is not defined
+2026-07-26T22:56:46:       at fetchPriceChartingPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/pricecharting.ts:92:52)
+2026-07-26T22:56:46:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-jp-op.ts:66:28)
+2026-07-26T22:56:47: 
+2026-07-26T22:56:47: Bun v1.3.14 (macOS arm64)
+2026-07-26T23:37:15: Snkrdunk fetch error for Vinsmoke Ichiji OP11-043 One Piece: 52 |     });
+2026-07-26T23:37:15: 53 |     #timeoutId;
+2026-07-26T23:37:15: 54 |     #timeoutError;
+2026-07-26T23:37:15: 55 |     constructor(opts) {
+2026-07-26T23:37:15: 56 |         if (opts && opts.timeout > 0) {
+2026-07-26T23:37:15: 57 |             this.#timeoutError = new TimeoutError(opts.message);
+2026-07-26T23:37:15:                                       ^
+2026-07-26T23:37:15: TimeoutError: Navigation timeout of 30000 ms exceeded
+2026-07-26T23:37:15:       at new Deferred (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/util/Deferred.js:57:34)
+2026-07-26T23:37:15:       at create (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/util/Deferred.js:18:16)
+2026-07-26T23:37:15:       at new LifecycleWatcher (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/LifecycleWatcher.js:70:46)
+2026-07-26T23:37:15:       at goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:150:29)
+2026-07-26T23:37:15:       at goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/api/Page.js:576:43)
+2026-07-26T23:37:15:       at fetchSnkrdunkPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/snkrdunk.ts:78:16)
+2026-07-26T23:37:15:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-jp-op.ts:49:34)
+2026-07-26T23:37:15: 
+2026-07-27T01:18:05: 87 |     if (rawPrice !== undefined) {
+2026-07-27T01:18:05: 88 |       return { price: rawPrice, gradedPrice, url: finalUrl };
+2026-07-27T01:18:05: 89 |     }
+2026-07-27T01:18:05: 90 | 
+2026-07-27T01:18:05: 91 |   } catch (err) {
+2026-07-27T01:18:05: 92 |     console.error(`PriceCharting fetch error for ${query}:`, err);
+2026-07-27T01:18:05:                                                         ^
+2026-07-27T01:18:05: ReferenceError: query is not defined
+2026-07-27T01:18:05:       at fetchPriceChartingPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/pricecharting.ts:92:52)
+2026-07-27T01:18:05:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-jp-op.ts:77:28)
+2026-07-27T01:18:05: 
+2026-07-27T01:18:05: Bun v1.3.14 (macOS arm64)
+2026-07-27T01:33:41: [scraper-rate-limit] Redis unavailable; using local fallback: Redis rate limiter timed out
+2026-07-27T06:20:12: 87 |     if (rawPrice !== undefined) {
+2026-07-27T06:20:12: 88 |       return { price: rawPrice, gradedPrice, url: finalUrl };
+2026-07-27T06:20:12: 89 |     }
+2026-07-27T06:20:12: 90 | 
+2026-07-27T06:20:12: 91 |   } catch (err) {
+2026-07-27T06:20:12: 92 |     console.error(`PriceCharting fetch error for ${query}:`, err);
+2026-07-27T06:20:12:                                                         ^
+2026-07-27T06:20:12: ReferenceError: query is not defined
+2026-07-27T06:20:12:       at fetchPriceChartingPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/pricecharting.ts:92:52)
+2026-07-27T06:20:12:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-jp-op.ts:77:28)
+2026-07-27T06:20:12: 
+2026-07-27T06:20:12: Bun v1.3.14 (macOS arm64)
+2026-07-27T06:56:44: [scraper-rate-limit] Redis unavailable; using local fallback: Redis rate limiter timed out
+2026-07-27T07:15:31: 87 |     if (rawPrice !== undefined) {
+2026-07-27T07:15:31: 88 |       return { price: rawPrice, gradedPrice, url: finalUrl };
+2026-07-27T07:15:31: 89 |     }
+2026-07-27T07:15:31: 90 | 
+2026-07-27T07:15:31: 91 |   } catch (err) {
+2026-07-27T07:15:31: 92 |     console.error(`PriceCharting fetch error for ${query}:`, err);
+2026-07-27T07:15:31:                                                         ^
+2026-07-27T07:15:31: ReferenceError: query is not defined
+2026-07-27T07:15:31:       at fetchPriceChartingPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/pricecharting.ts:92:52)
+2026-07-27T07:15:31:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-jp-op.ts:77:28)
+2026-07-27T07:15:31: 
+2026-07-27T07:15:31: Bun v1.3.14 (macOS arm64)
+2026-07-27T07:23:07: [scraper-rate-limit] Redis unavailable; using local fallback: Redis rate limiter timed out
+2026-07-27T07:43:10: 87 |     if (rawPrice !== undefined) {
+2026-07-27T07:43:10: 88 |       return { price: rawPrice, gradedPrice, url: finalUrl };
+2026-07-27T07:43:10: 89 |     }
+2026-07-27T07:43:10: 90 | 
+2026-07-27T07:43:10: 91 |   } catch (err) {
+2026-07-27T07:43:10: 92 |     console.error(`PriceCharting fetch error for ${query}:`, err);
+2026-07-27T07:43:10:                                                         ^
+2026-07-27T07:43:10: ReferenceError: query is not defined
+2026-07-27T07:43:10:       at fetchPriceChartingPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/pricecharting.ts:92:52)
+2026-07-27T07:43:10:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-jp-op.ts:77:28)
+2026-07-27T08:12:08: [scraper-rate-limit] Redis unavailable; using local fallback: Redis rate limiter timed out
+2026-07-27T09:12:37: Snkrdunk fetch error for Older Brother Marine OP16-061 One Piece: 180 |                     ensureNewDocumentNavigation = !!response.loaderId;
+2026-07-27T09:12:37: 181 |                     if (response.errorText === 'net::ERR_HTTP_RESPONSE_CODE_FAILURE') {
+2026-07-27T09:12:37: 182 |                         return null;
+2026-07-27T09:12:37: 183 |                     }
+2026-07-27T09:12:37: 184 |                     return response.errorText
+2026-07-27T09:12:37: 185 |                         ? new Error(`${response.errorText} at ${url}`)
+2026-07-27T09:12:37:                                     ^
+2026-07-27T09:12:37: error: net::ERR_NETWORK_CHANGED at https://snkrdunk.com/en/search/result?keyword=Older%20Brother%20Marine%20OP16-061%20One%20Piece
+2026-07-27T09:12:37:       at navigate (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:185:31)
+2026-07-27T09:12:37:       at async race (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/util/Deferred.js:33:34)
+2026-07-27T09:12:37:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:151:40)
+2026-07-27T09:12:37:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/api/Page.js:576:43)
+2026-07-27T09:12:37:       at async fetchSnkrdunkPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/snkrdunk.ts:78:16)
+2026-07-27T09:12:37: 
+2026-07-27T09:43:09: 87 |     if (rawPrice !== undefined) {
+2026-07-27T09:43:09: 88 |       return { price: rawPrice, gradedPrice, url: finalUrl };
+2026-07-27T09:43:09: 89 |     }
+2026-07-27T09:43:09: 90 | 
+2026-07-27T09:43:09: 91 |   } catch (err) {
+2026-07-27T09:43:09: 92 |     console.error(`PriceCharting fetch error for ${query}:`, err);
+2026-07-27T09:43:09:                                                         ^
+2026-07-27T09:43:09: ReferenceError: query is not defined
+2026-07-27T09:43:09:       at fetchPriceChartingPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/pricecharting.ts:92:52)
+2026-07-27T09:43:09:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-jp-op.ts:77:28)
+2026-07-27T09:43:09: 
+2026-07-27T09:43:09: Bun v1.3.14 (macOS arm64)
+2026-07-27T10:18:31: [scraper-rate-limit] Redis unavailable; using local fallback: Redis rate limiter timed out
+2026-07-27T10:20:12: 87 |     if (rawPrice !== undefined) {
+2026-07-27T10:20:12: 88 |       return { price: rawPrice, gradedPrice, url: finalUrl };
+2026-07-27T10:20:12: 89 |     }
+2026-07-27T10:20:12: 90 | 
+2026-07-27T10:20:12: 91 |   } catch (err) {
+2026-07-27T10:20:12: 92 |     console.error(`PriceCharting fetch error for ${query}:`, err);
+2026-07-27T10:20:12:                                                         ^
+2026-07-27T10:20:12: ReferenceError: query is not defined
+2026-07-27T10:20:12:       at fetchPriceChartingPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/pricecharting.ts:92:52)
+2026-07-27T10:20:12:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-jp-op.ts:77:28)
+2026-07-27T10:20:12: 
+2026-07-27T10:20:12: Bun v1.3.14 (macOS arm64)
+2026-07-27T10:21:18: 87 |     if (rawPrice !== undefined) {
+2026-07-27T10:21:18: 88 |       return { price: rawPrice, gradedPrice, url: finalUrl };
+2026-07-27T10:21:18: 89 |     }
+2026-07-27T10:21:18: 90 | 
+2026-07-27T10:21:18: 91 |   } catch (err) {
+2026-07-27T10:21:18: 92 |     console.error(`PriceCharting fetch error for ${query}:`, err);
+2026-07-27T10:21:18:                                                         ^
+2026-07-27T10:21:18: ReferenceError: query is not defined
+2026-07-27T10:21:18:       at fetchPriceChartingPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/pricecharting.ts:92:52)
+2026-07-27T10:21:18:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-jp-op.ts:77:28)
+2026-07-27T10:21:18: 
+2026-07-27T10:21:18: Bun v1.3.14 (macOS arm64)
+2026-07-27T10:26:07: [scraper-rate-limit] Redis unavailable; using local fallback: Redis rate limiter timed out
+2026-07-27T10:43:23: Snkrdunk fetch error for Karasu ST35-003 One Piece: 180 |                     ensureNewDocumentNavigation = !!response.loaderId;
+2026-07-27T10:43:23: 181 |                     if (response.errorText === 'net::ERR_HTTP_RESPONSE_CODE_FAILURE') {
+2026-07-27T10:43:23: 182 |                         return null;
+2026-07-27T10:43:23: 183 |                     }
+2026-07-27T10:43:23: 184 |                     return response.errorText
+2026-07-27T10:43:23: 185 |                         ? new Error(`${response.errorText} at ${url}`)
+2026-07-27T10:43:23:                                     ^
+2026-07-27T10:43:23: error: net::ERR_NETWORK_CHANGED at https://snkrdunk.com/en/search/result?keyword=Karasu%20ST35-003%20One%20Piece
+2026-07-27T10:43:23:       at navigate (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:185:31)
+2026-07-27T10:43:23:       at async race (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/util/Deferred.js:33:34)
+2026-07-27T10:43:23:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:151:40)
+2026-07-27T10:43:23:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/api/Page.js:576:43)
+2026-07-27T10:43:23:       at async fetchSnkrdunkPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/snkrdunk.ts:78:16)
+2026-07-27T10:43:23: 
+2026-07-27T11:45:17: Snkrdunk fetch error for Caesar Clown OP01-069 One Piece: 180 |                     ensureNewDocumentNavigation = !!response.loaderId;
+2026-07-27T11:45:17: 181 |                     if (response.errorText === 'net::ERR_HTTP_RESPONSE_CODE_FAILURE') {
+2026-07-27T11:45:17: 182 |                         return null;
+2026-07-27T11:45:17: 183 |                     }
+2026-07-27T11:45:17: 184 |                     return response.errorText
+2026-07-27T11:45:17: 185 |                         ? new Error(`${response.errorText} at ${url}`)
+2026-07-27T11:45:17:                                     ^
+2026-07-27T11:45:17: error: net::ERR_NETWORK_CHANGED at https://snkrdunk.com/en/search/result?keyword=Caesar%20Clown%20OP01-069%20One%20Piece
+2026-07-27T11:45:17:       at navigate (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:185:31)
+2026-07-27T11:45:17:       at async race (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/util/Deferred.js:33:34)
+2026-07-27T11:45:17:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:151:40)
+2026-07-27T11:45:17:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/api/Page.js:576:43)
+2026-07-27T11:45:17:       at async fetchSnkrdunkPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/snkrdunk.ts:78:16)
+2026-07-27T11:45:17:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-jp-op.ts:49:34)
+2026-07-27T11:45:17: 

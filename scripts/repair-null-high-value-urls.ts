@@ -50,7 +50,7 @@ async function scrapeSnkrdunkLinks(baseNumber: string, cardName: string) {
       setCode.replace(/([A-Za-z]+)([0-9]+)/, '$1-$2') // e.g. "OP-05"
     ];
     
-    let results: { name: string; url: string }[] = [];
+    const results: { name: string; url: string }[] = [];
     
     for (const query of searchQueries) {
       const searchUrl = `https://snkrdunk.com/en/search/result?keyword=${encodeURIComponent(query)}`;

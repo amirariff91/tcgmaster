@@ -57,7 +57,7 @@ async function findTcgProductsForNumber(rawNumber: string) {
   if (!baseNumber) return [];
 
   const groups = await getGroups();
-  let matches: any[] = [];
+  const matches: any[] = [];
 
   for (const g of groups) {
     const products = await getProducts(g.groupId);

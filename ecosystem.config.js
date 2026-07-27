@@ -42,6 +42,16 @@ module.exports = {
       },
       log_date_format: "YYYY-MM-DD HH:mm:ss Z",
       autorestart: true,
+    },
+    {
+      name: "tunnel-validator",
+      script: "scripts/validate-source-tunnels.ts",
+      interpreter: "bun",
+      env: {
+        SAFE_MODE: "1"
+      },
+      log_date_format: "YYYY-MM-DD HH:mm:ss Z",
+      autorestart: true,
       max_memory_restart: "1G"
     }
   ]

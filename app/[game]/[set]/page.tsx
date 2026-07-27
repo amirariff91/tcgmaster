@@ -48,7 +48,7 @@ async function getSetFromDB(gameSlug: string, setSlug: string): Promise<MockSet 
       .eq('set_id', setData.id)
       .order('number');
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const cards: MockCard[] = (cardsData || []).map((c: {
       id: string;
       name: string;

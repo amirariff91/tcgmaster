@@ -214,7 +214,7 @@ function resolveCardMappings(card: any, tcgProducts: any[], yyLinks: any[], sdLi
 async function run() {
   console.log("Fetching all variant cards from Supabase...");
   
-  let allCards: any[] = [];
+  const allCards: any[] = [];
   let page = 0;
   const pageSize = 1000;
   

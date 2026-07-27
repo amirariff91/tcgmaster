@@ -47,7 +47,7 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
     const saved = getSavedCurrency();
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setCurrencyState(saved);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+     
     setIsInitialized(true);
   }, []);
 

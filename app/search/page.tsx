@@ -198,6 +198,7 @@ function SearchResults() {
             image_url: c.image_url,
             set: { id: setSlug, name: formatSetName(c.subtitle?.split(' - ')[0] || ''), slug: setSlug },
             current_price: c.price ?? undefined,
+            curation_status: c.curationStatus,
           };
         });
 

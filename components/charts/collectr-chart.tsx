@@ -19,6 +19,7 @@ export interface PriceHistoryPoint {
   price: number;
   recorded_at: string;
   source?: string;
+  grading_company_id?: string | null;
 }
 
 export interface GradeInfo {
@@ -56,11 +57,13 @@ export function CollectrChart({ priceHistory, gradeInfos, className }: CollectrC
 
   const [activeTab, setActiveTab] = React.useState<ChartType>(hasRaw ? 'RAW' : (hasGraded ? 'GRADED' : 'RAW'));
   
-  const defaultGrade = gradedList.find(g => g.grade === '10')?.grade 
-    || gradedList.find(g => g.grade === '9')?.grade 
-    || gradedList[0]?.grade;
+  const defaultGradeInfo = gradedList.find(g => g.grade === '10' && g.grading_company === 'psa')
+    || gradedList.find(g => g.grade === '9' && g.grading_company === 'psa')
+    || gradedList.find(g => g.grade === '10')
+    || gradedList[0];
 
-  const [activeGrade, setActiveGrade] = React.useState<string>(defaultGrade);
+  const [activeGrade, setActiveGrade] = React.useState<string>(defaultGradeInfo?.grade || 'none');
+  const [activeCompany, setActiveCompany] = React.useState<string | null>(defaultGradeInfo?.grading_company || null);
   const [timeRange, setTimeRange] = React.useState<TimeRange>('1W');
 
   // Compute PSA 10 Gem Rate dynamically from population counts
@@ -79,7 +82,8 @@ export function CollectrChart({ priceHistory, gradeInfos, className }: CollectrC
   const gradedByCompany = React.useMemo(() => {
     const groups: Record<string, GradeInfo[]> = {};
     gradedList.forEach(item => {
-      const company = item.grading_company || 'PSA';
+      // Use uppercase for display headers
+      const company = (item.grading_company || 'PSA').toUpperCase();
       if (!groups[company]) groups[company] = [];
       groups[company].push(item);
     });
@@ -90,24 +94,36 @@ export function CollectrChart({ priceHistory, gradeInfos, className }: CollectrC
   React.useEffect(() => {
     if (activeTab === 'RAW') {
       setActiveGrade('raw');
+      setActiveCompany(null);
     } else if (activeTab === 'GRADED') {
-      let bestGraded = gradedList.find(g => g.grade === '10')?.grade 
-        || gradedList.find(g => g.grade === '9')?.grade 
-        || gradedList[0]?.grade;
+      let bestInfo = gradedList.find(g => g.grade === '10' && g.grading_company === 'psa')
+        || gradedList.find(g => g.grade === '9' && g.grading_company === 'psa')
+        || gradedList.find(g => g.grade === '10')
+        || gradedList[0];
       
-      if (!bestGraded) {
-        const historyGrades = priceHistory.filter(h => h.grade !== 'raw').map(h => h.grade);
-        if (historyGrades.includes('psa10') || historyGrades.includes('10')) bestGraded = '10';
-        else if (historyGrades.includes('psa9') || historyGrades.includes('9')) bestGraded = '9';
-        else bestGraded = historyGrades[0]?.replace('psa', '');
+      if (!bestInfo) {
+        const historyGraded = priceHistory.filter(h => h.grade !== 'raw');
+        const bestHistory = historyGraded.find(h => h.grade === '10') || historyGraded[0];
+        if (bestHistory) {
+           bestInfo = { grade: bestHistory.grade, grading_company: bestHistory.grading_company_id || 'psa', price: 0, population: null };
+        }
       }
-      setActiveGrade(bestGraded || 'none');
+      
+      setActiveGrade(bestInfo?.grade || 'none');
+      setActiveCompany(bestInfo?.grading_company || null);
     }
   }, [activeTab]);
 
   const filteredByGrade = React.useMemo(() => {
-    return priceHistory.filter(h => h.grade === activeGrade || h.grade === `psa${activeGrade}` || h.grade === `psa-${activeGrade}`);
-  }, [priceHistory, activeGrade]);
+    if (activeGrade === 'raw') return priceHistory.filter(h => h.grade === 'raw');
+    
+    return priceHistory.filter(h => {
+       const hCompany = h.grading_company_id || 'psa';
+       const matchGrade = h.grade === activeGrade;
+       const matchCompany = hCompany.toLowerCase() === (activeCompany || 'psa').toLowerCase();
+       return matchGrade && matchCompany;
+    });
+  }, [priceHistory, activeGrade, activeCompany]);
 
   const { chartData, activeSources, minPrice, maxPrice } = React.useMemo(() => {
     const now = new Date();
@@ -346,11 +362,14 @@ export function CollectrChart({ priceHistory, gradeInfos, className }: CollectrC
                       <h3 className="text-[13px] font-bold text-white mb-2 ml-1">{company}</h3>
                       <div className="flex gap-[1px] bg-[#222] p-[1px] rounded-lg border border-[#333]">
                           {grades.map(g => {
-                              const isSelected = activeGrade === g.grade;
+                              const isSelected = activeGrade === g.grade && (activeCompany || 'PSA').toUpperCase() === company.toUpperCase();
                               return (
                                   <button
-                                      key={g.grade}
-                                      onClick={() => setActiveGrade(g.grade)}
+                                      key={`${company}-${g.grade}`}
+                                      onClick={() => {
+                                          setActiveGrade(g.grade);
+                                          setActiveCompany(company.toLowerCase());
+                                      }}
                                       className={cn(
                                           "w-[76px] h-[76px] flex flex-col items-center justify-center transition-all",
                                           isSelected ? "bg-[#2dd4bf]/20 text-[#2dd4bf] shadow-inner" : "bg-transparent text-zinc-400 hover:bg-white/5"

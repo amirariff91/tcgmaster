@@ -14,7 +14,8 @@
     "scrape:artists": "bun run scripts/extract-artists-gemini.ts",
     "scrape:artists:safe": "SAFE_MODE=1 bun run scripts/extract-artists-gemini.ts",
     "health:feed": "bun run scripts/terminal-feed.ts",
-    "historical:snkrdunk": "bun run scripts/historical-snkrdunk-worker.ts"
+    "historical:snkrdunk": "bun run scripts/historical-snkrdunk-worker.ts",
+    "historical:pricecharting": "bun run scripts/historical-pc-worker.ts"
   },
   "dependencies": {
     "@google/genai": "^2.11.0",
