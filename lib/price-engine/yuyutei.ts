@@ -13,6 +13,13 @@ export interface JapanesePriceResult {
   evidence: MatchEvidence;
 }
 
+export async function fetchYuyuteiByAnchor(url: string): Promise<JapanesePriceResult | null> {
+  if (!url.startsWith('http') || !url.includes('/sell/opc/card/')) {
+    throw new Error(`Yuyutei anchor must contain /sell/opc/card/: ${url}`);
+  }
+  return fetchJapanesePrice(url);
+}
+
 export async function fetchJapanesePrice(query: string, setName?: string): Promise<JapanesePriceResult | null> {
   try {
     void setName;

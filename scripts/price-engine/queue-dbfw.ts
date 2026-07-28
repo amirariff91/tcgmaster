@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url';
-import { fetchCardrushPrice } from '../../lib/price-engine/cardrush';
-import { fetchPriceChartingPrice } from '../../lib/price-engine/pricecharting';
-import { assertIdentity } from '../../lib/price-engine/identity';
+import { fetchCardrushByAnchor } from '../../lib/price-engine/cardrush';
+import { fetchPriceChartingByAnchor } from '../../lib/price-engine/pricecharting';
+import type { SourceMapping } from '../../lib/price-engine/mapping';
 import {
   SOURCE_CURRENCY,
   type PriceObservation,
@@ -9,55 +9,60 @@ import {
 import { runScrapeLoop, type WorkerCard, type WorkerConfig } from '../../lib/price-engine/worker';
 import { normalizeGrade } from '../../lib/pricing/grades';
 
-export const fetchCard = async (card: WorkerCard): Promise<{
+export const fetchCard = async (card: WorkerCard, mappings: SourceMapping[]): Promise<{
   observations: PriceObservation[];
   cardUpdates?: Record<string, unknown>;
 }> => {
   const observations: PriceObservation[] = [];
   const cardUpdates: Record<string, unknown> = {};
 
-  console.log('[DBFW] Fetching from Cardrush...');
-  const cardrushResult = await fetchCardrushPrice(card.cardrush_url || card.number);
-  if (cardrushResult !== null) {
-    observations.push({
-      source: 'cardrush',
-      grade: normalizeGrade('raw'),
-      priceUsd: cardrushResult.price,
-      priceNative: null,
-      currency: SOURCE_CURRENCY.cardrush,
-      evidence: cardrushResult.evidence,
-    });
-    console.log(`[DBFW] Cardrush: $${cardrushResult.price}`);
-
-    const identity = assertIdentity({ number: card.number, name: card.name }, cardrushResult.evidence);
-    if (identity.ok && cardrushResult.url && cardrushResult.url !== card.cardrush_url) {
-      cardUpdates.cardrush_url = cardrushResult.url;
+  const cardrushMapping = mappings.find((mapping) => mapping.source === 'cardrush');
+  if (!cardrushMapping?.externalUrl) {
+    console.log('[DBFW] cardrush: no mapping, skipped');
+  } else {
+    console.log(`[DBFW] Fetching from Cardrush anchor ${cardrushMapping.externalUrl}...`);
+    const cardrushResult = await fetchCardrushByAnchor(cardrushMapping.externalUrl);
+    if (cardrushResult !== null) {
+      observations.push({
+        source: 'cardrush',
+        grade: normalizeGrade('raw'),
+        priceUsd: cardrushResult.price,
+        priceNative: null,
+        currency: SOURCE_CURRENCY.cardrush,
+        evidence: cardrushResult.evidence,
+      });
+      console.log(`[DBFW] Cardrush: $${cardrushResult.price}`);
     }
   }
 
-  console.log('[DBFW] Fetching from PriceCharting...');
-  const priceChartingResult = await fetchPriceChartingPrice(`${card.number} japanese`);
-  if (priceChartingResult !== null) {
-    observations.push({
-      source: 'pricecharting',
-      grade: normalizeGrade('raw'),
-      priceUsd: priceChartingResult.price,
-      priceNative: priceChartingResult.price,
-      currency: SOURCE_CURRENCY.pricecharting,
-      evidence: priceChartingResult.evidence,
-    });
-    console.log(`[DBFW] PriceCharting: $${priceChartingResult.price}`);
-
-    if (priceChartingResult.gradedPrice) {
+  const priceChartingMapping = mappings.find((mapping) => mapping.source === 'pricecharting');
+  if (!priceChartingMapping?.externalUrl) {
+    console.log('[DBFW] pricecharting: no mapping, skipped');
+  } else {
+    console.log(`[DBFW] Fetching from PriceCharting anchor ${priceChartingMapping.externalUrl}...`);
+    const priceChartingResult = await fetchPriceChartingByAnchor(priceChartingMapping.externalUrl);
+    if (priceChartingResult !== null) {
       observations.push({
         source: 'pricecharting',
-        grade: normalizeGrade('psa10'),
-        priceUsd: priceChartingResult.gradedPrice,
-        priceNative: priceChartingResult.gradedPrice,
+        grade: normalizeGrade('raw'),
+        priceUsd: priceChartingResult.price,
+        priceNative: priceChartingResult.price,
         currency: SOURCE_CURRENCY.pricecharting,
         evidence: priceChartingResult.evidence,
       });
-      console.log(`[DBFW] PriceCharting PSA 10: $${priceChartingResult.gradedPrice}`);
+      console.log(`[DBFW] PriceCharting: $${priceChartingResult.price}`);
+
+      if (priceChartingResult.gradedPrice) {
+        observations.push({
+          source: 'pricecharting',
+          grade: normalizeGrade('psa10'),
+          priceUsd: priceChartingResult.gradedPrice,
+          priceNative: priceChartingResult.gradedPrice,
+          currency: SOURCE_CURRENCY.pricecharting,
+          evidence: priceChartingResult.evidence,
+        });
+        console.log(`[DBFW] PriceCharting PSA 10: $${priceChartingResult.gradedPrice}`);
+      }
     }
   }
 
@@ -67,6 +72,7 @@ export const fetchCard = async (card: WorkerCard): Promise<{
 export const workerConfig: WorkerConfig = {
   label: 'DBFW',
   queueFilter: (q) => q.ilike('slug', 'dbfw-%').ilike('slug', '%-ja'),
+  sources: ['cardrush', 'pricecharting'],
   fetchCard,
   sleepMs: process.env.SAFE_MODE === '1' ? 40000 : 17000,
 };
