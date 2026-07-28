@@ -18,13 +18,14 @@ export function parseCardNumber(raw: string): ParsedCardNumber {
   };
 }
 
-function normalizeToken(value: string): string {
-  return value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-}
-
+// Boundary = any non-alphanumeric character or the string edge. Splitting on whitespace
+// is not enough: CJK shop titles glue the number to other glyphs (「【L☆】{FB03-078}」),
+// and a substring test would let OP01-001 match inside OP01-0010 — the original
+// PriceCharting bug class this matcher exists to prevent.
 export function numberMatchesOnBoundary(text: string, baseNumber: string): boolean {
-  if (!baseNumber) return false;
+  if (!baseNumber || !text) return false;
 
-  const wantedNumber = normalizeToken(baseNumber);
-  return text.trim().split(/\s+/).some((token) => normalizeToken(token) === wantedNumber);
+  const escaped = baseNumber.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const boundary = new RegExp(`(?<![A-Za-z0-9])${escaped}(?![A-Za-z0-9])`, 'i');
+  return boundary.test(text);
 }

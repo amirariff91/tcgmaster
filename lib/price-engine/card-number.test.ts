@@ -28,3 +28,15 @@ describe('numberMatchesOnBoundary', () => {
     expect(numberMatchesOnBoundary('Spider parallel', 'sp')).toBe(false);
   });
 });
+
+describe('numberMatchesOnBoundary — CJK shop titles', () => {
+  it('matches a number glued to CJK glyphs and braces', () => {
+    expect(numberMatchesOnBoundary('魔人ブウ(パラレル)【L☆】{FB03-078}\n [マジンブウ]', 'FB03-078')).toBe(true);
+  });
+  it('still refuses prefix overlap', () => {
+    expect(numberMatchesOnBoundary('OP01-0010 alt art', 'OP01-001')).toBe(false);
+  });
+  it('matches a heading plus appended number badge', () => {
+    expect(numberMatchesOnBoundary('C ウソップ | 販売 | [OP02]頂上決戦 OP02-028', 'OP02-028')).toBe(true);
+  });
+});
