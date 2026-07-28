@@ -60,6 +60,23 @@ interface CurrentPriceData {
   computed_at: string;
 }
 
+type RawPrices = Record<string, number | null>;
+
+function getNumericRawPrices(sourcePrices: Record<string, unknown> | null | undefined): RawPrices {
+  const rawPrices: RawPrices = {};
+
+  for (const [source, metadata] of Object.entries(sourcePrices || {})) {
+    if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) continue;
+
+    const usd = (metadata as { usd?: unknown }).usd;
+    if (typeof usd === 'number' && Number.isFinite(usd)) {
+      rawPrices[source] = usd;
+    }
+  }
+
+  return rawPrices;
+}
+
 export async function GET(request: NextRequest, { params }: RouteParams) {
   const { id } = await params;
   const supabase = createPublicClient();
@@ -137,14 +154,22 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
   // The current-price row is keyed by card_id; there is no legacy expiry row to unwrap.
   const currentPrice = card.card_price_current;
-  const isStale = !currentPrice;
+  const isStale = currentPrice === null || (
+    currentPrice.headline_cents === null &&
+    Object.keys(currentPrice.graded_prices || {}).length === 0
+  );
 
   // If we have a tcg_player_id and data is stale, try to refresh
-  let prices = {
-    raw: currentPrice?.source_prices || {},
-    graded: currentPrice?.graded_prices || {},
+  let prices: {
+    raw: RawPrices;
+    graded: Record<string, unknown>;
+    ebay: Record<string, unknown>;
+  } = {
+    raw: getNumericRawPrices(currentPrice?.source_prices),
+    graded: (currentPrice?.graded_prices || {}) as Record<string, unknown>,
     ebay: {},
   };
+  let usingDatabasePrices = currentPrice !== null;
   let fromCache = true;
   let staleHours: number | null = null;
 
@@ -160,6 +185,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           graded: freshData.prices.graded,
           ebay: {},
         };
+        usingDatabasePrices = false;
         fromCache = freshData.fromCache;
       }
     } catch (err) {
@@ -204,6 +230,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       prices: {
         raw: prices.raw,
         graded: prices.graded,
+        ...(usingDatabasePrices ? { sourcePrices: currentPrice?.source_prices || {} } : {}),
         fromCache,
         staleHours,
         lastUpdated: currentPrice?.computed_at,

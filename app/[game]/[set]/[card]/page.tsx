@@ -15,7 +15,7 @@ import { getCardWithPrices } from '@/lib/ppt/service';
 // silently defeats `revalidate` — that is why card pages served no-store.
 import { createPublicClient } from '@/lib/supabase/client';
 import { calculatePriceChange24h } from '@/lib/pricing/trending';
-import { priceKindLabel, type PriceKind } from '@/lib/pricing/price-labels';
+import { latestRecordedAt, priceKindLabel, type PriceKind } from '@/lib/pricing/price-labels';
 
 // `price_history.source` values are lowercase enum members; match on substring so
 // display casing and multi-word names ("TCG Republic") still resolve.
@@ -64,7 +64,6 @@ interface CardDataPriceCurrent {
   headline_kind: PriceKind | null;
   headline_currency: string | null;
   headline_grade: string | null;
-  computed_at: string;
 }
 
 interface CardDataPriceHistory {
@@ -156,8 +155,7 @@ async function getCardData(gameSlug: string, setSlug: string, cardSlug: string):
         headline_source,
         headline_kind,
         headline_currency,
-        headline_grade,
-        computed_at
+        headline_grade
       ),
       price_history (
         id,
@@ -321,19 +319,21 @@ export default async function CardDetailPage({ params }: PageProps) {
   };
 
   const currentPrices = cardData.card_price_current;
+  const shouldUseLivePrices = currentPrices === null || (
+    currentPrices.headline_cents === null &&
+    Object.keys(currentPrices.graded_prices || {}).length === 0
+  );
   let livePrices: {
     headline: { usd: number | null; kind: PriceKind };
     graded: Record<string, GradedPriceData>;
-    lastUpdated: string;
   } | null = null;
-  if (!currentPrices && cardData.tcg_player_id) {
+  if (shouldUseLivePrices && cardData.tcg_player_id) {
     try {
       const pptData = await getCardWithPrices(cardData.tcg_player_id, { includeEbay: true });
       if (pptData) {
         livePrices = {
           headline: pptData.prices.headline,
           graded: pptData.prices.graded as Record<string, GradedPriceData>,
-          lastUpdated: pptData.lastUpdated,
         };
       }
     } catch {}
@@ -412,7 +412,7 @@ export default async function CardDetailPage({ params }: PageProps) {
       return [{
         source,
         price: data.usd,
-        date: data.recorded_at ?? currentPrices?.computed_at ?? '',
+        date: data.recorded_at ?? '',
         kind: data.kind,
       }];
     })
@@ -421,15 +421,14 @@ export default async function CardDetailPage({ params }: PageProps) {
   // Freshness of the newest price we hold, so the page states how current it is
   // instead of asserting a hardcoded "Availability: High".
   //
-  const newestHistoryAt = priceHistoryData.reduce<string | null>(
-    (newest, item) =>
-      !newest || new Date(item.recorded_at) > new Date(newest) ? item.recorded_at : newest,
-    null,
-  );
-  const newestPriceAt =
-    [newestHistoryAt, currentPrices?.computed_at ?? livePrices?.lastUpdated ?? null]
-      .filter((value): value is string => !!value && !Number.isNaN(new Date(value).getTime()))
-      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0] ?? null;
+  const newestHistoryAt = priceHistoryData.reduce<string | null>((newest, item) => {
+    const itemTime = Date.parse(item.recorded_at);
+    if (!Number.isFinite(itemTime)) return newest;
+
+    if (!newest || itemTime > Date.parse(newest)) return item.recorded_at;
+    return newest;
+  }, null);
+  const newestPriceAt = latestRecordedAt(sourcePrices) ?? newestHistoryAt;
   // The label itself is computed client-side — at revalidate=86400 a server-rendered
   // relative time would freeze into the cached payload for up to a day.
 
