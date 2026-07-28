@@ -66,7 +66,7 @@ export const fetchCard = async (card: WorkerCard): Promise<{
 
 export const workerConfig: WorkerConfig = {
   label: 'DBFW',
-  queueFilter: (q) => q.ilike('slug', 'dbfw-%'),
+  queueFilter: (q) => q.ilike('slug', 'dbfw-%').ilike('slug', '%-ja'),
   fetchCard,
   sleepMs: process.env.SAFE_MODE === '1' ? 40000 : 17000,
 };

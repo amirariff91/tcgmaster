@@ -79,11 +79,18 @@ export async function runScrapeLoop(config: WorkerConfig): Promise<never> {
       .order('last_price_fetch', { ascending: true, nullsFirst: true })
       .limit(1);
 
-    if (error || !cards || cards.length === 0) {
+    if (error) {
+      if (!isTransientDbError(error)) throw error;
+
       consecutiveDbFailures++;
       const delay = backoffDelay(consecutiveDbFailures);
       console.error(`${label} Failed to fetch queue (failure #${consecutiveDbFailures}, backing off ${delay / 1000}s)`, error);
       await sleep(delay);
+      continue;
+    }
+
+    if (!cards || cards.length === 0) {
+      await sleep(config.sleepMs);
       continue;
     }
 

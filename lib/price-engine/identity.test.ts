@@ -38,10 +38,17 @@ describe('assertIdentity', () => {
     )).toEqual({ ok: false, reason: 'number-mismatch', detail: expect.any(String) });
   });
 
-  it('treats cached URLs as hypotheses subject to the same identity check', () => {
+  it('does not let a cached URL self-validate a mismatched title', () => {
     expect(assertIdentity(
       { number: 'OP01-001' },
       { externalTitle: 'Monkey D. Luffy OP01-002', externalUrl: 'https://example.test/OP01-001', matchedBy: 'cached-url' },
+    )).toEqual({ ok: false, reason: 'number-mismatch', detail: expect.any(String) });
+  });
+
+  it('accepts a cached URL when the fetched title matches', () => {
+    expect(assertIdentity(
+      { number: 'OP01-001' },
+      { externalTitle: 'Monkey D. Luffy OP01-001', externalUrl: 'https://example.test/OP01-002', matchedBy: 'cached-url' },
     )).toEqual({ ok: true });
   });
 });

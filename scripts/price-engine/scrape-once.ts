@@ -44,6 +44,11 @@ async function main(): Promise<void> {
 
   const cardRef = card as WorkerCard & CardRef;
   const result = await fetcherForSlug(cardRef.slug)(cardRef);
+  if (result.observations.length === 0) {
+    console.log('no observations; nothing persisted');
+    return;
+  }
+
   const persisted = await persistObservations(db, cardRef, result.observations, result.cardUpdates);
 
   console.log('Observations:', JSON.stringify(result.observations, null, 2));

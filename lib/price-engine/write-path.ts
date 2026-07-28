@@ -176,9 +176,15 @@ export async function persistObservations(
   const recordedAt = now.toISOString();
   const acceptedObservations: PriceObservation[] = [];
   const quarantineRows: Record<string, unknown>[] = [];
+  const identityVerdicts = obs.map((observation) => (
+    assertIdentity({ number: card.number, name: card.name }, observation.evidence)
+  ));
+  const identityApprovedObservations = obs.filter((observation, index) => (
+    identityVerdicts[index]?.ok === true && observation.evidence.inStock !== false
+  ));
 
-  for (const observation of obs) {
-    const identity = assertIdentity({ number: card.number, name: card.name }, observation.evidence);
+  for (const [index, observation] of obs.entries()) {
+    const identity = identityVerdicts[index];
     if (!identity.ok) {
       quarantineRows.push({
         card_id: card.id,
@@ -194,7 +200,7 @@ export async function persistObservations(
       continue;
     }
 
-    const corroborating = obs
+    const corroborating = identityApprovedObservations
       .filter((other) => (
         other !== observation
         && other.source !== observation.source
@@ -229,14 +235,9 @@ export async function persistObservations(
     acceptedObservations.push(observation);
   }
 
-  if (quarantineRows.length > 0) {
-    const { error } = await db.from('price_quarantine').insert(quarantineRows);
-    throwIfError(card, 'price_quarantine insert', error);
-  }
-
   const headline = selectHeadline(acceptedObservations);
 
-  const historyRows = acceptedObservations.map((observation) => ({
+  let historyRows = acceptedObservations.map((observation) => ({
     card_id: card.id,
     price: observation.priceUsd,
     source: observation.source,
@@ -247,11 +248,6 @@ export async function persistObservations(
     recorded_at: recordedAt,
   }));
 
-  if (historyRows.length > 0) {
-    const { error } = await db.from('price_history').insert(historyRows);
-    throwIfError(card, 'price_history insert', error);
-  }
-
   const safeUpdates = { ...extraUpdates };
   for (const [column, source] of Object.entries(URL_UPDATE_SOURCES)) {
     if (column in safeUpdates && !acceptedObservations.some((observation) => observation.source === source)) {
@@ -259,18 +255,60 @@ export async function persistObservations(
     }
   }
 
-  const { error: deleteError } = await db.from('price_cache').delete().eq('card_id', card.id);
-  throwIfError(card, 'price_cache delete', deleteError);
+  const { data: existingCache, error: cacheReadError } = await db
+    .from('price_cache')
+    .select('ebay_sales, source')
+    .eq('card_id', card.id)
+    .maybeSingle();
+  throwIfError(card, 'price_cache select', cacheReadError);
 
-  const { error: cacheError } = await db.from('price_cache').insert({
+  const cachePayload = {
     card_id: card.id,
     variant_id: null,
     raw_prices: shapeRawPrices(acceptedObservations, headline),
     graded_prices: shapeGradedPrices(acceptedObservations),
     fetched_at: recordedAt,
     expires_at: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString(),
-  });
+    ...(existingCache?.ebay_sales !== undefined ? { ebay_sales: existingCache.ebay_sales } : {}),
+    ...(existingCache?.source !== undefined ? { source: existingCache.source } : {}),
+  };
+
+  const { error: deleteError } = await db.from('price_cache').delete().eq('card_id', card.id);
+  throwIfError(card, 'price_cache delete', deleteError);
+
+  const { error: cacheError } = await db.from('price_cache').insert(cachePayload);
   throwIfError(card, 'price_cache insert', cacheError);
+
+  if (quarantineRows.length > 0) {
+    const { error } = await db.from('price_quarantine').insert(quarantineRows);
+    throwIfError(card, 'price_quarantine insert', error);
+  }
+
+  if (historyRows.length > 0) {
+    const recentCutoff = new Date(now.getTime() - 15 * 60 * 1000).toISOString();
+    const { data: recentRows, error: recentRowsError } = await db
+      .from('price_history')
+      .select('source, grade, price')
+      .eq('card_id', card.id)
+      .gte('recorded_at', recentCutoff);
+    throwIfError(card, 'price_history recent-row select', recentRowsError);
+
+    const recentKeys = new Set((recentRows ?? []).map((row) => {
+      const recent = row as { source: unknown; grade: unknown; price: unknown };
+      return [String(recent.source), String(recent.grade), Number(recent.price)].join('\u0000');
+    }));
+    const unsuppressedHistoryRows = historyRows.filter((row) => (
+      !recentKeys.has([row.source, row.grade, row.price].join('\u0000'))
+    ));
+    const suppressedCount = historyRows.length - unsuppressedHistoryRows.length;
+    console.log(`[price-engine] ${card.slug}: suppressed ${suppressedCount} duplicate price_history rows`);
+    historyRows = unsuppressedHistoryRows;
+
+    if (historyRows.length > 0) {
+      const { error } = await db.from('price_history').insert(historyRows);
+      throwIfError(card, 'price_history insert', error);
+    }
+  }
 
   const { error: cardError } = await db
     .from('cards')

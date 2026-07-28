@@ -43,7 +43,10 @@ export function assertIdentity(
 
   const baseNumber = parseCardNumber(expected.number).base;
   const titleMatches = numberMatchesOnBoundary(evidence.externalTitle, baseNumber);
-  const urlMatches = evidence.externalUrl ? urlMatchesNumber(evidence.externalUrl, baseNumber) : false;
+  const urlMatches = (evidence.matchedBy === 'search' || evidence.matchedBy === 'dictionary')
+    && evidence.externalUrl
+    ? urlMatchesNumber(evidence.externalUrl, baseNumber)
+    : false;
 
   if (!titleMatches && !urlMatches) {
     return {

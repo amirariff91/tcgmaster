@@ -94,8 +94,14 @@ describe('persistObservations', () => {
           order() {
             return query;
           },
+          gte() {
+            return Promise.resolve({ data: [], error: null });
+          },
           limit() {
             return Promise.resolve({ data: [], error: null });
+          },
+          maybeSingle() {
+            return Promise.resolve({ data: null, error: null });
           },
           insert(rows: unknown) {
             inserts[table] ??= [];
@@ -139,5 +145,120 @@ describe('persistObservations', () => {
     expect(inserts.price_cache?.[0]).toEqual(expect.objectContaining({
       raw_prices: { yuyutei: 10, market: 10 },
     }));
+  });
+
+  it('suppresses identical observations already written in the last 15 minutes', async () => {
+    const historyInserts: unknown[] = [];
+    let recentRows: unknown[] = [];
+    const db = {
+      from(table: string) {
+        const query = {
+          select() {
+            return query;
+          },
+          eq() {
+            return query;
+          },
+          order() {
+            return query;
+          },
+          gte() {
+            return Promise.resolve({ data: recentRows, error: null });
+          },
+          limit() {
+            return Promise.resolve({ data: [], error: null });
+          },
+          maybeSingle() {
+            return Promise.resolve({ data: null, error: null });
+          },
+          insert(rows: unknown) {
+            if (table === 'price_history') historyInserts.push(rows);
+            return Promise.resolve({ error: null });
+          },
+          delete() {
+            return query;
+          },
+          update() {
+            return query;
+          },
+        };
+        return query;
+      },
+    };
+    const card = { id: 'card-1', slug: 'op-01-001', number: 'OP01-001', name: 'Card' };
+    const observations = [observation('tcgplayer', 10)];
+
+    await persistObservations(db as never, card, observations);
+    recentRows = [{ source: 'tcgplayer', grade: 'raw', price: 10 }];
+    const retry = await persistObservations(db as never, card, observations);
+
+    expect(historyInserts).toHaveLength(1);
+    expect(retry.historyRows).toBe(0);
+  });
+
+  it('does not let a sold-out corroborator rescue an outlier', async () => {
+    const quarantineInserts: unknown[] = [];
+    const db = {
+      from(table: string) {
+        let selectedColumns = '';
+        const query = {
+          select(columns?: string) {
+            selectedColumns = columns ?? '';
+            return query;
+          },
+          eq() {
+            return query;
+          },
+          order() {
+            return query;
+          },
+          gte() {
+            return Promise.resolve({ data: [], error: null });
+          },
+          limit() {
+            const data = table === 'price_history' && selectedColumns === 'price'
+              ? [{ price: 100 }, { price: 100 }, { price: 100 }]
+              : [];
+            return Promise.resolve({ data, error: null });
+          },
+          maybeSingle() {
+            return Promise.resolve({ data: null, error: null });
+          },
+          insert(rows: unknown) {
+            if (table === 'price_quarantine') quarantineInserts.push(rows);
+            return Promise.resolve({ error: null });
+          },
+          delete() {
+            return query;
+          },
+          update() {
+            return query;
+          },
+        };
+        return query;
+      },
+    };
+
+    const result = await persistObservations(
+      db as never,
+      { id: 'card-1', slug: 'op-01-001', number: 'OP01-001', name: 'Card' },
+      [
+        observation('tcgplayer', 1000),
+        {
+          ...observation('yuyutei', 900),
+          evidence: {
+            externalTitle: 'Card yuyutei OP01-001',
+            inStock: false,
+            matchedBy: 'search',
+          },
+        },
+      ],
+    );
+
+    expect(result.quarantined).toBe(2);
+    expect(quarantineInserts[0]).toEqual([
+      expect.objectContaining({ source: 'tcgplayer', reason: 'ratio-vs-median' }),
+      expect.objectContaining({ source: 'yuyutei', reason: 'sold-out' }),
+    ]);
   });
 });

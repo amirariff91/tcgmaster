@@ -15,3 +15,6 @@ CREATE TABLE price_quarantine (
 );
 CREATE INDEX ON price_quarantine (card_id, resolved_at);
 CREATE INDEX ON price_quarantine (reason, observed_at);
+
+-- No policies are defined deliberately: only service-role/postgres may read quarantine evidence.
+ALTER TABLE price_quarantine ENABLE ROW LEVEL SECURITY;
