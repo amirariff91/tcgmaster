@@ -37,6 +37,7 @@ module.exports = {
       watch: false,
       autorestart: true,
       restart_delay: 5000,   // Wait 5s before restarting on crash
+      exp_backoff_restart_delay: 5000, // transient-dep (DB down) restart storms back off instead of burning max_restarts
       max_restarts: 50,       // If crashes > 50 times, stop (circuit breaker)
       min_uptime: '10s',      // Must stay alive 10s to count as healthy start
       log_file: './logs/scraper-en-op.log',
@@ -57,6 +58,7 @@ module.exports = {
       watch: false,
       autorestart: true,
       restart_delay: 5000,
+      exp_backoff_restart_delay: 5000, // transient-dep (DB down) restart storms back off instead of burning max_restarts
       max_restarts: 50,
       min_uptime: '10s',
       log_file: './logs/scraper-jp-op.log',
@@ -77,6 +79,7 @@ module.exports = {
       watch: false,
       autorestart: true,
       restart_delay: 5000,
+      exp_backoff_restart_delay: 5000, // transient-dep (DB down) restart storms back off instead of burning max_restarts
       max_restarts: 50,
       min_uptime: '10s',
       log_file: './logs/scraper-dbfw.log',
@@ -97,6 +100,7 @@ module.exports = {
       watch: false,
       autorestart: true,
       restart_delay: 5000,
+      exp_backoff_restart_delay: 5000, // transient-dep (DB down) restart storms back off instead of burning max_restarts
       max_restarts: 50,
       min_uptime: '10s',
       log_file: './logs/scraper-en-dbfw.log',
