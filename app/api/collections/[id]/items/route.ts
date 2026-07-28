@@ -14,9 +14,9 @@ interface PriceHistoryRow {
   price: number;
 }
 
-interface PriceCacheRow {
-  raw_prices: Record<string, number | null>;
-  graded_prices: Record<string, { average?: number }>;
+interface CurrentPriceRow {
+  headline_cents: number | null;
+  graded_prices: Record<string, { average?: number | null }>;
 }
 
 interface CollectionItemRow {
@@ -100,18 +100,21 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
   // If still no cost basis, try to get current price
   if (finalCostBasis === null) {
-    const { data: priceCacheData } = await supabase
-      .from('price_cache')
-      .select('raw_prices, graded_prices')
+    const { data: currentPriceData } = await supabase
+      .from('card_price_current')
+      .select('headline_cents, graded_prices')
       .eq('card_id', card_id)
-      .single();
+      .maybeSingle();
 
-    const priceCache = priceCacheData as PriceCacheRow | null;
-    if (priceCache) {
+    const currentPrice = currentPriceData as CurrentPriceRow | null;
+    if (currentPrice) {
+      const rawValue = currentPrice.headline_cents === null
+        ? null
+        : currentPrice.headline_cents / 100;
       if (g === 'raw') {
-        finalCostBasis = priceCache.raw_prices?.nearMint || null;
+        finalCostBasis = rawValue;
       } else {
-        finalCostBasis = lookupGraded(priceCache.graded_prices, g)?.average || null;
+        finalCostBasis = lookupGraded(currentPrice.graded_prices, g)?.average || null;
       }
       if (finalCostBasis !== null) {
         costBasisSource = 'current_price_auto';

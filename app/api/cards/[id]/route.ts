@@ -23,7 +23,7 @@ interface CardData {
   last_price_fetch: string | null;
   sets: SetData;
   card_variants: CardVariant[];
-  price_cache: PriceCacheData | PriceCacheData[] | null;
+  card_price_current: CurrentPriceData | null;
 }
 
 interface SetData {
@@ -49,12 +49,32 @@ interface CardVariant {
   slug: string;
 }
 
-interface PriceCacheData {
-  raw_prices: Record<string, number | null>;
+interface CurrentPriceData {
+  source_prices: Record<string, unknown>;
   graded_prices: Record<string, unknown>;
-  ebay_sales: Record<string, unknown>;
-  fetched_at: string;
-  expires_at: string;
+  headline_cents: number | null;
+  headline_source: string | null;
+  headline_kind: string | null;
+  headline_currency: string | null;
+  headline_grade: string | null;
+  computed_at: string;
+}
+
+type RawPrices = Record<string, number | null>;
+
+function getNumericRawPrices(sourcePrices: Record<string, unknown> | null | undefined): RawPrices {
+  const rawPrices: RawPrices = {};
+
+  for (const [source, metadata] of Object.entries(sourcePrices || {})) {
+    if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) continue;
+
+    const usd = (metadata as { usd?: unknown }).usd;
+    if (typeof usd === 'number' && Number.isFinite(usd)) {
+      rawPrices[source] = usd;
+    }
+  }
+
+  return rawPrices;
 }
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
@@ -100,12 +120,15 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         name,
         slug
       ),
-      price_cache (
-        raw_prices,
+      card_price_current (
+        source_prices,
         graded_prices,
-        ebay_sales,
-        fetched_at,
-        expires_at
+        headline_cents,
+        headline_source,
+        headline_kind,
+        headline_currency,
+        headline_grade,
+        computed_at
       )
     `);
 
@@ -129,21 +152,24 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   // Get population data
   const population = await getPopulationFromDb(card.id, 'psa');
 
-  // Check if price data is stale
-  const priceCache: PriceCacheData | null = Array.isArray(card.price_cache)
-    ? [...card.price_cache]
-        .sort((a, b) => new Date(b.fetched_at).getTime() - new Date(a.fetched_at).getTime())[0] || null
-    : card.price_cache;
-  const isStale = priceCache ?
-    new Date(priceCache.expires_at) < new Date() :
-    true;
+  // The current-price row is keyed by card_id; there is no legacy expiry row to unwrap.
+  const currentPrice = card.card_price_current;
+  const isStale = currentPrice === null || (
+    currentPrice.headline_cents === null &&
+    Object.keys(currentPrice.graded_prices || {}).length === 0
+  );
 
   // If we have a tcg_player_id and data is stale, try to refresh
-  let prices = {
-    raw: priceCache?.raw_prices || {},
-    graded: priceCache?.graded_prices || {},
-    ebay: priceCache?.ebay_sales || {},
+  let prices: {
+    raw: RawPrices;
+    graded: Record<string, unknown>;
+    ebay: Record<string, unknown>;
+  } = {
+    raw: getNumericRawPrices(currentPrice?.source_prices),
+    graded: (currentPrice?.graded_prices || {}) as Record<string, unknown>,
+    ebay: {},
   };
+  let usingDatabasePrices = currentPrice !== null;
   let fromCache = true;
   let staleHours: number | null = null;
 
@@ -159,6 +185,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           graded: freshData.prices.graded,
           ebay: {},
         };
+        usingDatabasePrices = false;
         fromCache = freshData.fromCache;
       }
     } catch (err) {
@@ -203,9 +230,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       prices: {
         raw: prices.raw,
         graded: prices.graded,
+        ...(usingDatabasePrices ? { sourcePrices: currentPrice?.source_prices || {} } : {}),
         fromCache,
         staleHours,
-        lastUpdated: priceCache?.fetched_at,
+        lastUpdated: currentPrice?.computed_at,
       },
       population: population ? {
         gradingCompany: population.gradingCompany,

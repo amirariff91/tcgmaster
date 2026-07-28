@@ -255,7 +255,7 @@ class PokemonPriceTrackerClient {
     const prices = raw.prices as Record<string, unknown> | undefined;
     if (prices && !prices.conditions) {
       // API returns variants.Holofoil["Near Mint Holofoil"].price etc.
-      // Map to conditions shape that sync-prices expects
+      // Map the API response without inventing condition prices.
       const variants = (prices.variants as Record<string, Record<string, { price: number }>> | undefined) || {};
       const nmPrice = Object.values(variants)
         .flatMap(v => Object.entries(v))
@@ -269,10 +269,10 @@ class PokemonPriceTrackerClient {
         high: null,
         conditions: {
           nearMint: nmPrice ?? mktPrice,
-          lightlyPlayed: nmPrice ? Math.round(nmPrice * 0.75 * 100) / 100 : null,
-          moderatelyPlayed: nmPrice ? Math.round(nmPrice * 0.50 * 100) / 100 : null,
-          heavilyPlayed: nmPrice ? Math.round(nmPrice * 0.30 * 100) / 100 : null,
-          damaged: nmPrice ? Math.round(nmPrice * 0.15 * 100) / 100 : null,
+          lightlyPlayed: null,
+          moderatelyPlayed: null,
+          heavilyPlayed: null,
+          damaged: null,
         },
       };
     }

@@ -26,7 +26,7 @@ interface PriceHistoryRow {
   price: number;
 }
 
-interface PriceCacheRow {
+interface CurrentPriceRow {
   graded_prices: Record<string, { average?: number }>;
 }
 
@@ -204,18 +204,16 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
   // If no historical price, try current price
   if (costBasis === null && cardId) {
-    const { data: priceCacheData } = await supabase
-      .from('price_cache')
+    const { data: currentPriceData } = await supabase
+      .from('card_price_current')
       .select('graded_prices')
       .eq('card_id', cardId)
-      .order('fetched_at', { ascending: false })
-      .limit(1)
       .maybeSingle();
 
-    const priceCache = priceCacheData as PriceCacheRow | null;
+    const currentPrice = currentPriceData as CurrentPriceRow | null;
 
-    if (priceCache) {
-      const gradedPrices = priceCache.graded_prices;
+    if (currentPrice) {
+      const gradedPrices = currentPrice.graded_prices;
       const gradeKey = `psa${certInfo.grade}`;
       costBasis = gradedPrices?.[gradeKey]?.average || null;
       if (costBasis !== null) {

@@ -6,6 +6,7 @@ import { SearchBar } from '@/components/search/search-bar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatDate, formatPrice, formatSetName, splitCardName } from '@/lib/utils';
+import { latestRecordedAt } from '@/lib/pricing/price-labels';
 // Cookie-free anon client keeps this route statically renderable (see card page).
 import { createPublicClient } from '@/lib/supabase/client';
 import { Badge } from '@/components/ui/badge';
@@ -26,15 +27,16 @@ interface SetRow {
 }
 
 interface SetPriceRow {
-  id: string;
-  market: unknown;
+  card_id: string;
+  headline_cents: number | null;
   cards: {
     set_id: string;
   };
 }
 
 interface TopPriceRow {
-  market: unknown;
+  card_id: string;
+  headline_cents: number | null;
   cards: {
     id: string;
     name: string;
@@ -47,7 +49,8 @@ interface TopPriceRow {
 }
 
 interface LatestPriceRow {
-  fetched_at: string;
+  card_id: string;
+  source_prices: unknown;
 }
 
 interface GamePageData {
@@ -68,9 +71,9 @@ interface GamePageData {
 
 const PAGE_SIZE = 1000;
 
-function getMarketPrice(market: unknown): number | null {
-  if (typeof market === 'number' && Number.isFinite(market) && market > 0) {
-    return market;
+function getHeadlinePrice(headlineCents: unknown): number | null {
+  if (typeof headlineCents === 'number' && Number.isFinite(headlineCents) && headlineCents > 0) {
+    return headlineCents / 100;
   }
 
   return null;
@@ -105,11 +108,11 @@ async function getAllSetPrices(supabase: SupabaseClient, gameId: string): Promis
 
   for (let from = 0; ; from += PAGE_SIZE) {
     const { data, error } = await supabase
-      .from('price_cache')
-      .select('id, market:raw_prices->market, cards!inner(set_id, sets!inner(game_id))')
+      .from('card_price_current')
+      .select('card_id, headline_cents, cards!inner(set_id, sets!inner(game_id))')
       .eq('cards.sets.game_id', gameId)
-      .gt('raw_prices->market', 0)
-      .order('id', { ascending: true })
+      .gt('headline_cents', 0)
+      .order('card_id', { ascending: true })
       .range(from, from + PAGE_SIZE - 1);
 
     if (error) throw error;
@@ -119,6 +122,26 @@ async function getAllSetPrices(supabase: SupabaseClient, gameId: string): Promis
     prices.push(...page);
 
     if (page.length < PAGE_SIZE) return prices;
+  }
+}
+
+async function getAllCurrentPriceRows(supabase: SupabaseClient, gameId: string): Promise<LatestPriceRow[]> {
+  const rows: LatestPriceRow[] = [];
+
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from('card_price_current')
+      .select('card_id, source_prices, cards!inner(sets!inner(game_id))')
+      .eq('cards.sets.game_id', gameId)
+      .order('card_id', { ascending: true })
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (error) throw error;
+
+    const page = (data || []) as unknown as LatestPriceRow[];
+    rows.push(...page);
+
+    if (page.length < PAGE_SIZE) return rows;
   }
 }
 
@@ -142,16 +165,17 @@ async function getGamePageData(gameSlug: string): Promise<GamePageData | null> {
 
   const supabase = createPublicClient();
 
-  const [sets, cardsCount, topCardsResult, latestPriceResult, setPrices] = await Promise.all([
+  const [sets, cardsCount, topCardsResult, latestPriceRows, setPrices] = await Promise.all([
     getAllSets(supabase, gameData.id),
     supabase
       .from('cards')
       .select('id, sets!inner(game_id)', { count: 'exact', head: true })
       .eq('sets.game_id', gameData.id),
     supabase
-      .from('price_cache')
+      .from('card_price_current')
       .select(`
-        market:raw_prices->market,
+        card_id,
+        headline_cents,
         cards!inner (
           id,
           name,
@@ -164,29 +188,21 @@ async function getGamePageData(gameSlug: string): Promise<GamePageData | null> {
         )
       `)
       .eq('cards.sets.game_id', gameData.id)
-      .gt('raw_prices->market', 0)
-      .order('raw_prices->market', { ascending: false })
-      .order('id', { ascending: true })
+      .gt('headline_cents', 0)
+      .order('headline_cents', { ascending: false })
+      .order('card_id', { ascending: true })
       .limit(3),
-    supabase
-      .from('price_cache')
-      .select('fetched_at, cards!inner(sets!inner(game_id))')
-      .eq('cards.sets.game_id', gameData.id)
-      .gt('raw_prices->market', 0)
-      .order('fetched_at', { ascending: false })
-      .order('id', { ascending: true })
-      .limit(1),
+    getAllCurrentPriceRows(supabase, gameData.id),
     getAllSetPrices(supabase, gameData.id),
   ]);
 
   if (cardsCount.error) throw cardsCount.error;
   if (topCardsResult.error) throw topCardsResult.error;
-  if (latestPriceResult.error) throw latestPriceResult.error;
 
   const priceTotalsBySet = new Map<string, { count: number; total: number }>();
 
   for (const row of setPrices) {
-    const price = getMarketPrice(row.market);
+    const price = getHeadlinePrice(row.headline_cents);
     if (price === null) continue;
 
     const totals = priceTotalsBySet.get(row.cards.set_id) || { count: 0, total: 0 };
@@ -198,7 +214,7 @@ async function getGamePageData(gameSlug: string): Promise<GamePageData | null> {
   // Supabase's generated types cannot represent aliased JSON paths and nested rows reliably.
   const topPriceRows = (topCardsResult.data || []) as unknown as TopPriceRow[];
   const topCards = topPriceRows.flatMap((row) => {
-    const price = getMarketPrice(row.market);
+    const price = getHeadlinePrice(row.headline_cents);
     if (price === null) return [];
 
     return [{
@@ -210,8 +226,13 @@ async function getGamePageData(gameSlug: string): Promise<GamePageData | null> {
       price,
     }];
   });
-  const latestPriceRows = (latestPriceResult.data || []) as unknown as LatestPriceRow[];
-  const latestPriceUpdate = latestPriceRows[0]?.fetched_at || null;
+  const latestPriceUpdate = latestPriceRows.reduce<string | null>((latest, row) => {
+    const candidate = latestRecordedAt(row.source_prices);
+    if (!candidate) return latest;
+
+    if (!latest || Date.parse(candidate) > Date.parse(latest)) return candidate;
+    return latest;
+  }, null);
 
   return {
     game: gameData,
