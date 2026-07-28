@@ -14,8 +14,9 @@
  *
  * Workers:
  *   scraper-en-op  — TCGCSV for English One Piece (fast, JSON API, no Puppeteer)
- *   scraper-jp-op  — Yuyutei primary + SnkrDunk fallback for Japanese One Piece
+ *   scraper-jp-op  — Yuyutei + PriceCharting for Japanese One Piece
  *   scraper-dbfw   — CardRush for Dragon Ball Fusion World
+ *   scraper-en-dbfw — TCGCSV for English Dragon Ball Fusion World
  *   artist-vision  — Ollama Cloud vision artist extractor for EN OP cards
  */
 
@@ -80,6 +81,26 @@ module.exports = {
       min_uptime: '10s',
       log_file: './logs/scraper-dbfw.log',
       error_file: './logs/scraper-dbfw-error.log',
+      time: true,
+    },
+
+    // ─────────────────────────────────────────────
+    // English Dragon Ball Fusion World — TCGCSV
+    // ─────────────────────────────────────────────
+    {
+      name: 'scraper-en-dbfw',
+      script: 'bun',
+      args: 'run scripts/price-engine/queue-english-dbfw.ts',
+      env: {
+        SAFE_MODE: SAFE_MODE ? '1' : '0',
+      },
+      watch: false,
+      autorestart: true,
+      restart_delay: 5000,
+      max_restarts: 50,
+      min_uptime: '10s',
+      log_file: './logs/scraper-en-dbfw.log',
+      error_file: './logs/scraper-en-dbfw-error.log',
       time: true,
     },
 
