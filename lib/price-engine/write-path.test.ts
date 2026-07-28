@@ -3,6 +3,7 @@ import { markForReverification, upsertMapping, type SourceMapping } from './mapp
 import {
   persistObservations,
   selectHeadline,
+  shapeCurrentRow,
   shapeGradedPrices,
   type PriceObservation,
 } from './write-path';
@@ -52,6 +53,8 @@ function mapping(
 function persistenceDb(
   inserts: Record<string, unknown[]> = {},
   updates: Record<string, unknown[]> = {},
+  upserts: Record<string, unknown[]> = {},
+  deletes: Record<string, number> = {},
 ): never {
   const db = {
     from(table: string) {
@@ -79,7 +82,13 @@ function persistenceDb(
           inserts[table].push(rows);
           return Promise.resolve({ error: null });
         },
+        upsert(rows: unknown) {
+          upserts[table] ??= [];
+          upserts[table].push(rows);
+          return Promise.resolve({ error: null });
+        },
         delete() {
+          deletes[table] = (deletes[table] ?? 0) + 1;
           return query;
         },
         update(payload: unknown) {
@@ -153,7 +162,114 @@ describe('shapeGradedPrices', () => {
   });
 });
 
+describe('shapeCurrentRow', () => {
+  it('shapes multiple raw sources and graded prices with headline metadata', () => {
+    const recordedAt = '2026-07-28T18:00:00.000Z';
+    const observations = [
+      observation('tcgplayer', 10),
+      observation('yuyutei', 12),
+      observation('pricecharting', 14, 'psa10'),
+    ];
+
+    expect(shapeCurrentRow(
+      'card-1',
+      observations,
+      { cents: 1000, source: 'tcgplayer', kind: 'market', grade: 'raw' },
+      recordedAt,
+    )).toEqual({
+      card_id: 'card-1',
+      source_prices: {
+        tcgplayer: {
+          usd: 10,
+          native: null,
+          currency: 'USD',
+          kind: 'market',
+          recorded_at: recordedAt,
+        },
+        yuyutei: {
+          usd: 12,
+          native: null,
+          currency: 'JPY',
+          kind: 'retail_sell',
+          recorded_at: recordedAt,
+        },
+      },
+      graded_prices: {
+        psa10: { average: 14, sources: { pricecharting: 14 } },
+      },
+      headline_cents: 1000,
+      headline_source: 'tcgplayer',
+      headline_kind: 'market',
+      headline_currency: 'USD',
+      headline_grade: 'raw',
+      computed_at: recordedAt,
+    });
+  });
+
+  it('shapes graded-only observations with null headline fields', () => {
+    expect(shapeCurrentRow(
+      'card-1',
+      [observation('tcgplayer', 14, 'psa10')],
+      null,
+      '2026-07-28T18:00:00.000Z',
+    )).toEqual({
+      card_id: 'card-1',
+      source_prices: {},
+      graded_prices: {
+        psa10: { average: 14, sources: { tcgplayer: 14 } },
+      },
+      headline_cents: null,
+      headline_source: null,
+      headline_kind: null,
+      headline_currency: null,
+      headline_grade: null,
+      computed_at: '2026-07-28T18:00:00.000Z',
+    });
+  });
+
+  it('shapes an empty accepted observation set', () => {
+    expect(shapeCurrentRow('card-1', [], null, '2026-07-28T18:00:00.000Z')).toEqual({
+      card_id: 'card-1',
+      source_prices: {},
+      graded_prices: {},
+      headline_cents: null,
+      headline_source: null,
+      headline_kind: null,
+      headline_currency: null,
+      headline_grade: null,
+      computed_at: '2026-07-28T18:00:00.000Z',
+    });
+  });
+});
+
 describe('persistObservations', () => {
+  it('upserts current prices, including null headline fields without raw observations', async () => {
+    const inserts: Record<string, unknown[]> = {};
+    const upserts: Record<string, unknown[]> = {};
+    const deletes: Record<string, number> = {};
+
+    await persistObservations(
+      persistenceDb(inserts, {}, upserts, deletes),
+      { id: 'card-1', slug: 'op-01-001', number: 'OP01-001', name: 'Card' },
+      [observation('tcgplayer', 14, 'psa10')],
+    );
+
+    expect(upserts.card_price_current).toHaveLength(1);
+    expect(upserts.card_price_current?.[0]).toEqual(expect.objectContaining({
+      card_id: 'card-1',
+      source_prices: {},
+      graded_prices: { psa10: { average: 14, sources: { tcgplayer: 14 } } },
+      headline_cents: null,
+      headline_source: null,
+      headline_kind: null,
+      headline_currency: null,
+      headline_grade: null,
+      computed_at: expect.any(String),
+    }));
+    expect(inserts.price_cache).toHaveLength(1);
+    expect(deletes.price_cache).toBe(1);
+  });
+
   it('quarantines title drift and marks the mapping for reverification', async () => {
     const inserts: Record<string, unknown[]> = {};
     const result = await persistObservations(
@@ -263,6 +379,9 @@ describe('persistObservations', () => {
             inserts[table].push(rows);
             return Promise.resolve({ error: null });
           },
+          upsert() {
+            return Promise.resolve({ error: null });
+          },
           delete() {
             return query;
           },
@@ -330,6 +449,9 @@ describe('persistObservations', () => {
             if (table === 'price_history') historyInserts.push(rows);
             return Promise.resolve({ error: null });
           },
+          upsert() {
+            return Promise.resolve({ error: null });
+          },
           delete() {
             return query;
           },
@@ -383,6 +505,9 @@ describe('persistObservations', () => {
             if (table === 'price_quarantine') quarantineInserts.push(rows);
             return Promise.resolve({ error: null });
           },
+          upsert() {
+            return Promise.resolve({ error: null });
+          },
           delete() {
             return query;
           },
@@ -433,5 +558,6 @@ describe('persistObservations', () => {
 
     expect(updates.cards?.[0]).not.toHaveProperty('tcg_player_id');
     expect(updates.cards?.[0]).not.toHaveProperty('print_run_info');
+    expect(updates.cards?.[0]).not.toHaveProperty('price_cache_ttl');
   });
 });

@@ -35,6 +35,7 @@ export interface PriceObservation {
   priceNative: number | null;
   currency: 'USD' | 'JPY';
   evidence: MatchEvidence;
+  recordedAt?: string;
 }
 
 export interface CardRef {
@@ -92,6 +93,26 @@ export interface GradedPrice {
 
 export type GradedPrices = Record<string, GradedPrice>;
 
+export interface CurrentSourcePrice {
+  usd: number;
+  native: number | null;
+  currency: 'USD' | 'JPY';
+  kind: PriceKind;
+  recorded_at: string;
+}
+
+export interface CurrentPriceRow {
+  card_id: string;
+  source_prices: Record<string, CurrentSourcePrice>;
+  graded_prices: GradedPrices;
+  headline_cents: number | null;
+  headline_source: PriceSource | null;
+  headline_kind: PriceKind | null;
+  headline_currency: 'USD' | 'JPY' | null;
+  headline_grade: CanonicalGrade | null;
+  computed_at: string;
+}
+
 export function shapeGradedPrices(obs: PriceObservation[]): GradedPrices {
   const grouped = new Map<CanonicalGrade, PriceObservation[]>();
 
@@ -115,6 +136,39 @@ export function shapeGradedPrices(obs: PriceObservation[]): GradedPrices {
       return [grade, { average, sources }];
     }),
   );
+}
+
+export function shapeCurrentRow(
+  cardId: string,
+  acceptedObs: PriceObservation[],
+  headline: Headline | null,
+  recordedAt: string,
+): CurrentPriceRow {
+  const sourcePrices: Record<string, CurrentSourcePrice> = {};
+
+  for (const observation of acceptedObs) {
+    if (observation.grade !== 'raw' || !Number.isFinite(observation.priceUsd)) continue;
+
+    sourcePrices[observation.source] = {
+      usd: observation.priceUsd,
+      native: observation.priceNative,
+      currency: observation.currency,
+      kind: SOURCE_KIND[observation.source],
+      recorded_at: observation.recordedAt ?? recordedAt,
+    };
+  }
+
+  return {
+    card_id: cardId,
+    source_prices: sourcePrices,
+    graded_prices: shapeGradedPrices(acceptedObs),
+    headline_cents: headline?.cents ?? null,
+    headline_source: headline?.source ?? null,
+    headline_kind: headline?.kind ?? null,
+    headline_currency: headline ? SOURCE_CURRENCY[headline.source] : null,
+    headline_grade: headline?.grade ?? null,
+    computed_at: recordedAt,
+  };
 }
 
 function writeFailure(card: CardRef, operation: string, error: unknown): never {
@@ -290,6 +344,12 @@ export async function persistObservations(
   }
 
   const headline = selectHeadline(acceptedObservations);
+  const currentRow = shapeCurrentRow(card.id, acceptedObservations, headline, recordedAt);
+
+  const { error: currentError } = await db
+    .from('card_price_current')
+    .upsert(currentRow, { onConflict: 'card_id' });
+  throwIfError(card, 'card_price_current upsert', currentError);
 
   let historyRows = acceptedObservations.map((observation) => ({
     card_id: card.id,
@@ -369,7 +429,6 @@ export async function persistObservations(
     .from('cards')
     .update({
       ...scopedExtraUpdates,
-      price_cache_ttl: headline ? headline.cents : null,
       last_price_fetch: recordedAt,
     })
     .eq('id', card.id);
