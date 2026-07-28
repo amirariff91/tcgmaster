@@ -17,7 +17,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   type GameRef = { slug: string } | null;
   type SetSitemapRow = {
     slug: string;
-    updated_at: string | null;
+    created_at: string | null;
     games: GameRef | GameRef[];
   };
   type CardSitemapRow = {
@@ -29,14 +29,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Fetch all sets
   const { data: sets } = await supabase
     .from('sets')
-    .select('slug, updated_at, games(slug)')
+    .select('slug, created_at, games(slug)')
     .order('release_date', { ascending: false });
 
   const setPages: MetadataRoute.Sitemap = ((sets || []) as SetSitemapRow[]).map((s) => {
     const game = Array.isArray(s.games) ? s.games[0] : s.games;
     return {
       url: `${base}/${game?.slug || 'pokemon'}/${s.slug}`,
-      lastModified: s.updated_at ? new Date(s.updated_at) : new Date(),
+      lastModified: s.created_at ? new Date(s.created_at) : new Date(),
       changeFrequency: 'weekly' as const,
       priority: 0.8,
     };

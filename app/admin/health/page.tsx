@@ -5,6 +5,7 @@ import { Activity, Database, Sparkles, Trophy, ExternalLink, BarChart3, Bot, Ter
 import { formatDistanceToNow, formatDistanceToNowStrict } from 'date-fns';
 import Link from 'next/link';
 import { PriceChart } from '@/components/charts/price-chart';
+import type { Enums } from '@/lib/supabase/database.types';
 
 export const metadata: Metadata = {
   title: 'Mission Control | TCGMaster Admin',
@@ -25,7 +26,7 @@ function formatShortTime(date: Date) {
     .replace(' day', 'd');
 }
 
-function formatPrice(price: number, source: string) {
+function formatPrice(price: number, source: Enums<'price_source'>) {
   if (source === 'tcgplayer') {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(price);
   }
@@ -75,7 +76,7 @@ export default async function AdminHealthDashboard() {
     const { count: tcgPlayerConfigured } = await supabase.from('cards').select('*, sets!inner(game_id)', { count: 'exact', head: true }).eq('sets.game_id', game.id).not('tcg_player_id', 'is', null);
 
     // Heartbeats, Live Feeds, and 7-Day Activity Volume
-    const sources = ['snkrdunk', 'yuyutei', 'tcgplayer', 'cardrush'];
+    const sources: Enums<'price_source'>[] = ['snkrdunk', 'yuyutei', 'tcgplayer', 'cardrush'];
     const heartbeats = await Promise.all(sources.map(async (source) => {
       // A: Fetch 5 recent logs
       const { data: logsData } = await supabase
@@ -235,7 +236,13 @@ export default async function AdminHealthDashboard() {
           {gameDiagnostics.map((game) => {
             
             // Build the scrapers array dynamically based on game
-            const gameScrapers = [];
+            const gameScrapers: Array<{
+              source: Enums<'price_source'>;
+              title: string;
+              subtitle: string;
+              configCount: number;
+              theme: 'blue' | 'indigo';
+            }> = [];
             if (game.slug !== 'pokemon') {
               gameScrapers.push({ source: 'snkrdunk', title: 'Snkrdunk', subtitle: 'Puppeteer Engine', configCount: game.config.snkrdunk, theme: 'blue' });
               gameScrapers.push({ source: 'yuyutei', title: 'Yuyutei', subtitle: 'Fast Parser', configCount: game.config.yuyutei, theme: 'blue' });

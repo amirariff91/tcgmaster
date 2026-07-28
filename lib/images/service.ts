@@ -485,7 +485,6 @@ export async function getCardsNeedingImages(
     .select(`
       id,
       name,
-      poke_tcg_id,
       sets!inner (
         slug,
         games!inner (
@@ -502,12 +501,11 @@ export async function getCardsNeedingImages(
   return data.map((card: {
     id: string;
     name: string;
-    poke_tcg_id: string | null;
     sets: { slug: string; games: { slug: string } };
   }) => ({
     id: card.id,
     name: card.name,
     setSlug: card.sets.slug,
-    pokeTcgId: card.poke_tcg_id,
+    pokeTcgId: null,
   }));
 }

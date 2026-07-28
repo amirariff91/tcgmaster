@@ -7,7 +7,7 @@ import cloudflareImageLoader, { isImageCdnEnabled } from '@/lib/images/cloudflar
 interface Card {
   id: string;
   name: string;
-  image_url: string;
+  image_url: string | null;
   local_image_url?: string | null;
 }
 
@@ -75,7 +75,7 @@ function InteractiveTiltCard({ card }: { card: Card }) {
       style={style}
     >
       <Image 
-        src={card.local_image_url || card.image_url} 
+        src={card.local_image_url || card.image_url || '/tcgmaster-logo.png'} 
         alt={card.name || 'TCG Card'} 
         fill 
         sizes="(max-width: 640px) 130px, 170px"
