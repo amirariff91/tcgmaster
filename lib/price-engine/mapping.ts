@@ -125,9 +125,16 @@ export async function markForReverification(
   cardId: string,
   source: PriceSource,
 ): Promise<void> {
+  const existing = await getMapping(db, cardId, source);
+  if (!existing) return;
+
   const { error } = await db
     .from('card_source_mapping')
-    .update({ verified_at: null, updated_at: new Date().toISOString() })
+    .update({
+      evidence: { ...(existing.evidence ?? {}), reverify: true },
+      verified_at: null,
+      updated_at: new Date().toISOString(),
+    })
     .eq('card_id', cardId)
     .eq('source', source);
   if (error) throw new Error(`markForReverification(${cardId}, ${source}): ${error.message}`);

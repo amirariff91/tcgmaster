@@ -8,9 +8,12 @@ import {
   type SourceMapping,
 } from '../../lib/price-engine/mapping';
 import { type MatchEvidence } from '../../lib/price-engine/identity';
-import { classifyCandidate } from '../../lib/price-engine/resolver-logic';
+import {
+  classifyCandidate,
+  selectPriceChartingCandidate,
+} from '../../lib/price-engine/resolver-logic';
 import { fetchCardrushPrice } from '../../lib/price-engine/cardrush';
-import { fetchPriceChartingPrice } from '../../lib/price-engine/pricecharting';
+import { searchPriceChartingCandidates } from '../../lib/price-engine/pricecharting';
 import { fetchEnglishPrice } from '../../lib/price-engine/tcgcsv';
 import { fetchJapanesePrice } from '../../lib/price-engine/yuyutei';
 import type { PriceSource } from '../../lib/price-engine/write-path';
@@ -149,10 +152,16 @@ async function loadMappedCardIds(db: DbClient, source: ResolverSource): Promise<
 function applyCandidateFilters(query: any, source: ResolverSource, game?: Game): any {
   let filtered = query;
 
-  if (source === 'yuyutei' || source === 'cardrush') {
+  if (source === 'yuyutei') {
     filtered = filtered.ilike('slug', 'op-%').ilike('slug', '%-ja');
+  } else if (source === 'cardrush') {
+    filtered = filtered.ilike('slug', 'dbfw-%').ilike('slug', '%-ja');
   } else if (source === 'tcgplayer') {
-    filtered = filtered.not('slug', 'ilike', '%-ja');
+    filtered = filtered
+      .or('slug.ilike.op-%,slug.ilike.dbfw-%')
+      .not('slug', 'ilike', '%-ja');
+  } else if (source === 'pricecharting') {
+    filtered = filtered.or('slug.ilike.op-%,slug.ilike.dbfw-%');
   }
 
   if (game) filtered = filtered.ilike('slug', `${game}-%`);
@@ -165,9 +174,11 @@ async function loadCandidates(
   game: Game | undefined,
   limit: number,
   mappedCardIds: Set<string>,
+  skippedThisRun: Set<string>,
 ): Promise<ResolverCard[]> {
   return withDbBackoff(`[resolver:${source}] candidate query`, async () => {
     const cards: ResolverCard[] = [];
+    let excludedPreviouslySkipped = 0;
 
     // Exclude locally after ordered pages rather than putting thousands of UUIDs into
     // a PostgREST `not in (...)` URL once a source has broad coverage.
@@ -185,12 +196,20 @@ async function loadCandidates(
       const page = (data ?? []) as ResolverCard[];
       for (const card of page) {
         if (mappedCardIds.has(card.id)) continue;
+        if (skippedThisRun.has(card.id)) {
+          excludedPreviouslySkipped++;
+          continue;
+        }
         cards.push(card);
-        if (cards.length >= limit) return cards;
+        if (cards.length >= limit) {
+          console.log(`RESOLVER-SKIPPED-EXCLUDED ${source} ${excludedPreviouslySkipped}`);
+          return cards;
+        }
       }
       if (page.length < PAGE_SIZE) break;
     }
 
+    console.log(`RESOLVER-SKIPPED-EXCLUDED ${source} ${excludedPreviouslySkipped}`);
     return cards;
   });
 }
@@ -226,14 +245,9 @@ async function fetchCandidateEvidence(
   card: ResolverCard,
 ): Promise<{ evidence: MatchEvidence; query: string } | null> {
   const query = resolverQuery(source, card);
-  const game = gameForSlug(card.slug);
-
-  if (source === 'pricecharting') {
-    const result = await fetchPriceChartingPrice(query);
-    return result ? { evidence: result.evidence, query } : null;
-  }
 
   if (source === 'tcgplayer') {
+    const game = gameForSlug(card.slug);
     const categoryId = game === 'dbfw' ? DBFW_TCGPLAYER_CATEGORY_ID : undefined;
     const result = await fetchEnglishPrice(card.number, card.sets?.name ?? undefined, undefined, categoryId);
     return result ? { evidence: result.evidence, query } : null;
@@ -270,6 +284,109 @@ function mappingFromEvidence(
   };
 }
 
+type Resolution = {
+  action: 'accept' | 'reject' | 'skip' | 'nomatch';
+  reason: string;
+  mapping?: SourceMapping;
+  unknownQualifierReasons: string[];
+};
+
+function resolverCardForClassification(card: ResolverCard): {
+  number: string;
+  slug: string;
+  name?: string;
+} {
+  return {
+    number: card.number,
+    slug: card.slug,
+    name: card.name ?? undefined,
+  };
+}
+
+async function resolveCard(
+  source: ResolverSource,
+  card: ResolverCard,
+  qualifierMaps: Map<Game, Map<string, QualifierMeaning>>,
+): Promise<Resolution> {
+  const query = resolverQuery(source, card);
+  const cardGame = gameForSlug(card.slug);
+  const qualifierMap = cardGame ? qualifierMaps.get(cardGame) : undefined;
+  const classificationCard = resolverCardForClassification(card);
+
+  if (source === 'pricecharting') {
+    const candidates = await searchPriceChartingCandidates(query);
+    const selection = selectPriceChartingCandidate({
+      card: classificationCard,
+      candidates,
+      qualifierMap: qualifierMap ?? new Map(),
+    });
+
+    if (selection.candidate && selection.classification) {
+      const evidence: MatchEvidence = {
+        externalTitle: selection.candidate.title,
+        externalUrl: selection.candidate.url,
+        matchedBy: 'search',
+      };
+      const confidence = selection.action === 'accept' ? 'derived' : 'rejected';
+      return {
+        action: selection.action,
+        reason: selection.reason,
+        mapping: mappingFromEvidence(
+          card,
+          source,
+          evidence,
+          confidence,
+          query,
+          selection.classification.externalSet,
+        ),
+        unknownQualifierReasons: [],
+      };
+    }
+
+    return {
+      action: selection.action,
+      reason: selection.reason,
+      unknownQualifierReasons: selection.unknownQualifierReasons,
+    };
+  }
+
+  const result = await fetchCandidateEvidence(source, card);
+  if (!result) {
+    return { action: 'nomatch', reason: 'no-candidate', unknownQualifierReasons: [] };
+  }
+
+  const classification = classifyCandidate({
+    card: classificationCard,
+    evidence: result.evidence,
+    qualifierMap: qualifierMap ?? new Map(),
+    source,
+  });
+  if (classification.action === 'skip') {
+    return {
+      action: 'skip',
+      reason: classification.reason,
+      unknownQualifierReasons: classification.reason.startsWith('unknown-qualifier:')
+        ? [classification.reason]
+        : [],
+    };
+  }
+
+  const confidence = classification.action === 'accept' ? 'derived' : 'rejected';
+  return {
+    action: classification.action,
+    reason: classification.reason,
+    mapping: mappingFromEvidence(
+      card,
+      source,
+      result.evidence,
+      confidence,
+      result.query,
+      classification.externalSet,
+    ),
+    unknownQualifierReasons: [],
+  };
+}
+
 function recordUnknownQualifier(reason: string, tally: Map<string, number>): void {
   const prefix = 'unknown-qualifier:';
   if (!reason.startsWith(prefix)) return;
@@ -288,6 +405,119 @@ function reportUnknownQualifierTally(tally: Map<string, number>): void {
   }
 }
 
+type ResolverMappingRow = {
+  card_id: string;
+  source: ResolverSource;
+  external_id: string | null;
+  external_url: string | null;
+  external_title: string | null;
+  external_set: string | null;
+  confidence: SourceMapping['confidence'];
+  matched_by: SourceMapping['matchedBy'];
+  evidence: Record<string, unknown> | null;
+  verified_at: string | null;
+};
+
+function mappingFromRow(row: ResolverMappingRow): SourceMapping {
+  return {
+    cardId: row.card_id,
+    source: row.source,
+    externalId: row.external_id,
+    externalUrl: row.external_url,
+    externalTitle: row.external_title,
+    externalSet: row.external_set,
+    confidence: row.confidence,
+    matchedBy: row.matched_by,
+    evidence: row.evidence,
+    verifiedAt: row.verified_at,
+  };
+}
+
+async function loadReverificationMappings(
+  db: DbClient,
+  source: ResolverSource,
+): Promise<SourceMapping[]> {
+  return withDbBackoff(`[resolver:${source}] reverification query`, async () => {
+    const mappings: SourceMapping[] = [];
+
+    for (let offset = 0; ; offset += PAGE_SIZE) {
+      const { data, error } = await db
+        .from('card_source_mapping')
+        .select('*')
+        .eq('source', source)
+        .filter('evidence->>reverify', 'eq', 'true')
+        .order('card_id', { ascending: true })
+        .range(offset, offset + PAGE_SIZE - 1);
+
+      if (error) throw new Error(`Loading reverification mappings: ${error.message}`);
+      const page = (data ?? []) as ResolverMappingRow[];
+      mappings.push(...page.map(mappingFromRow));
+      if (page.length < PAGE_SIZE) break;
+    }
+
+    return mappings;
+  });
+}
+
+async function loadCardById(db: DbClient, cardId: string): Promise<ResolverCard | null> {
+  return withDbBackoff('[resolver] reverification card query', async () => {
+    const { data, error } = await db
+      .from('cards')
+      .select('id, name, slug, number, tcg_player_id, yuyutei_url, cardrush_url, sets ( name )')
+      .eq('id', cardId)
+      .maybeSingle();
+
+    if (error) throw new Error(`Loading reverification card ${cardId}: ${error.message}`);
+    return data ? data as ResolverCard : null;
+  });
+}
+
+async function processCard(
+  db: DbClient,
+  source: ResolverSource,
+  card: ResolverCard,
+  force: boolean,
+  isReverification: boolean,
+  qualifierMaps: Map<Game, Map<string, QualifierMeaning>>,
+  skippedThisRun: Set<string>,
+  unknownQualifierTally: Map<string, number>,
+): Promise<void> {
+  const resolution = await resolveCard(source, card, qualifierMaps);
+  for (const reason of resolution.unknownQualifierReasons) {
+    recordUnknownQualifier(reason, unknownQualifierTally);
+  }
+
+  if (resolution.mapping) {
+    await withDbBackoff(
+      `[resolver:${source}] mapping write (${card.slug})`,
+      () => upsertMapping(db, resolution.mapping!, { force }),
+    );
+    if (isReverification) {
+      console.log(`RESOLVER-REVERIFY ${card.slug} ${source} ${resolution.action.toUpperCase()} ${resolution.reason}`);
+    } else {
+      console.log(`RESOLVER-${resolution.action.toUpperCase()} ${card.slug} ${source} ${resolution.reason}`);
+    }
+    return;
+  }
+
+  if (resolution.action === 'skip') {
+    skippedThisRun.add(card.id);
+    if (isReverification) {
+      console.log(`RESOLVER-REVERIFY ${card.slug} ${source} SKIP ${resolution.reason}`);
+    } else {
+      console.log(`RESOLVER-SKIP ${card.slug} ${source} ${resolution.reason}`);
+    }
+    return;
+  }
+
+  skippedThisRun.add(card.id);
+  if (isReverification) {
+    console.log(`RESOLVER-REVERIFY ${card.slug} ${source} NOMATCH`);
+  } else {
+    console.log(`RESOLVER-NOMATCH ${card.slug} ${source}`);
+  }
+}
+
 async function runPass(
   db: DbClient,
   source: ResolverSource,
@@ -295,57 +525,53 @@ async function runPass(
   limit: number,
   sleepMs: number,
   qualifierMaps: Map<Game, Map<string, QualifierMeaning>>,
+  skippedThisRun: Set<string>,
 ): Promise<number> {
-  const mappedCardIds = await loadMappedCardIds(db, source);
-  const cards = await loadCandidates(db, source, game, limit, mappedCardIds);
   const unknownQualifierTally = new Map<string, number>();
+  const reverificationMappings = await loadReverificationMappings(db, source);
+  let processed = 0;
+
+  for (const mapping of reverificationMappings) {
+    const card = await loadCardById(db, mapping.cardId);
+    if (!card) {
+      console.log(`RESOLVER-REVERIFY ${mapping.cardId} ${source} MISSING-CARD`);
+      continue;
+    }
+
+    await processCard(
+      db,
+      source,
+      card,
+      true,
+      true,
+      qualifierMaps,
+      skippedThisRun,
+      unknownQualifierTally,
+    );
+    processed++;
+  }
+
+  const mappedCardIds = await loadMappedCardIds(db, source);
+  const cards = await loadCandidates(db, source, game, limit, mappedCardIds, skippedThisRun);
 
   for (let index = 0; index < cards.length; index++) {
-    const card = cards[index];
-    const result = await fetchCandidateEvidence(source, card);
-
-    if (!result) {
-      console.log(`RESOLVER-NOMATCH ${card.slug} ${source}`);
-    } else {
-      const cardGame = gameForSlug(card.slug);
-      const qualifierMap = cardGame ? qualifierMaps.get(cardGame) : undefined;
-      const classification = classifyCandidate({
-        card: {
-          number: card.number,
-          slug: card.slug,
-          name: card.name ?? undefined,
-        },
-        evidence: result.evidence,
-        qualifierMap: qualifierMap ?? new Map(),
-        source,
-      });
-      recordUnknownQualifier(classification.reason, unknownQualifierTally);
-
-      if (classification.action === 'skip') {
-        console.log(`RESOLVER-SKIP ${card.slug} ${source} ${classification.reason}`);
-      } else {
-        const confidence = classification.action === 'accept' ? 'derived' : 'rejected';
-        const mapping = mappingFromEvidence(
-          card,
-          source,
-          result.evidence,
-          confidence,
-          result.query,
-          classification.externalSet,
-        );
-        await withDbBackoff(
-          `[resolver:${source}] mapping write (${card.slug})`,
-          () => upsertMapping(db, mapping),
-        );
-        console.log(`RESOLVER-${classification.action.toUpperCase()} ${card.slug} ${source} ${classification.reason}`);
-      }
-    }
+    await processCard(
+      db,
+      source,
+      cards[index],
+      false,
+      false,
+      qualifierMaps,
+      skippedThisRun,
+      unknownQualifierTally,
+    );
+    processed++;
 
     if (index < cards.length - 1) await sleep(sleepMs);
   }
 
   reportUnknownQualifierTally(unknownQualifierTally);
-  return cards.length;
+  return processed;
 }
 
 function sleepMsFromEnvironment(): number {
@@ -360,6 +586,7 @@ async function main(): Promise<void> {
   const db = createScraperClient();
   const sleepMs = sleepMsFromEnvironment();
   const qualifierMaps = await loadQualifierMaps(db, args.source, args.game);
+  const skippedThisRun = new Set<string>();
 
   while (true) {
     const processed = await runPass(
@@ -369,10 +596,12 @@ async function main(): Promise<void> {
       args.limit,
       sleepMs,
       qualifierMaps,
+      skippedThisRun,
     );
 
     if (!args.loop) return;
     if (processed === 0) {
+      skippedThisRun.clear();
       console.log(`RESOLVER-EMPTY ${args.source}; sleeping ${EMPTY_QUEUE_SLEEP_MS / 1000}s`);
       await sleep(EMPTY_QUEUE_SLEEP_MS);
     }

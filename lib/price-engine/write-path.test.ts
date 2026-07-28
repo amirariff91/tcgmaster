@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { markForReverification, type SourceMapping } from './mapping';
+import { markForReverification, upsertMapping, type SourceMapping } from './mapping';
 import {
   persistObservations,
   selectHeadline,
@@ -9,6 +9,7 @@ import {
 
 vi.mock('./mapping', () => ({
   markForReverification: vi.fn(),
+  upsertMapping: vi.fn(),
 }));
 
 function observation(
@@ -29,14 +30,18 @@ function observation(
   };
 }
 
-function mapping(source: SourceMapping['source'], externalTitle: string): SourceMapping {
+function mapping(
+  source: SourceMapping['source'],
+  externalTitle: string | null,
+  externalSet: string | null = null,
+): SourceMapping {
   return {
     cardId: 'card-1',
     source,
     externalId: source === 'tcgplayer' ? '123' : null,
     externalUrl: source === 'tcgplayer' ? null : `https://example.test/${source}`,
     externalTitle,
-    externalSet: null,
+    externalSet,
     confidence: 'confirmed',
     matchedBy: 'manual',
     evidence: null,
@@ -44,7 +49,10 @@ function mapping(source: SourceMapping['source'], externalTitle: string): Source
   };
 }
 
-function persistenceDb(inserts: Record<string, unknown[]> = {}): never {
+function persistenceDb(
+  inserts: Record<string, unknown[]> = {},
+  updates: Record<string, unknown[]> = {},
+): never {
   const db = {
     from(table: string) {
       const query = {
@@ -74,7 +82,9 @@ function persistenceDb(inserts: Record<string, unknown[]> = {}): never {
         delete() {
           return query;
         },
-        update() {
+        update(payload: unknown) {
+          updates[table] ??= [];
+          updates[table].push(payload);
           return query;
         },
       };
@@ -153,13 +163,14 @@ describe('persistObservations', () => {
         {
           ...observation('tcgplayer', 7.5),
           evidence: {
-            externalTitle: 'Roronoa Zoro OP01-001',
+            externalTitle: 'Card tcgplayer OP01-001',
+            externalSet: 'Different Set',
             matchedBy: 'product-id',
           },
         },
       ],
       {},
-      [mapping('tcgplayer', 'Monkey D. Luffy OP01-001')],
+      [mapping('tcgplayer', 'Monkey D. Luffy OP01-001', 'Stored Set')],
     );
 
     expect(result.written).toBe(0);
@@ -171,8 +182,8 @@ describe('persistObservations', () => {
   });
 
   it.each([
-    ['stored title contains fetched title', 'Monkey D. Luffy OP01-001', 'OP01-001'],
-    ['fetched title contains stored title', 'OP01-001', 'Monkey D. Luffy OP01-001'],
+    ['stored title differs from fetched title', 'Monkey D. Luffy OP01-001', 'OP01-001'],
+    ['fetched title differs from stored title', 'OP01-001', 'Monkey D. Luffy OP01-001'],
   ])('writes normally when %s', async (_label, storedTitle, fetchedTitle) => {
     const inserts: Record<string, unknown[]> = {};
     const result = await persistObservations(
@@ -180,16 +191,48 @@ describe('persistObservations', () => {
       { id: 'card-1', slug: 'op-01-001', number: 'OP01-001', name: 'Card' },
       [{
         ...observation('tcgplayer', 7.5),
-        evidence: { externalTitle: fetchedTitle, matchedBy: 'product-id' },
+        evidence: { externalTitle: fetchedTitle, externalSet: ' OP01 ', matchedBy: 'product-id' },
       }],
       {},
-      [mapping('tcgplayer', storedTitle)],
+      [mapping('tcgplayer', storedTitle, 'op01')],
     );
 
     expect(result.written).toBe(1);
     expect(result.quarantined).toBe(0);
     expect(inserts.price_quarantine).toBeUndefined();
     expect(markForReverification).not.toHaveBeenCalled();
+  });
+
+  it('backfills missing mapping evidence after an accepted observation', async () => {
+    const inserts: Record<string, unknown[]> = {};
+    const existing = mapping('tcgplayer', null);
+
+    await persistObservations(
+      persistenceDb(inserts),
+      { id: 'card-1', slug: 'op-01-001', number: 'OP01-001', name: 'Card' },
+      [{
+        ...observation('tcgplayer', 7.5),
+        evidence: {
+          externalTitle: 'Fetched Card OP01-001',
+          externalSet: 'Fetched Set',
+          matchedBy: 'product-id',
+        },
+      }],
+      {},
+      [existing],
+    );
+
+    expect(upsertMapping).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        externalTitle: 'Fetched Card OP01-001',
+        externalSet: 'Fetched Set',
+        confidence: existing.confidence,
+        matchedBy: existing.matchedBy,
+        verifiedAt: expect.any(String),
+      }),
+      { force: true },
+    );
   });
 
   it('excludes quarantined observations from history, raw prices, and the headline', async () => {
@@ -372,5 +415,23 @@ describe('persistObservations', () => {
       expect.objectContaining({ source: 'tcgplayer', reason: 'ratio-vs-median' }),
       expect.objectContaining({ source: 'yuyutei', reason: 'sold-out' }),
     ]);
+  });
+
+  it('does not apply TCGPlayer card updates when that source is quarantined', async () => {
+    const inserts: Record<string, unknown[]> = {};
+    const updates: Record<string, unknown[]> = {};
+
+    await persistObservations(
+      persistenceDb(inserts, updates),
+      { id: 'card-1', slug: 'op-01-001', number: 'OP01-001', name: 'Card' },
+      [{
+        ...observation('tcgplayer', 7.5),
+        evidence: { externalTitle: 'Wrong OP01-0010', matchedBy: 'search' },
+      }],
+      { tcg_player_id: 'new-id', print_run_info: { source: 'tcgplayer' } },
+    );
+
+    expect(updates.cards?.[0]).not.toHaveProperty('tcg_player_id');
+    expect(updates.cards?.[0]).not.toHaveProperty('print_run_info');
   });
 });

@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { normalizeGrade, type CanonicalGrade } from '../pricing/grades';
 import { assertIdentity, type MatchEvidence } from './identity';
 import { checkSelfConsistency } from './guards';
-import { markForReverification, type SourceMapping } from './mapping';
+import { markForReverification, type SourceMapping, upsertMapping } from './mapping';
 
 export type PriceSource = 'tcgplayer' | 'pricecharting' | 'yuyutei' | 'cardrush' | 'snkrdunk';
 export type PriceKind = 'market' | 'lowest_listing' | 'retail_sell' | 'sold_guide' | 'marketplace_ask';
@@ -21,6 +21,11 @@ export const SOURCE_CURRENCY: Record<PriceSource, 'USD' | 'JPY'> = {
   yuyutei: 'JPY',
   cardrush: 'JPY',
   snkrdunk: 'USD',
+};
+
+export const SOURCE_SCOPED_UPDATE_COLUMNS: Record<string, PriceSource> = {
+  tcg_player_id: 'tcgplayer',
+  print_run_info: 'tcgplayer',
 };
 
 export interface PriceObservation {
@@ -160,26 +165,19 @@ function quarantineEvidence(
   };
 }
 
-function normalizeTitleForDrift(value: string): string {
+function normalizeSetForDrift(value: string): string {
   return value.toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
-function hasTitleDrift(
+function hasSetDrift(
   observation: PriceObservation,
   mapping: SourceMapping | undefined,
 ): boolean {
-  const storedTitle = mapping?.externalTitle?.trim();
-  const fetchedTitle = observation.evidence?.externalTitle?.trim();
-  if (!storedTitle || !fetchedTitle) return false;
+  const storedSet = mapping?.externalSet?.trim();
+  const fetchedSet = observation.evidence?.externalSet?.trim();
+  if (!storedSet || !fetchedSet) return false;
 
-  const normalizedStoredTitle = normalizeTitleForDrift(storedTitle);
-  const normalizedFetchedTitle = normalizeTitleForDrift(fetchedTitle);
-  return Boolean(
-    normalizedStoredTitle
-    && normalizedFetchedTitle
-    && !normalizedStoredTitle.includes(normalizedFetchedTitle)
-    && !normalizedFetchedTitle.includes(normalizedStoredTitle),
-  );
+  return normalizeSetForDrift(storedSet) !== normalizeSetForDrift(fetchedSet);
 }
 
 export async function persistObservations(
@@ -200,12 +198,12 @@ export async function persistObservations(
   const identityApprovedObservations = obs.filter((observation, index) => (
     identityVerdicts[index]?.ok === true
     && observation.evidence.inStock !== false
-    && !hasTitleDrift(observation, mappingsBySource.get(observation.source))
+    && !hasSetDrift(observation, mappingsBySource.get(observation.source))
   ));
 
   for (const [index, observation] of obs.entries()) {
     const mapping = mappingsBySource.get(observation.source);
-    if (hasTitleDrift(observation, mapping)) {
+    if (hasSetDrift(observation, mapping)) {
       quarantineRows.push({
         card_id: card.id,
         source: observation.source,
@@ -216,7 +214,7 @@ export async function persistObservations(
         price_kind: SOURCE_KIND[observation.source],
         reason: 'title-drift',
         evidence: quarantineEvidence(card, observation, {
-          storedExternalTitle: mapping?.externalTitle,
+          storedExternalSet: mapping?.externalSet,
         }),
       });
       try {
@@ -273,6 +271,19 @@ export async function persistObservations(
         }),
       });
       continue;
+    }
+
+    if (mapping && mapping.externalTitle === null) {
+      try {
+        await upsertMapping(db, {
+          ...mapping,
+          externalTitle: observation.evidence.externalTitle ?? null,
+          externalSet: observation.evidence.externalSet ?? mapping.externalSet,
+          verifiedAt: new Date().toISOString(),
+        }, { force: true });
+      } catch (error) {
+        console.error(`[price-engine] ${card.slug}: failed to backfill ${observation.source} mapping evidence`, error);
+      }
     }
 
     acceptedObservations.push(observation);
@@ -346,10 +357,18 @@ export async function persistObservations(
     }
   }
 
+  const acceptedSources = new Set(acceptedObservations.map((observation) => observation.source));
+  const scopedExtraUpdates = Object.fromEntries(
+    Object.entries(extraUpdates).filter(([column]) => {
+      const source = SOURCE_SCOPED_UPDATE_COLUMNS[column];
+      return !source || acceptedSources.has(source);
+    }),
+  );
+
   const { error: cardError } = await db
     .from('cards')
     .update({
-      ...extraUpdates,
+      ...scopedExtraUpdates,
       price_cache_ttl: headline ? headline.cents : null,
       last_price_fetch: recordedAt,
     })

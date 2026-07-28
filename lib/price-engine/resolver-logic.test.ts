@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { MatchEvidence } from './identity';
-import { classifyCandidate, extractQualifiers } from './resolver-logic';
+import {
+  classifyCandidate,
+  extractQualifiers,
+  selectPriceChartingCandidate,
+} from './resolver-logic';
 
 const card = {
   number: 'OP-EB01-041',
@@ -93,6 +97,99 @@ describe('classifyCandidate', () => {
     })).toEqual({
       action: 'skip',
       reason: expect.stringMatching(/^number-mismatch:/),
+    });
+  });
+
+  it('skips an One Piece card matched to a Dragon Ball catalogue', () => {
+    expect(classifyCandidate({
+      card,
+      evidence: evidence({
+        externalUrl: 'https://www.pricecharting.com/game/dragon-ball-super-fusion-world/uta-op-eb01-041',
+      }),
+      qualifierMap: new Map(),
+      source: 'pricecharting',
+    })).toEqual({ action: 'skip', reason: 'game-mismatch' });
+  });
+
+  it('skips a Dragon Ball card matched to an One Piece catalogue', () => {
+    expect(classifyCandidate({
+      card: { ...card, slug: 'dbfw-fb01-001', number: 'FB01-001' },
+      evidence: evidence({
+        externalTitle: 'Son Goku FB01-001',
+        externalUrl: 'https://www.pricecharting.com/game/one-piece-card-game/son-goku-fb01-001',
+      }),
+      qualifierMap: new Map(),
+      source: 'pricecharting',
+    })).toEqual({ action: 'skip', reason: 'game-mismatch' });
+  });
+
+  it('treats a sold-out identity match as mappable', () => {
+    expect(classifyCandidate({
+      card,
+      evidence: evidence({ inStock: false }),
+      qualifierMap: new Map(),
+      source: 'pricecharting',
+    })).toEqual({
+      action: 'accept',
+      reason: 'accepted',
+      externalSet: 'one-piece-card-game',
+    });
+  });
+
+  it('selects the first accepted PriceCharting row before an earlier rejection', () => {
+    const selection = selectPriceChartingCandidate({
+      card,
+      candidates: [
+        {
+          title: 'Uta [SP Gold] OP-EB01-041',
+          url: 'https://www.pricecharting.com/game/one-piece-card-game/uta-sp-op-eb01-041',
+        },
+        {
+          title: 'Uta OP-EB01-041',
+          url: 'https://www.pricecharting.com/game/one-piece-card-game/uta-op-eb01-041',
+        },
+      ],
+      qualifierMap: new Map([['sp gold', 'distinct_printing']]),
+    });
+
+    expect(selection.action).toBe('accept');
+    expect(selection.candidate?.title).toBe('Uta OP-EB01-041');
+  });
+
+  it('prefers the first distinct-printing rejection when no row is accepted', () => {
+    const selection = selectPriceChartingCandidate({
+      card,
+      candidates: [
+        {
+          title: 'Uta [Foil] OP-EB01-041',
+          url: 'https://www.pricecharting.com/game/one-piece-card-game/uta-foil-op-eb01-041',
+        },
+        {
+          title: 'Uta [SP Gold] OP-EB01-041',
+          url: 'https://www.pricecharting.com/game/one-piece-card-game/uta-sp-op-eb01-041',
+        },
+      ],
+      qualifierMap: new Map([['sp gold', 'distinct_printing']]),
+    });
+
+    expect(selection.action).toBe('reject');
+    expect(selection.candidate?.title).toBe('Uta [SP Gold] OP-EB01-041');
+  });
+
+  it('returns the first unknown qualifier when no row is mappable', () => {
+    const selection = selectPriceChartingCandidate({
+      card,
+      candidates: [{
+        title: 'Uta [Foil] OP-EB01-041',
+        url: 'https://www.pricecharting.com/game/one-piece-card-game/uta-foil-op-eb01-041',
+      }],
+      qualifierMap: new Map(),
+    });
+
+    expect(selection).toMatchObject({
+      action: 'skip',
+      reason: 'unknown-qualifier:foil',
+      unknownQualifierReasons: ['unknown-qualifier:foil'],
     });
   });
 });

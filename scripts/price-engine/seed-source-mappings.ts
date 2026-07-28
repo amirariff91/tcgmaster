@@ -41,6 +41,11 @@ type SeededFrom =
 
 type CountKey = `${PriceSource}|${MatchedBy}|${MappingConfidence}`;
 
+type ExistingPairs = {
+  pairs: Set<string>;
+  manualPairs: Set<string>;
+};
+
 function readDictionary(path: string): Record<string, number> {
   const parsed = JSON.parse(readFileSync(path, 'utf8')) as Record<string, unknown>;
   const dictionary: Record<string, number> = {};
@@ -108,23 +113,33 @@ async function loadAllCards(db: ReturnType<typeof createScraperClient>): Promise
 
 async function loadExistingPairs(
   db: ReturnType<typeof createScraperClient>,
-): Promise<Set<string>> {
+): Promise<ExistingPairs> {
   const pairs = new Set<string>();
+  const manualPairs = new Set<string>();
 
   for (let offset = 0; ; offset += PAGE_SIZE) {
     const { data, error } = await db
       .from('card_source_mapping')
-      .select('card_id, source')
+      .select('card_id, source, matched_by, confidence')
       .order('card_id', { ascending: true })
       .range(offset, offset + PAGE_SIZE - 1);
 
     if (error) throw new Error(`Loading existing source mappings: ${error.message}`);
-    const page = (data ?? []) as { card_id: string; source: PriceSource }[];
-    for (const row of page) pairs.add(pairKey(row.card_id, row.source));
+    const page = (data ?? []) as {
+      card_id: string;
+      source: PriceSource;
+      matched_by: MatchedBy;
+      confidence: MappingConfidence;
+    }[];
+    for (const row of page) {
+      const key = pairKey(row.card_id, row.source);
+      pairs.add(key);
+      if (row.matched_by === 'manual') manualPairs.add(key);
+    }
     if (page.length < PAGE_SIZE) break;
   }
 
-  return pairs;
+  return { pairs, manualPairs };
 }
 
 async function writeRows(
@@ -151,6 +166,9 @@ function report(
   rows: SeedRow[],
   orphanedSlugs: Set<string>,
   skippedSuspectUrl: number,
+  skippedVariantCollision: number,
+  skippedJaDictionary: number,
+  skippedManual: number,
   dryRun: boolean,
 ): void {
   const counts = new Map<CountKey, number>();
@@ -168,6 +186,9 @@ function report(
   console.log(`orphaned\t${orphanedSlugs.size}`);
   for (const slug of [...orphanedSlugs].sort()) console.log(`ORPHANED\t${slug}`);
   console.log(`skipped-suspect-url\t${skippedSuspectUrl}`);
+  console.log(`skipped-variant-collision\t${skippedVariantCollision}`);
+  console.log(`skipped-ja-dictionary\t${skippedJaDictionary}`);
+  console.log(`skipped-manual\t${skippedManual}`);
 }
 
 async function main(): Promise<void> {
@@ -176,22 +197,37 @@ async function main(): Promise<void> {
   const originalDictionary = readDictionary(resolve(projectRoot, 'lib/price-engine/mapping-dictionary.json'));
   const expandedDictionary = readDictionary(resolve(projectRoot, 'scripts/price-engine/mapping-dictionary-expanded.json'));
   const db = createScraperClient();
-  const [cards, existingPairs] = await Promise.all([
+  const [cards, existing] = await Promise.all([
     loadAllCards(db),
     loadExistingPairs(db),
   ]);
 
   const cardsBySlug = new Map(cards.map((card) => [card.slug.toLowerCase(), card]));
-  const plannedPairs = new Set(existingPairs);
+  const plannedPairs = new Set(existing.pairs);
   const confirmedRows: SeedRow[] = [];
   const derivedRows: SeedRow[] = [];
   const orphanedSlugs = new Set<string>();
+  const combinedDictionary = { ...expandedDictionary, ...originalDictionary };
   let skippedSuspectUrl = 0;
+  let skippedVariantCollision = 0;
+  let skippedJaDictionary = 0;
+  let skippedManual = 0;
 
   for (const [slug, productId] of Object.entries(originalDictionary)) {
+    if (slug.endsWith('-ja')) {
+      skippedJaDictionary++;
+      continue;
+    }
+
     const card = cardsBySlug.get(slug);
     if (!card) {
       orphanedSlugs.add(slug);
+      continue;
+    }
+
+    const pair = pairKey(card.id, 'tcgplayer');
+    if (existing.manualPairs.has(pair)) {
+      skippedManual++;
       continue;
     }
 
@@ -203,10 +239,22 @@ async function main(): Promise<void> {
       'dictionary',
       String(productId),
     ));
-    plannedPairs.add(pairKey(card.id, 'tcgplayer'));
+    plannedPairs.add(pair);
   }
 
   for (const [slug, productId] of Object.entries(expandedDictionary)) {
+    if (slug.endsWith('-ja')) {
+      skippedJaDictionary++;
+      continue;
+    }
+
+    const variantBaseSlug = slug.replace(/[_-]p\d+$/i, '');
+    const baseProductId = combinedDictionary[variantBaseSlug];
+    if (baseProductId !== undefined && productId === baseProductId) {
+      skippedVariantCollision++;
+      continue;
+    }
+
     const card = cardsBySlug.get(slug);
     if (!card) {
       orphanedSlugs.add(slug);
@@ -266,7 +314,15 @@ async function main(): Promise<void> {
     }
   }
 
-  report([...confirmedRows, ...derivedRows], orphanedSlugs, skippedSuspectUrl, dryRun);
+  report(
+    [...confirmedRows, ...derivedRows],
+    orphanedSlugs,
+    skippedSuspectUrl,
+    skippedVariantCollision,
+    skippedJaDictionary,
+    skippedManual,
+    dryRun,
+  );
   if (dryRun) return;
 
   await writeRows(db, confirmedRows, false);
