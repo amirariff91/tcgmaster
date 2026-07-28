@@ -1,6 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
 import { fetchEnglishPrice } from '../lib/price-engine/tcgcsv';
-import { fetchSnkrdunkPrice } from '../lib/price-engine/snkrdunk';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,7 +17,7 @@ async function run() {
   while (hasMore) {
     const { data: cards, error } = await supabase
       .from('cards')
-      .select('id, slug, number, language, tcg_player_id, name, snkrdunk_url')
+      .select('id, slug, number, language, tcg_player_id, name')
       .order('id')
       .range(page * pageSize, (page + 1) * pageSize - 1);
 
@@ -46,31 +45,10 @@ async function run() {
             recorded_at: now
           });
         }
-      } else if (card.language === 'ja') {
-        // Snkrdunk is slightly heavier (Puppeteer), so we add a delay
-        const result = await fetchSnkrdunkPrice(card.snkrdunk_url || card.number);
-        if (result) {
-          if (result.price) {
-            historyInserts.push({
-              card_id: card.id,
-              price: result.price,
-              source: 'snkrdunk',
-              grade: 'raw',
-              recorded_at: now
-            });
-          }
-          if (result.gradedPrice) {
-            historyInserts.push({
-              card_id: card.id,
-              price: result.gradedPrice,
-              source: 'snkrdunk',
-              grade: 'psa10',
-              recorded_at: now
-            });
-          }
-        }
-        await new Promise(r => setTimeout(r, 2000)); // Respect Snkrdunk rate limits
       }
+      // Japanese cards intentionally skipped: SnkrDunk was the JA snapshot source and it
+      // never verified product identity, so its observations are untrustworthy. JA cards
+      // are covered by the queue workers (Yuyutei/PriceCharting).
     }
 
     if (historyInserts.length > 0) {
