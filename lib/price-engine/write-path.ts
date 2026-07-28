@@ -35,6 +35,7 @@ export interface PriceObservation {
   priceNative: number | null;
   currency: 'USD' | 'JPY';
   evidence: MatchEvidence;
+  recordedAt?: string;
 }
 
 export interface CardRef {
@@ -92,6 +93,59 @@ export interface GradedPrice {
 
 export type GradedPrices = Record<string, GradedPrice>;
 
+export interface CurrentSourcePrice {
+  usd: number;
+  native: number | null;
+  currency: 'USD' | 'JPY';
+  kind: PriceKind;
+  recorded_at: string;
+}
+
+function isPriceSource(value: string): value is PriceSource {
+  return Object.prototype.hasOwnProperty.call(SOURCE_KIND, value);
+}
+
+export function selectHeadlineFromSourcePrices(
+  sourcePrices: Record<string, CurrentSourcePrice>,
+): Headline | null {
+  const candidates = Object.entries(sourcePrices).flatMap(([source, price]) => {
+    if (!isPriceSource(source) || !Number.isFinite(price.usd)) return [];
+    if (!HEADLINE_KIND_PREFERENCE.includes(price.kind)) return [];
+
+    return [{ source, usd: price.usd, kind: price.kind }];
+  });
+
+  for (const kind of HEADLINE_KIND_PREFERENCE) {
+    const kindCandidates = candidates.filter((candidate) => candidate.kind === kind);
+    if (kindCandidates.length === 0) continue;
+
+    const winner = kindCandidates.reduce((lowest, candidate) => (
+      candidate.usd < lowest.usd ? candidate : lowest
+    ));
+
+    return {
+      cents: Math.round(winner.usd * 100),
+      source: winner.source,
+      kind,
+      grade: 'raw',
+    };
+  }
+
+  return null;
+}
+
+export interface CurrentPriceRow {
+  card_id: string;
+  source_prices: Record<string, CurrentSourcePrice>;
+  graded_prices: GradedPrices;
+  headline_cents: number | null;
+  headline_source: PriceSource | null;
+  headline_kind: PriceKind | null;
+  headline_currency: 'USD' | 'JPY' | null;
+  headline_grade: CanonicalGrade | null;
+  computed_at: string;
+}
+
 export function shapeGradedPrices(obs: PriceObservation[]): GradedPrices {
   const grouped = new Map<CanonicalGrade, PriceObservation[]>();
 
@@ -115,6 +169,59 @@ export function shapeGradedPrices(obs: PriceObservation[]): GradedPrices {
       return [grade, { average, sources }];
     }),
   );
+}
+
+function mergeGradedPrices(existing: GradedPrices, fresh: GradedPrices): GradedPrices {
+  const merged: GradedPrices = { ...existing };
+
+  for (const [grade, freshGrade] of Object.entries(fresh)) {
+    const existingGrade = existing[grade];
+    const sources = {
+      ...(existingGrade?.sources ?? {}),
+      ...freshGrade.sources,
+    };
+    const values = Object.values(sources);
+
+    merged[grade] = {
+      average: values.reduce((sum, value) => sum + value, 0) / values.length,
+      sources,
+    };
+  }
+
+  return merged;
+}
+
+export function shapeCurrentRow(
+  cardId: string,
+  acceptedObs: PriceObservation[],
+  headline: Headline | null,
+  recordedAt: string,
+): CurrentPriceRow {
+  const sourcePrices: Record<string, CurrentSourcePrice> = {};
+
+  for (const observation of acceptedObs) {
+    if (observation.grade !== 'raw' || !Number.isFinite(observation.priceUsd)) continue;
+
+    sourcePrices[observation.source] = {
+      usd: observation.priceUsd,
+      native: observation.priceNative,
+      currency: observation.currency,
+      kind: SOURCE_KIND[observation.source],
+      recorded_at: observation.recordedAt ?? recordedAt,
+    };
+  }
+
+  return {
+    card_id: cardId,
+    source_prices: sourcePrices,
+    graded_prices: shapeGradedPrices(acceptedObs),
+    headline_cents: headline?.cents ?? null,
+    headline_source: headline?.source ?? null,
+    headline_kind: headline?.kind ?? null,
+    headline_currency: headline ? SOURCE_CURRENCY[headline.source] : null,
+    headline_grade: headline?.grade ?? null,
+    computed_at: recordedAt,
+  };
 }
 
 function writeFailure(card: CardRef, operation: string, error: unknown): never {
@@ -289,7 +396,8 @@ export async function persistObservations(
     acceptedObservations.push(observation);
   }
 
-  const headline = selectHeadline(acceptedObservations);
+  const batchHeadline = selectHeadline(acceptedObservations);
+  const freshCurrentRow = shapeCurrentRow(card.id, acceptedObservations, batchHeadline, recordedAt);
 
   let historyRows = acceptedObservations.map((observation) => ({
     card_id: card.id,
@@ -312,7 +420,7 @@ export async function persistObservations(
   const cachePayload = {
     card_id: card.id,
     variant_id: null,
-    raw_prices: shapeRawPrices(acceptedObservations, headline),
+    raw_prices: shapeRawPrices(acceptedObservations, batchHeadline),
     graded_prices: shapeGradedPrices(acceptedObservations),
     fetched_at: recordedAt,
     expires_at: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString(),
@@ -365,11 +473,43 @@ export async function persistObservations(
     }),
   );
 
+  const { data: existingCurrent, error: currentReadError } = await db
+    .from('card_price_current')
+    .select('source_prices, graded_prices')
+    .eq('card_id', card.id)
+    .maybeSingle();
+  throwIfError(card, 'card_price_current select', currentReadError);
+
+  const existingCurrentRow = existingCurrent as Pick<CurrentPriceRow, 'source_prices' | 'graded_prices'> | null;
+  const mergedSourcePrices = {
+    ...(existingCurrentRow?.source_prices ?? {}),
+    ...freshCurrentRow.source_prices,
+  };
+  const mergedGradedPrices = mergeGradedPrices(
+    existingCurrentRow?.graded_prices ?? {},
+    freshCurrentRow.graded_prices,
+  );
+  const headline = selectHeadlineFromSourcePrices(mergedSourcePrices);
+  const currentRow: CurrentPriceRow = {
+    ...freshCurrentRow,
+    source_prices: mergedSourcePrices,
+    graded_prices: mergedGradedPrices,
+    headline_cents: headline?.cents ?? null,
+    headline_source: headline?.source ?? null,
+    headline_kind: headline?.kind ?? null,
+    headline_currency: headline ? SOURCE_CURRENCY[headline.source] : null,
+    headline_grade: headline?.grade ?? null,
+  };
+
+  const { error: currentError } = await db
+    .from('card_price_current')
+    .upsert(currentRow, { onConflict: 'card_id' });
+  throwIfError(card, 'card_price_current upsert', currentError);
+
   const { error: cardError } = await db
     .from('cards')
     .update({
       ...scopedExtraUpdates,
-      price_cache_ttl: headline ? headline.cents : null,
       last_price_fetch: recordedAt,
     })
     .eq('id', card.id);
