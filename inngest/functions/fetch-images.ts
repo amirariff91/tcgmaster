@@ -152,6 +152,13 @@ export const batchFetchImages = inngest.createFunction(
   }
 );
 
+// Automated Pokemon image fetching is disabled: cards carry no Pokemon TCG API
+// id (the old poke_tcg_id column never existed in the DB), so scheduled runs
+// would fall back to name-only lookups that can attach the wrong card's artwork
+// and can never resolve sets missing from SET_ID_MAP. Manual images/fetch-card
+// and images/batch-fetch events remain available for deliberate use.
+const AUTOMATED_IMAGE_FETCH_DISABLED = true;
+
 /**
  * Scheduled function to fetch Pokemon card images
  * Runs every 6 hours
@@ -163,6 +170,10 @@ export const scheduledPokemonImageFetch = inngest.createFunction(
   },
   { cron: '0 */6 * * *' }, // Every 6 hours
   async ({ step }) => {
+    if (AUTOMATED_IMAGE_FETCH_DISABLED) {
+      return { triggered: false, disabled: true, reason: 'no per-card Pokemon TCG API id in schema' };
+    }
+
     // Trigger batch fetch for Pokemon cards
     await step.sendEvent('trigger-pokemon-batch', {
       name: 'images/batch-fetch',
@@ -187,6 +198,12 @@ export const retryFailedImageFetches = inngest.createFunction(
   },
   { cron: '0 4 * * *' }, // Daily at 4 AM
   async ({ step }) => {
+    if (AUTOMATED_IMAGE_FETCH_DISABLED) {
+      // Without a stable per-card source id, the name-based retry would requeue
+      // the same permanently-unresolvable cards every day.
+      return { retried: 0, disabled: true, reason: 'no per-card Pokemon TCG API id in schema' };
+    }
+
     const supabase = createServerClient();
 
     // Define the card type for this query
