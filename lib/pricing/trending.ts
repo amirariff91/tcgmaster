@@ -380,7 +380,7 @@ export async function getTrendingCards(
       setSlug: set?.slug || '',
       slug: card?.slug || '',
       imageUrl: card?.local_image_url || card?.image_url || null,
-      currentPrice: null, // Would need to join price_cache
+      currentPrice: null, // Would need to join card_price_current
       priceChange24h: row.price_change_24h,
       volume24h: row.volume_24h,
       searchCount24h: row.search_count_24h,
