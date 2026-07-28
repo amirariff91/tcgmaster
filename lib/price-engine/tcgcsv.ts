@@ -1,11 +1,37 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { parseCardNumber } from './card-number';
+import type { MatchEvidence } from './identity';
+
 const DEFAULT_CATEGORY_ID = 68; // One Piece
-const DBFW_CATEGORY_ID = 80;
 
-let cachedGroups: Record<number, any[]> = {};
-const cachedProducts: Record<number, any[]> = {};
-const cachedPrices: Record<number, any[]> = {};
+interface TcgExtendedData {
+  name: string;
+  value: string;
+}
 
-async function getGroups(categoryId: number) {
+interface TcgProduct {
+  productId: number;
+  name: string;
+  extendedData?: TcgExtendedData[];
+}
+
+interface TcgGroup {
+  groupId: number;
+  name: string;
+  abbreviation?: string;
+}
+
+interface TcgPrice {
+  productId: number;
+  marketPrice?: number;
+}
+
+const cachedGroups: Record<number, TcgGroup[]> = {};
+const cachedProducts: Record<number, TcgProduct[]> = {};
+const cachedPrices: Record<number, TcgPrice[]> = {};
+
+async function getGroups(categoryId: number): Promise<TcgGroup[]> {
   if (cachedGroups[categoryId]) return cachedGroups[categoryId];
   const res = await fetch(`https://tcgcsv.com/tcgplayer/${categoryId}/groups`, {
     headers: { 'User-Agent': 'curl/8.4.0' }
@@ -15,7 +41,7 @@ async function getGroups(categoryId: number) {
   return cachedGroups[categoryId];
 }
 
-async function getProducts(categoryId: number, groupId: number) {
+async function getProducts(categoryId: number, groupId: number): Promise<TcgProduct[]> {
   if (cachedProducts[groupId]) return cachedProducts[groupId];
   const res = await fetch(`https://tcgcsv.com/tcgplayer/${categoryId}/${groupId}/products`, {
     headers: { 'User-Agent': 'curl/8.4.0' }
@@ -25,7 +51,7 @@ async function getProducts(categoryId: number, groupId: number) {
   return cachedProducts[groupId];
 }
 
-async function getPrices(categoryId: number, groupId: number) {
+async function getPrices(categoryId: number, groupId: number): Promise<TcgPrice[]> {
   if (cachedPrices[groupId]) return cachedPrices[groupId];
   const res = await fetch(`https://tcgcsv.com/tcgplayer/${categoryId}/${groupId}/prices`, {
     headers: { 'User-Agent': 'curl/8.4.0' }
@@ -35,15 +61,26 @@ async function getPrices(categoryId: number, groupId: number) {
   return cachedPrices[groupId];
 }
 
-function matchVariant(products: any[], baseNumber: string, suffix: string) {
+function matchVariant(products: TcgProduct[], baseNumber: string, suffix: string): TcgProduct | null {
   // First, filter by the card number in extendedData
   const matchedNumber = products.filter(p => {
-    const numData = p.extendedData?.find((d: any) => d.name === 'Number');
+    const numData = p.extendedData?.find((d) => d.name === 'Number');
     return numData && numData.value === baseNumber;
   });
 
   if (matchedNumber.length === 0) return null;
-  if (matchedNumber.length === 1 && !suffix) return matchedNumber[0]; // Only auto-match base cards
+  if (matchedNumber.length === 1 && !suffix) {
+    const text = matchedNumber[0].name.toLowerCase();
+    const isBasePrinting = !text.includes('alternate art')
+      && !text.includes('parallel')
+      && !text.includes('manga')
+      && !text.includes('flagship')
+      && !text.includes('serial')
+      && !text.includes('treasure')
+      && !text.includes('sp')
+      && !text.includes('wanted poster');
+    return isBasePrinting ? matchedNumber[0] : null;
+  }
 
   // If there are multiple versions or it's a variant (has suffix), we REFUSE to guess.
   // We must rely strictly on the explicit mapping-dictionary.json for variants
@@ -65,7 +102,31 @@ function matchVariant(products: any[], baseNumber: string, suffix: string) {
   return selected;
 }
 
-export async function fetchEnglishPrice(query: string, setName?: string, existingTcgProductId?: string, categoryId: number = DEFAULT_CATEGORY_ID): Promise<{ price: number, tcgProductId: number, tcgProductName: string } | null> {
+export interface EnglishPriceResult {
+  price: number;
+  tcgProductId: number;
+  tcgProductName: string;
+  evidence: MatchEvidence;
+}
+
+function productEvidence(
+  product: TcgProduct,
+  matchedBy: MatchEvidence['matchedBy'],
+  externalSet?: string,
+): MatchEvidence {
+  const numberData = product.extendedData?.find((data) => data.name === 'Number');
+  const productNumber = numberData?.value ? String(numberData.value) : '';
+  return {
+    externalId: product.productId ? String(product.productId) : undefined,
+    // TCGCSV exposes the card number in extendedData rather than its URL. Keep
+    // the scraped name and that identity field together in the evidence title.
+    externalTitle: [product.name, productNumber].filter(Boolean).join(' '),
+    externalSet,
+    matchedBy,
+  };
+}
+
+export async function fetchEnglishPrice(query: string, setName?: string, existingTcgProductId?: string, categoryId: number = DEFAULT_CATEGORY_ID): Promise<EnglishPriceResult | null> {
   try {
     const groups = await getGroups(categoryId);
 
@@ -73,15 +134,15 @@ export async function fetchEnglishPrice(query: string, setName?: string, existin
     let mappedTcgId = existingTcgProductId;
     if (!mappedTcgId) {
       try {
-        const dictPath = require('path').resolve(process.cwd(), 'lib/price-engine/mapping-dictionary.json');
-        const dict = JSON.parse(require('fs').readFileSync(dictPath, 'utf8'));
+        const dictPath = resolve(process.cwd(), 'lib/price-engine/mapping-dictionary.json');
+        const dict = JSON.parse(readFileSync(dictPath, 'utf8')) as Record<string, number>;
         const slugKey = query.toLowerCase().startsWith('op-') ? query.toLowerCase() : `op-${query.toLowerCase()}`;
         if (dict[query]) {
           mappedTcgId = String(dict[query]);
         } else if (dict[slugKey]) {
           mappedTcgId = String(dict[slugKey]);
         }
-      } catch(e) {
+      } catch {
         // ignore if not exists
       }
     }
@@ -91,8 +152,9 @@ export async function fetchEnglishPrice(query: string, setName?: string, existin
       const numericId = parseInt(mappedTcgId, 10);
       if (!isNaN(numericId)) {
         // If we know the ID, we don't know the exact group, but we can search products?
-        let foundGroupId = null;
-        let productMatch = null;
+        let foundGroupId: number | null = null;
+        let productMatch: TcgProduct | null = null;
+        let productGroupName: string | undefined;
         if (groups) {
           for (const g of groups) {
              const products = await getProducts(categoryId, g.groupId);
@@ -100,6 +162,7 @@ export async function fetchEnglishPrice(query: string, setName?: string, existin
              if (p) {
                foundGroupId = g.groupId;
                productMatch = p;
+               productGroupName = g.name;
                break;
              }
           }
@@ -108,20 +171,27 @@ export async function fetchEnglishPrice(query: string, setName?: string, existin
           const prices = await getPrices(categoryId, foundGroupId);
           const priceData = prices.find(p => p.productId === numericId);
           if (priceData && priceData.marketPrice) {
-            return { price: priceData.marketPrice, tcgProductId: numericId, tcgProductName: productMatch.name };
+            return {
+              price: priceData.marketPrice,
+              tcgProductId: numericId,
+              tcgProductName: productMatch.name,
+              evidence: productEvidence(
+                productMatch,
+                existingTcgProductId ? 'product-id' : 'dictionary',
+                productGroupName,
+              ),
+            };
           }
           return null;
         }
       }
     }
 
-    let suffix = '';
-    let baseQuery = query;
-    if (query.includes('_')) {
-      [baseQuery, suffix] = query.split('_');
-    }
+    const parsedQuery = parseCardNumber(query);
+    const baseQuery = parsedQuery.base;
+    const suffix = parsedQuery.suffix ?? '';
     
-    let groupMatch = null;
+    let groupMatch: TcgGroup | null = null;
 
     if (setName) {
       const GROUP_ALIASES: Record<string, string> = {
@@ -132,19 +202,19 @@ export async function fetchEnglishPrice(query: string, setName?: string, existin
       const cleanSetName = setName.split(':').pop()?.trim().toLowerCase() || setName.toLowerCase();
       const aliasedName = GROUP_ALIASES[cleanSetName] || cleanSetName;
       
-      groupMatch = groups?.find(g => aliasedName.includes(g.name.toLowerCase()) || g.name.toLowerCase().includes(aliasedName));
+      groupMatch = groups.find(g => aliasedName.includes(g.name.toLowerCase()) || g.name.toLowerCase().includes(aliasedName)) ?? null;
     }
 
     if (!groupMatch) {
       const prefixMatch = baseQuery.match(/^([A-Z]+[0-9]+)-/);
       if (prefixMatch) {
         const abbr = prefixMatch[1];
-        groupMatch = groups?.find(g => g.abbreviation === abbr || g.abbreviation?.includes(abbr));
+        groupMatch = groups.find(g => g.abbreviation === abbr || g.abbreviation?.includes(abbr)) ?? null;
       }
     }
 
-    let product = null;
-    let foundGroupId = null;
+    let product: TcgProduct | null = null;
+    let foundGroupId: number | null = null;
 
     if (groupMatch) {
       const products = await getProducts(categoryId, groupMatch.groupId);
@@ -167,7 +237,12 @@ export async function fetchEnglishPrice(query: string, setName?: string, existin
     const priceData = prices.find(p => p.productId === product.productId);
 
     if (priceData && priceData.marketPrice) {
-      return { price: priceData.marketPrice, tcgProductId: product.productId, tcgProductName: product.name };
+      return {
+        price: priceData.marketPrice,
+        tcgProductId: product.productId,
+        tcgProductName: product.name,
+        evidence: productEvidence(product, 'search', groupMatch?.name),
+      };
     }
 
   } catch (err) {

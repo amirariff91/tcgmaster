@@ -1,6 +1,8 @@
 import * as cheerio from 'cheerio';
+import type { Element } from 'domhandler';
 import { getSharedBrowser } from './browser';
 import { waitForSourceRateLimit } from './rate-limiter';
+import type { MatchEvidence } from './identity';
 
 /** Strip punctuation/spacing so "OP16-067" and "Tsuru OP16-067" compare cleanly. */
 function normalizeToken(value: string): string {
@@ -43,7 +45,13 @@ function parsePrice(text: string): number | undefined {
 }
 
 // Returns both raw and PSA 10 graded prices
-export async function fetchPriceChartingPrice(query: string): Promise<{ price: number; gradedPrice?: number } | null> {
+export interface PriceChartingResult {
+  price: number;
+  gradedPrice?: number;
+  evidence: MatchEvidence;
+}
+
+export async function fetchPriceChartingPrice(query: string): Promise<PriceChartingResult | null> {
   let page;
 
   // The number is the leading token; callers may append a qualifier
@@ -73,7 +81,7 @@ export async function fetchPriceChartingPrice(query: string): Promise<{ price: n
     const html = await page.content();
     const $ = cheerio.load(html);
     
-    let selectedResult: any = null;
+    let selectedResult: Element | null = null;
     const results = $('table#games_table tbody tr');
 
     // PriceCharting's search is fuzzy, and matching it by keyword guesswork put
@@ -112,7 +120,16 @@ export async function fetchPriceChartingPrice(query: string): Promise<{ price: n
       if (isQualifiedPrinting(heading)) return null;
 
       const productPrice = parsePrice($('#used_price').find('.price').first().text());
-      return productPrice === undefined ? null : { price: productPrice };
+      const externalSet = $('.console, .platform, .system, .set').first().text().trim() || undefined;
+      return productPrice === undefined ? null : {
+        price: productPrice,
+        evidence: {
+          externalTitle: heading,
+          externalUrl: page.url(),
+          externalSet,
+          matchedBy: 'search',
+        },
+      };
     }
 
     results.each((_, el) => {
@@ -151,7 +168,20 @@ export async function fetchPriceChartingPrice(query: string): Promise<{ price: n
     }
 
     if (rawPrice !== undefined) {
-      return { price: rawPrice, gradedPrice };
+      const rawTitle = $(selectedResult).find('td.title a').text().trim();
+      const href = $(selectedResult).find('td.title a').attr('href');
+      const externalSet = $(selectedResult).find('td.console, td.platform, td.system, td.set').text().trim() || undefined;
+      const externalUrl = href ? new URL(href, 'https://www.pricecharting.com').toString() : undefined;
+      return {
+        price: rawPrice,
+        gradedPrice,
+        evidence: {
+          externalTitle: rawTitle,
+          externalUrl,
+          externalSet,
+          matchedBy: 'search',
+        },
+      };
     }
 
   } catch (err) {

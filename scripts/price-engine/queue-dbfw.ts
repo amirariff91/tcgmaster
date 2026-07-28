@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { fetchCardrushPrice } from '../../lib/price-engine/cardrush';
 import { fetchPriceChartingPrice } from '../../lib/price-engine/pricecharting';
+import { assertIdentity } from '../../lib/price-engine/identity';
 import {
   SOURCE_CURRENCY,
   type PriceObservation,
@@ -24,10 +25,12 @@ export const fetchCard = async (card: WorkerCard): Promise<{
       priceUsd: cardrushResult.price,
       priceNative: null,
       currency: SOURCE_CURRENCY.cardrush,
+      evidence: cardrushResult.evidence,
     });
     console.log(`[DBFW] Cardrush: $${cardrushResult.price}`);
 
-    if (cardrushResult.url && cardrushResult.url !== card.cardrush_url) {
+    const identity = assertIdentity({ number: card.number, name: card.name }, cardrushResult.evidence);
+    if (identity.ok && cardrushResult.url && cardrushResult.url !== card.cardrush_url) {
       cardUpdates.cardrush_url = cardrushResult.url;
     }
   }
@@ -41,6 +44,7 @@ export const fetchCard = async (card: WorkerCard): Promise<{
       priceUsd: priceChartingResult.price,
       priceNative: priceChartingResult.price,
       currency: SOURCE_CURRENCY.pricecharting,
+      evidence: priceChartingResult.evidence,
     });
     console.log(`[DBFW] PriceCharting: $${priceChartingResult.price}`);
 
@@ -51,6 +55,7 @@ export const fetchCard = async (card: WorkerCard): Promise<{
         priceUsd: priceChartingResult.gradedPrice,
         priceNative: priceChartingResult.gradedPrice,
         currency: SOURCE_CURRENCY.pricecharting,
+        evidence: priceChartingResult.evidence,
       });
       console.log(`[DBFW] PriceCharting PSA 10: $${priceChartingResult.gradedPrice}`);
     }

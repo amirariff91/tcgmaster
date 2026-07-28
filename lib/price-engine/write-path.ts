@@ -1,5 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { normalizeGrade, type CanonicalGrade } from '../pricing/grades';
+import { assertIdentity, type MatchEvidence } from './identity';
+import { checkSelfConsistency } from './guards';
 
 export type PriceSource = 'tcgplayer' | 'pricecharting' | 'yuyutei' | 'cardrush' | 'snkrdunk';
 export type PriceKind = 'market' | 'lowest_listing' | 'retail_sell' | 'sold_guide' | 'marketplace_ask';
@@ -26,6 +28,7 @@ export interface PriceObservation {
   priceUsd: number;
   priceNative: number | null;
   currency: 'USD' | 'JPY';
+  evidence: MatchEvidence;
 }
 
 export interface CardRef {
@@ -136,8 +139,31 @@ function shapeRawPrices(obs: PriceObservation[], headline: Headline | null): Rec
 }
 
 export interface PersistResult {
+  written: number;
+  quarantined: number;
   historyRows: number;
   headline: Headline | null;
+}
+
+const URL_UPDATE_SOURCES: Record<string, PriceSource> = {
+  tcgplayer_url: 'tcgplayer',
+  yuyutei_url: 'yuyutei',
+  cardrush_url: 'cardrush',
+  snkrdunk_url: 'snkrdunk',
+};
+
+function quarantineEvidence(
+  card: CardRef,
+  observation: PriceObservation,
+  details: Record<string, number> = {},
+): Record<string, unknown> {
+  return {
+    expected: { number: card.number, name: card.name },
+    expectedNumber: card.number,
+    matched: observation.evidence ?? null,
+    ...(observation.evidence ?? {}),
+    ...details,
+  };
 }
 
 export async function persistObservations(
@@ -148,9 +174,69 @@ export async function persistObservations(
 ): Promise<PersistResult> {
   const now = new Date();
   const recordedAt = now.toISOString();
-  const headline = selectHeadline(obs);
+  const acceptedObservations: PriceObservation[] = [];
+  const quarantineRows: Record<string, unknown>[] = [];
 
-  const historyRows = obs.map((observation) => ({
+  for (const observation of obs) {
+    const identity = assertIdentity({ number: card.number, name: card.name }, observation.evidence);
+    if (!identity.ok) {
+      quarantineRows.push({
+        card_id: card.id,
+        source: observation.source,
+        grade: normalizeGrade(observation.grade),
+        price: observation.priceUsd,
+        price_native: observation.priceNative,
+        currency: observation.currency,
+        price_kind: SOURCE_KIND[observation.source],
+        reason: identity.reason,
+        evidence: quarantineEvidence(card, observation),
+      });
+      continue;
+    }
+
+    const corroborating = obs
+      .filter((other) => (
+        other !== observation
+        && other.source !== observation.source
+        && other.grade === observation.grade
+      ))
+      .map((other) => other.priceUsd);
+    const consistency = await checkSelfConsistency(db, {
+      cardId: card.id,
+      source: observation.source,
+      grade: normalizeGrade(observation.grade),
+      priceUsd: observation.priceUsd,
+    }, corroborating);
+
+    if (!consistency.ok) {
+      quarantineRows.push({
+        card_id: card.id,
+        source: observation.source,
+        grade: normalizeGrade(observation.grade),
+        price: observation.priceUsd,
+        price_native: observation.priceNative,
+        currency: observation.currency,
+        price_kind: SOURCE_KIND[observation.source],
+        reason: 'ratio-vs-median',
+        evidence: quarantineEvidence(card, observation, {
+          median: consistency.median,
+          ratio: consistency.ratio,
+        }),
+      });
+      continue;
+    }
+
+    acceptedObservations.push(observation);
+  }
+
+  if (quarantineRows.length > 0) {
+    const { error } = await db.from('price_quarantine').insert(quarantineRows);
+    throwIfError(card, 'price_quarantine insert', error);
+  }
+
+  const headline = selectHeadline(acceptedObservations);
+
+  const historyRows = acceptedObservations.map((observation) => ({
     card_id: card.id,
     price: observation.priceUsd,
     source: observation.source,
@@ -166,14 +252,21 @@ export async function persistObservations(
     throwIfError(card, 'price_history insert', error);
   }
 
+  const safeUpdates = { ...extraUpdates };
+  for (const [column, source] of Object.entries(URL_UPDATE_SOURCES)) {
+    if (column in safeUpdates && !acceptedObservations.some((observation) => observation.source === source)) {
+      delete safeUpdates[column];
+    }
+  }
+
   const { error: deleteError } = await db.from('price_cache').delete().eq('card_id', card.id);
   throwIfError(card, 'price_cache delete', deleteError);
 
   const { error: cacheError } = await db.from('price_cache').insert({
     card_id: card.id,
     variant_id: null,
-    raw_prices: shapeRawPrices(obs, headline),
-    graded_prices: shapeGradedPrices(obs),
+    raw_prices: shapeRawPrices(acceptedObservations, headline),
+    graded_prices: shapeGradedPrices(acceptedObservations),
     fetched_at: recordedAt,
     expires_at: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString(),
   });
@@ -182,12 +275,17 @@ export async function persistObservations(
   const { error: cardError } = await db
     .from('cards')
     .update({
-      ...extraUpdates,
+      ...safeUpdates,
       price_cache_ttl: headline ? headline.cents : null,
       last_price_fetch: recordedAt,
     })
     .eq('id', card.id);
   throwIfError(card, 'cards update', cardError);
 
-  return { historyRows: historyRows.length, headline };
+  return {
+    written: acceptedObservations.length,
+    quarantined: quarantineRows.length,
+    historyRows: historyRows.length,
+    headline,
+  };
 }

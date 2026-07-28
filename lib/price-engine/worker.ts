@@ -99,10 +99,11 @@ export async function runScrapeLoop(config: WorkerConfig): Promise<never> {
           .update({ last_price_fetch: timestamp })
           .eq('id', card.id);
         if (cardError) updateFailure(card, 'cards empty-result update', cardError);
-        console.log(`${label} No prices found from any source, skipping...`);
+        console.log(`${label} No prices found from any source, skipping... written=0 quarantined=0`);
       } else {
         console.log(`${label} Successfully fetched ${result.observations.length} price points.`);
-        await persistObservations(db, card, result.observations, result.cardUpdates);
+        const persisted = await persistObservations(db, card, result.observations, result.cardUpdates);
+        console.log(`${label} Price persistence for ${card.slug}: written=${persisted.written} quarantined=${persisted.quarantined}`);
         await revalidateCardPage(card.id, label);
         previousCardId = card.id;
       }

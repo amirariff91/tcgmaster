@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  persistObservations,
   selectHeadline,
   shapeGradedPrices,
   type PriceObservation,
@@ -16,6 +17,10 @@ function observation(
     priceNative: null,
     currency: source === 'yuyutei' || source === 'cardrush' ? 'JPY' : 'USD',
     grade,
+    evidence: {
+      externalTitle: `Card ${source} OP01-001`,
+      matchedBy: 'search',
+    },
   };
 }
 
@@ -71,5 +76,68 @@ describe('shapeGradedPrices', () => {
         sources: { yuyutei: 8 },
       },
     });
+  });
+});
+
+describe('persistObservations', () => {
+  it('excludes quarantined observations from history, raw prices, and the headline', async () => {
+    const inserts: Record<string, unknown[]> = {};
+    const db = {
+      from(table: string) {
+        const query = {
+          select() {
+            return query;
+          },
+          eq() {
+            return query;
+          },
+          order() {
+            return query;
+          },
+          limit() {
+            return Promise.resolve({ data: [], error: null });
+          },
+          insert(rows: unknown) {
+            inserts[table] ??= [];
+            inserts[table].push(rows);
+            return Promise.resolve({ error: null });
+          },
+          delete() {
+            return query;
+          },
+          update() {
+            return query;
+          },
+        };
+        return query;
+      },
+    };
+
+    const result = await persistObservations(
+      db as never,
+      { id: 'card-1', slug: 'op-01-001', number: 'OP01-001', name: 'Card' },
+      [
+        {
+          ...observation('tcgplayer', 750),
+          evidence: { externalTitle: 'Wrong OP01-0010', matchedBy: 'search' },
+        },
+        observation('yuyutei', 10),
+      ],
+    );
+
+    expect(result.written).toBe(1);
+    expect(result.quarantined).toBe(1);
+    expect(result.headline).toEqual({ cents: 1000, source: 'yuyutei', kind: 'retail_sell', grade: 'raw' });
+    expect(inserts.price_history).toHaveLength(1);
+    expect(inserts.price_history?.[0]).toEqual([
+      expect.objectContaining({ source: 'yuyutei', price: 10 }),
+    ]);
+    expect(inserts.price_quarantine).toHaveLength(1);
+    expect(inserts.price_quarantine?.[0]).toEqual([
+      expect.objectContaining({ source: 'tcgplayer', price: 750, reason: 'number-mismatch' }),
+    ]);
+    expect(inserts.price_cache?.[0]).toEqual(expect.objectContaining({
+      raw_prices: { yuyutei: 10, market: 10 },
+    }));
   });
 });

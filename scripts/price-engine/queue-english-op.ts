@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { fetchPriceChartingPrice } from '../../lib/price-engine/pricecharting';
 import { fetchEnglishPrice } from '../../lib/price-engine/tcgcsv';
+import { assertIdentity } from '../../lib/price-engine/identity';
 import {
   SOURCE_CURRENCY,
   type PriceObservation,
@@ -24,16 +25,21 @@ export const fetchCard = async (card: WorkerCard): Promise<{
       priceUsd: tcgPlayerResult.price,
       priceNative: tcgPlayerResult.price,
       currency: SOURCE_CURRENCY.tcgplayer,
+      evidence: tcgPlayerResult.evidence,
     });
     console.log(`[English OP] TCGPlayer: $${tcgPlayerResult.price}`);
-    cardUpdates.tcg_player_id = String(tcgPlayerResult.tcgProductId);
 
-    if (tcgPlayerResult.tcgProductName) {
-      const printRunInfo = card.print_run_info && typeof card.print_run_info === 'object'
-        ? { ...(card.print_run_info as Record<string, unknown>) }
-        : {};
-      printRunInfo.tcgplayer_card_name = tcgPlayerResult.tcgProductName;
-      cardUpdates.print_run_info = printRunInfo;
+    const identity = assertIdentity({ number: card.number, name: card.name }, tcgPlayerResult.evidence);
+    if (identity.ok) {
+      cardUpdates.tcg_player_id = String(tcgPlayerResult.tcgProductId);
+
+      if (tcgPlayerResult.tcgProductName) {
+        const printRunInfo = card.print_run_info && typeof card.print_run_info === 'object'
+          ? { ...(card.print_run_info as Record<string, unknown>) }
+          : {};
+        printRunInfo.tcgplayer_card_name = tcgPlayerResult.tcgProductName;
+        cardUpdates.print_run_info = printRunInfo;
+      }
     }
   }
 
@@ -46,6 +52,7 @@ export const fetchCard = async (card: WorkerCard): Promise<{
       priceUsd: priceChartingResult.price,
       priceNative: priceChartingResult.price,
       currency: SOURCE_CURRENCY.pricecharting,
+      evidence: priceChartingResult.evidence,
     });
     console.log(`[English OP] PriceCharting: $${priceChartingResult.price}`);
 
@@ -56,6 +63,7 @@ export const fetchCard = async (card: WorkerCard): Promise<{
         priceUsd: priceChartingResult.gradedPrice,
         priceNative: priceChartingResult.gradedPrice,
         currency: SOURCE_CURRENCY.pricecharting,
+        evidence: priceChartingResult.evidence,
       });
       console.log(`[English OP] PriceCharting PSA 10: $${priceChartingResult.gradedPrice}`);
     }

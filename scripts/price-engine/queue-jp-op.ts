@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { fetchPriceChartingPrice } from '../../lib/price-engine/pricecharting';
 import { fetchJapanesePrice } from '../../lib/price-engine/yuyutei';
+import { assertIdentity } from '../../lib/price-engine/identity';
 import {
   SOURCE_CURRENCY,
   type PriceObservation,
@@ -24,10 +25,12 @@ export const fetchCard = async (card: WorkerCard): Promise<{
       priceUsd: yuyuteiResult.price,
       priceNative: null,
       currency: SOURCE_CURRENCY.yuyutei,
+      evidence: yuyuteiResult.evidence,
     });
     console.log(`[Japanese OP] Yuyutei: ¥${Math.round(yuyuteiResult.price * 150)} (~$${yuyuteiResult.price})`);
 
-    if (yuyuteiResult.url && yuyuteiResult.url !== card.yuyutei_url) {
+    const identity = assertIdentity({ number: card.number, name: card.name }, yuyuteiResult.evidence);
+    if (identity.ok && yuyuteiResult.url && yuyuteiResult.url !== card.yuyutei_url) {
       cardUpdates.yuyutei_url = yuyuteiResult.url;
     }
   }
@@ -41,6 +44,7 @@ export const fetchCard = async (card: WorkerCard): Promise<{
       priceUsd: priceChartingResult.price,
       priceNative: priceChartingResult.price,
       currency: SOURCE_CURRENCY.pricecharting,
+      evidence: priceChartingResult.evidence,
     });
     console.log(`[Japanese OP] PriceCharting: $${priceChartingResult.price}`);
 
@@ -51,6 +55,7 @@ export const fetchCard = async (card: WorkerCard): Promise<{
         priceUsd: priceChartingResult.gradedPrice,
         priceNative: priceChartingResult.gradedPrice,
         currency: SOURCE_CURRENCY.pricecharting,
+        evidence: priceChartingResult.evidence,
       });
       console.log(`[Japanese OP] PriceCharting PSA 10: $${priceChartingResult.gradedPrice}`);
     }
