@@ -1,6 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
 import { fetchJapanesePrice } from '../../lib/price-engine/yuyutei';
-import { fetchSnkrdunkPrice } from '../../lib/price-engine/snkrdunk';
 import { fetchPriceChartingPrice } from '../../lib/price-engine/pricecharting';
 import { revalidateCardPage } from '../../lib/price-engine/revalidate';
 
@@ -34,7 +33,7 @@ async function run() {
 
     const { data: cards, error } = await supabase
       .from('cards')
-      .select('id, name, slug, number, yuyutei_url, snkrdunk_url')
+      .select('id, name, slug, number, yuyutei_url')
       .ilike('slug', 'op-%')
       .ilike('slug', '%-ja')
       .order('last_price_fetch', { ascending: true, nullsFirst: true })
@@ -63,22 +62,7 @@ async function run() {
       }
     }
 
-    // 2. SnkrDunk (Puppeteer-based)
-    console.log('[Japanese OP] Fetching from SnkrDunk...');
-    const snkrdunkResult = await fetchSnkrdunkPrice(card.snkrdunk_url || card.number);
-    if (snkrdunkResult !== null) {
-      results.push({ price: snkrdunkResult.price, source: 'snkrdunk', grade: 'raw' });
-      console.log(`[Japanese OP] SnkrDunk: $${snkrdunkResult.price}`);
-      if (snkrdunkResult.gradedPrice) {
-        results.push({ price: snkrdunkResult.gradedPrice, source: 'snkrdunk', grade: 'psa10' });
-        console.log(`[Japanese OP] SnkrDunk PSA 10: $${snkrdunkResult.gradedPrice}`);
-      }
-      if (snkrdunkResult.url && snkrdunkResult.url !== card.snkrdunk_url) {
-        updatePayload.snkrdunk_url = snkrdunkResult.url;
-      }
-    }
-
-    // 3. PriceCharting (Puppeteer-based)
+    // 2. PriceCharting (Puppeteer-based)
     console.log('[Japanese OP] Fetching from PriceCharting...');
     const pcResult = await fetchPriceChartingPrice(`${card.number} japanese`);
     if (pcResult !== null) {
