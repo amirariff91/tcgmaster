@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { normalizeGrade, type CanonicalGrade } from '../pricing/grades';
 import { assertIdentity, type MatchEvidence } from './identity';
 import { checkSelfConsistency } from './guards';
+import { markForReverification, type SourceMapping } from './mapping';
 
 export type PriceSource = 'tcgplayer' | 'pricecharting' | 'yuyutei' | 'cardrush' | 'snkrdunk';
 export type PriceKind = 'market' | 'lowest_listing' | 'retail_sell' | 'sold_guide' | 'marketplace_ask';
@@ -145,17 +146,10 @@ export interface PersistResult {
   headline: Headline | null;
 }
 
-const URL_UPDATE_SOURCES: Record<string, PriceSource> = {
-  tcgplayer_url: 'tcgplayer',
-  yuyutei_url: 'yuyutei',
-  cardrush_url: 'cardrush',
-  snkrdunk_url: 'snkrdunk',
-};
-
 function quarantineEvidence(
   card: CardRef,
   observation: PriceObservation,
-  details: Record<string, number> = {},
+  details: Record<string, unknown> = {},
 ): Record<string, unknown> {
   return {
     expected: { number: card.number, name: card.name },
@@ -166,24 +160,73 @@ function quarantineEvidence(
   };
 }
 
+function normalizeTitleForDrift(value: string): string {
+  return value.toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+function hasTitleDrift(
+  observation: PriceObservation,
+  mapping: SourceMapping | undefined,
+): boolean {
+  const storedTitle = mapping?.externalTitle?.trim();
+  const fetchedTitle = observation.evidence?.externalTitle?.trim();
+  if (!storedTitle || !fetchedTitle) return false;
+
+  const normalizedStoredTitle = normalizeTitleForDrift(storedTitle);
+  const normalizedFetchedTitle = normalizeTitleForDrift(fetchedTitle);
+  return Boolean(
+    normalizedStoredTitle
+    && normalizedFetchedTitle
+    && !normalizedStoredTitle.includes(normalizedFetchedTitle)
+    && !normalizedFetchedTitle.includes(normalizedStoredTitle),
+  );
+}
+
 export async function persistObservations(
   db: SupabaseClient,
   card: CardRef,
   obs: PriceObservation[],
   extraUpdates: Record<string, unknown> = {},
+  mappings: SourceMapping[] = [],
 ): Promise<PersistResult> {
   const now = new Date();
   const recordedAt = now.toISOString();
   const acceptedObservations: PriceObservation[] = [];
   const quarantineRows: Record<string, unknown>[] = [];
+  const mappingsBySource = new Map(mappings.map((mapping) => [mapping.source, mapping]));
   const identityVerdicts = obs.map((observation) => (
     assertIdentity({ number: card.number, name: card.name }, observation.evidence)
   ));
   const identityApprovedObservations = obs.filter((observation, index) => (
-    identityVerdicts[index]?.ok === true && observation.evidence.inStock !== false
+    identityVerdicts[index]?.ok === true
+    && observation.evidence.inStock !== false
+    && !hasTitleDrift(observation, mappingsBySource.get(observation.source))
   ));
 
   for (const [index, observation] of obs.entries()) {
+    const mapping = mappingsBySource.get(observation.source);
+    if (hasTitleDrift(observation, mapping)) {
+      quarantineRows.push({
+        card_id: card.id,
+        source: observation.source,
+        grade: normalizeGrade(observation.grade),
+        price: observation.priceUsd,
+        price_native: observation.priceNative,
+        currency: observation.currency,
+        price_kind: SOURCE_KIND[observation.source],
+        reason: 'title-drift',
+        evidence: quarantineEvidence(card, observation, {
+          storedExternalTitle: mapping?.externalTitle,
+        }),
+      });
+      try {
+        await markForReverification(db, card.id, observation.source);
+      } catch (error) {
+        console.error(`[price-engine] ${card.slug}: failed to mark ${observation.source} for reverification`, error);
+      }
+      continue;
+    }
+
     const identity = identityVerdicts[index];
     if (!identity.ok) {
       quarantineRows.push({
@@ -248,13 +291,6 @@ export async function persistObservations(
     recorded_at: recordedAt,
   }));
 
-  const safeUpdates = { ...extraUpdates };
-  for (const [column, source] of Object.entries(URL_UPDATE_SOURCES)) {
-    if (column in safeUpdates && !acceptedObservations.some((observation) => observation.source === source)) {
-      delete safeUpdates[column];
-    }
-  }
-
   const { data: existingCache, error: cacheReadError } = await db
     .from('price_cache')
     .select('ebay_sales, source')
@@ -313,7 +349,7 @@ export async function persistObservations(
   const { error: cardError } = await db
     .from('cards')
     .update({
-      ...safeUpdates,
+      ...extraUpdates,
       price_cache_ttl: headline ? headline.cents : null,
       last_price_fetch: recordedAt,
     })

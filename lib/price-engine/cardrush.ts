@@ -17,6 +17,13 @@ function emptyEvidence(matchedBy: MatchEvidence['matchedBy']): MatchEvidence {
   return { matchedBy };
 }
 
+export async function fetchCardrushByAnchor(url: string): Promise<{ price: number, url: string, evidence: MatchEvidence } | null> {
+  if (!url.startsWith('http') || !url.includes('/product/')) {
+    throw new Error(`Cardrush anchor must contain /product/: ${url}`);
+  }
+  return fetchCardrushPrice(url);
+}
+
 export async function fetchCardrushData(cardNumber: string): Promise<CardrushResult> {
   try {
     await waitForSourceRateLimit('cardrush');

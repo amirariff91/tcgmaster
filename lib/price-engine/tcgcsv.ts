@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { parseCardNumber } from './card-number';
 import type { MatchEvidence } from './identity';
 
@@ -130,22 +128,7 @@ export async function fetchEnglishPrice(query: string, setName?: string, existin
   try {
     const groups = await getGroups(categoryId);
 
-    // NEW: Check static dictionary for variants to guarantee no mismatches
     let mappedTcgId = existingTcgProductId;
-    if (!mappedTcgId) {
-      try {
-        const dictPath = resolve(process.cwd(), 'lib/price-engine/mapping-dictionary.json');
-        const dict = JSON.parse(readFileSync(dictPath, 'utf8')) as Record<string, number>;
-        const slugKey = query.toLowerCase().startsWith('op-') ? query.toLowerCase() : `op-${query.toLowerCase()}`;
-        if (dict[query]) {
-          mappedTcgId = String(dict[query]);
-        } else if (dict[slugKey]) {
-          mappedTcgId = String(dict[slugKey]);
-        }
-      } catch {
-        // ignore if not exists
-      }
-    }
 
     // 1. Direct fetch if existing ID is known
     if (mappedTcgId) {
@@ -177,7 +160,7 @@ export async function fetchEnglishPrice(query: string, setName?: string, existin
               tcgProductName: productMatch.name,
               evidence: productEvidence(
                 productMatch,
-                existingTcgProductId ? 'product-id' : 'dictionary',
+                'product-id',
                 productGroupName,
               ),
             };
@@ -249,4 +232,12 @@ export async function fetchEnglishPrice(query: string, setName?: string, existin
     console.error(`TCGCSV fetch error for ${query}:`, err);
   }
   return null;
+}
+
+export async function fetchTcgplayerByAnchor(
+  externalId: string,
+  categoryId: number = DEFAULT_CATEGORY_ID,
+): Promise<EnglishPriceResult | null> {
+  if (!externalId.trim()) throw new Error('TCGPlayer anchor must be a non-empty product ID');
+  return fetchEnglishPrice('', undefined, externalId, categoryId);
 }
