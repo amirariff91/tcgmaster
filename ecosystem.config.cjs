@@ -14,8 +14,9 @@
  *
  * Workers:
  *   scraper-en-op  — TCGCSV for English One Piece (fast, JSON API, no Puppeteer)
- *   scraper-jp-op  — Yuyutei primary + SnkrDunk fallback for Japanese One Piece
+ *   scraper-jp-op  — Yuyutei + PriceCharting for Japanese One Piece
  *   scraper-dbfw   — CardRush for Dragon Ball Fusion World
+ *   scraper-en-dbfw — TCGCSV for English Dragon Ball Fusion World
  *   artist-vision  — Ollama Cloud vision artist extractor for EN OP cards
  */
 
@@ -36,6 +37,7 @@ module.exports = {
       watch: false,
       autorestart: true,
       restart_delay: 5000,   // Wait 5s before restarting on crash
+      exp_backoff_restart_delay: 5000, // transient-dep (DB down) restart storms back off instead of burning max_restarts
       max_restarts: 50,       // If crashes > 50 times, stop (circuit breaker)
       min_uptime: '10s',      // Must stay alive 10s to count as healthy start
       log_file: './logs/scraper-en-op.log',
@@ -56,6 +58,7 @@ module.exports = {
       watch: false,
       autorestart: true,
       restart_delay: 5000,
+      exp_backoff_restart_delay: 5000, // transient-dep (DB down) restart storms back off instead of burning max_restarts
       max_restarts: 50,
       min_uptime: '10s',
       log_file: './logs/scraper-jp-op.log',
@@ -76,10 +79,32 @@ module.exports = {
       watch: false,
       autorestart: true,
       restart_delay: 5000,
+      exp_backoff_restart_delay: 5000, // transient-dep (DB down) restart storms back off instead of burning max_restarts
       max_restarts: 50,
       min_uptime: '10s',
       log_file: './logs/scraper-dbfw.log',
       error_file: './logs/scraper-dbfw-error.log',
+      time: true,
+    },
+
+    // ─────────────────────────────────────────────
+    // English Dragon Ball Fusion World — TCGCSV
+    // ─────────────────────────────────────────────
+    {
+      name: 'scraper-en-dbfw',
+      script: 'bun',
+      args: 'run scripts/price-engine/queue-english-dbfw.ts',
+      env: {
+        SAFE_MODE: SAFE_MODE ? '1' : '0',
+      },
+      watch: false,
+      autorestart: true,
+      restart_delay: 5000,
+      exp_backoff_restart_delay: 5000, // transient-dep (DB down) restart storms back off instead of burning max_restarts
+      max_restarts: 50,
+      min_uptime: '10s',
+      log_file: './logs/scraper-en-dbfw.log',
+      error_file: './logs/scraper-en-dbfw-error.log',
       time: true,
     },
 
