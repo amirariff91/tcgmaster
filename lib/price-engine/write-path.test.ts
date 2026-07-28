@@ -50,16 +50,26 @@ function mapping(
   };
 }
 
+interface PersistenceOptions {
+  currentPrice?: {
+    source_prices: Record<string, unknown>;
+    graded_prices: Record<string, unknown>;
+  };
+  events?: string[];
+}
+
 function persistenceDb(
   inserts: Record<string, unknown[]> = {},
   updates: Record<string, unknown[]> = {},
   upserts: Record<string, unknown[]> = {},
   deletes: Record<string, number> = {},
+  options: PersistenceOptions = {},
 ): never {
   const db = {
     from(table: string) {
       const query = {
         select() {
+          options.events?.push(`${table}.select`);
           return query;
         },
         eq() {
@@ -75,23 +85,31 @@ function persistenceDb(
           return Promise.resolve({ data: [], error: null });
         },
         maybeSingle() {
-          return Promise.resolve({ data: null, error: null });
+          options.events?.push(`${table}.maybeSingle`);
+          return Promise.resolve({
+            data: table === 'card_price_current' ? options.currentPrice ?? null : null,
+            error: null,
+          });
         },
         insert(rows: unknown) {
+          options.events?.push(`${table}.insert`);
           inserts[table] ??= [];
           inserts[table].push(rows);
           return Promise.resolve({ error: null });
         },
         upsert(rows: unknown) {
+          options.events?.push(`${table}.upsert`);
           upserts[table] ??= [];
           upserts[table].push(rows);
           return Promise.resolve({ error: null });
         },
         delete() {
+          options.events?.push(`${table}.delete`);
           deletes[table] = (deletes[table] ?? 0) + 1;
           return query;
         },
         update(payload: unknown) {
+          options.events?.push(`${table}.update`);
           updates[table] ??= [];
           updates[table].push(payload);
           return query;
@@ -268,6 +286,146 @@ describe('persistObservations', () => {
     }));
     expect(inserts.price_cache).toHaveLength(1);
     expect(deletes.price_cache).toBe(1);
+  });
+
+  it('merges source prices from the existing row and recomputes the merged headline', async () => {
+    const upserts: Record<string, unknown[]> = {};
+
+    await persistObservations(
+      persistenceDb({}, {}, upserts, {}, {
+        currentPrice: {
+          source_prices: {
+            tcgplayer: {
+              usd: 5,
+              native: 5,
+              currency: 'USD',
+              kind: 'market',
+              recorded_at: '2026-07-28T17:00:00.000Z',
+            },
+          },
+          graded_prices: {},
+        },
+      }),
+      { id: 'card-1', slug: 'op-01-001', number: 'OP01-001', name: 'Card' },
+      [observation('yuyutei', 4)],
+    );
+
+    expect(upserts.card_price_current?.[0]).toEqual(expect.objectContaining({
+      source_prices: expect.objectContaining({
+        tcgplayer: expect.objectContaining({ usd: 5 }),
+        yuyutei: expect.objectContaining({ usd: 4 }),
+      }),
+      headline_cents: 500,
+      headline_source: 'tcgplayer',
+      headline_kind: 'market',
+      headline_currency: 'USD',
+      headline_grade: 'raw',
+    }));
+  });
+
+  it('lets a fresh observation overwrite the existing entry for the same source', async () => {
+    const upserts: Record<string, unknown[]> = {};
+
+    await persistObservations(
+      persistenceDb({}, {}, upserts, {}, {
+        currentPrice: {
+          source_prices: {
+            yuyutei: {
+              usd: 5,
+              native: 500,
+              currency: 'JPY',
+              kind: 'retail_sell',
+              recorded_at: '2026-07-28T17:00:00.000Z',
+            },
+          },
+          graded_prices: {},
+        },
+      }),
+      { id: 'card-1', slug: 'op-01-001', number: 'OP01-001', name: 'Card' },
+      [observation('yuyutei', 4)],
+    );
+
+    const row = upserts.card_price_current?.[0] as { source_prices: Record<string, { usd: number }> };
+    expect(row.source_prices).toHaveProperty('yuyutei.usd', 4);
+  });
+
+  it('merges graded sources and recomputes the average for touched grades', async () => {
+    const upserts: Record<string, unknown[]> = {};
+
+    await persistObservations(
+      persistenceDb({}, {}, upserts, {}, {
+        currentPrice: {
+          source_prices: {},
+          graded_prices: {
+            psa10: { average: 10, sources: { tcgplayer: 10 } },
+          },
+        },
+      }),
+      { id: 'card-1', slug: 'op-01-001', number: 'OP01-001', name: 'Card' },
+      [observation('pricecharting', 14, 'psa10')],
+    );
+
+    expect(upserts.card_price_current?.[0]).toEqual(expect.objectContaining({
+      graded_prices: {
+        psa10: {
+          average: 12,
+          sources: { tcgplayer: 10, pricecharting: 14 },
+        },
+      },
+    }));
+  });
+
+  it('publishes card_price_current only after history has been inserted', async () => {
+    const events: string[] = [];
+
+    await persistObservations(
+      persistenceDb({}, {}, {}, {}, { events }),
+      { id: 'card-1', slug: 'op-01-001', number: 'OP01-001', name: 'Card' },
+      [observation('tcgplayer', 5)],
+    );
+
+    expect(events.indexOf('price_history.insert')).toBeGreaterThanOrEqual(0);
+    expect(events.indexOf('price_history.insert')).toBeLessThan(events.indexOf('card_price_current.upsert'));
+  });
+
+  it('upserts unchanged existing data with a recomputed headline when no observations are accepted', async () => {
+    const inserts: Record<string, unknown[]> = {};
+    const upserts: Record<string, unknown[]> = {};
+
+    const result = await persistObservations(
+      persistenceDb(inserts, {}, upserts, {}, {
+        currentPrice: {
+          source_prices: {
+            tcgplayer: {
+              usd: 5,
+              native: 5,
+              currency: 'USD',
+              kind: 'market',
+              recorded_at: '2026-07-28T17:00:00.000Z',
+            },
+          },
+          graded_prices: {},
+        },
+      }),
+      { id: 'card-1', slug: 'op-01-001', number: 'OP01-001', name: 'Card' },
+      [{
+        ...observation('tcgplayer', 9),
+        evidence: { externalTitle: 'Wrong OP01-0010', matchedBy: 'search' },
+      }],
+    );
+
+    expect(result.written).toBe(0);
+    expect(upserts.card_price_current?.[0]).toEqual(expect.objectContaining({
+      source_prices: {
+        tcgplayer: expect.objectContaining({ usd: 5 }),
+      },
+      headline_cents: 500,
+      headline_source: 'tcgplayer',
+      headline_kind: 'market',
+      headline_currency: 'USD',
+      headline_grade: 'raw',
+    }));
+    expect(inserts.price_history).toBeUndefined();
   });
 
   it('quarantines title drift and marks the mapping for reverification', async () => {
