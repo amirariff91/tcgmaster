@@ -16,7 +16,7 @@ interface FetchCardImageEvent {
   name: 'images/fetch-card';
   data: {
     cardId: string;
-    pokeTcgId?: string;
+    pokeTcgId?: string | null;
     cardName?: string;
     setSlug?: string;
     priority?: 'high' | 'normal' | 'low';
@@ -30,9 +30,6 @@ interface BatchFetchImagesEvent {
     limit?: number;
   };
 }
-
-// Maximum retry attempts for failed image fetches
-const MAX_FETCH_ATTEMPTS = 3;
 
 /**
  * Fetch a single card image
@@ -53,16 +50,14 @@ export const fetchCardImage = inngest.createFunction(
   async ({ event, step }) => {
     const { cardId, pokeTcgId, cardName, setSlug } = event.data;
 
-    // Check current fetch attempt count
     const supabase = createServerClient();
     const { data: cardData } = await supabase
       .from('cards')
-      .select('image_fetch_attempts, local_image_url')
+      .select('local_image_url')
       .eq('id', cardId)
       .single();
 
     const card = cardData as {
-      image_fetch_attempts: number | null;
       local_image_url: string | null;
     } | null;
 
@@ -70,24 +65,6 @@ export const fetchCardImage = inngest.createFunction(
     if (card?.local_image_url) {
       return { success: true, skipped: true, reason: 'Image already exists' };
     }
-
-    // Skip if too many attempts
-    const attempts = card?.image_fetch_attempts ?? 0;
-    if (attempts >= MAX_FETCH_ATTEMPTS) {
-      return {
-        success: false,
-        skipped: true,
-        reason: `Max attempts (${MAX_FETCH_ATTEMPTS}) reached`,
-      };
-    }
-
-    // Increment attempt counter
-    await step.run('increment-attempts', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase.from('cards') as any)
-        .update({ image_fetch_attempts: attempts + 1 })
-        .eq('id', cardId);
-    });
 
     // Fetch the image
     const result = await step.run('fetch-image', async () => {
@@ -175,6 +152,13 @@ export const batchFetchImages = inngest.createFunction(
   }
 );
 
+// Automated Pokemon image fetching is disabled: cards carry no Pokemon TCG API
+// id (the old poke_tcg_id column never existed in the DB), so scheduled runs
+// would fall back to name-only lookups that can attach the wrong card's artwork
+// and can never resolve sets missing from SET_ID_MAP. Manual images/fetch-card
+// and images/batch-fetch events remain available for deliberate use.
+const AUTOMATED_IMAGE_FETCH_DISABLED = true;
+
 /**
  * Scheduled function to fetch Pokemon card images
  * Runs every 6 hours
@@ -186,6 +170,10 @@ export const scheduledPokemonImageFetch = inngest.createFunction(
   },
   { cron: '0 */6 * * *' }, // Every 6 hours
   async ({ step }) => {
+    if (AUTOMATED_IMAGE_FETCH_DISABLED) {
+      return { triggered: false, disabled: true, reason: 'no per-card Pokemon TCG API id in schema' };
+    }
+
     // Trigger batch fetch for Pokemon cards
     await step.sendEvent('trigger-pokemon-batch', {
       name: 'images/batch-fetch',
@@ -210,25 +198,28 @@ export const retryFailedImageFetches = inngest.createFunction(
   },
   { cron: '0 4 * * *' }, // Daily at 4 AM
   async ({ step }) => {
+    if (AUTOMATED_IMAGE_FETCH_DISABLED) {
+      // Without a stable per-card source id, the name-based retry would requeue
+      // the same permanently-unresolvable cards every day.
+      return { retried: 0, disabled: true, reason: 'no per-card Pokemon TCG API id in schema' };
+    }
+
     const supabase = createServerClient();
 
     // Define the card type for this query
     type FailedCard = {
       id: string;
       name: string;
-      poke_tcg_id: string | null;
       sets: { slug: string; games: { slug: string } };
     };
 
-    // Find cards with failed attempts that haven't exceeded max
+    // Find cards without local images
     const failedCardsResult = await step.run('get-failed-cards', async (): Promise<FailedCard[]> => {
       const { data } = await supabase
         .from('cards')
         .select(`
           id,
           name,
-          poke_tcg_id,
-          image_fetch_attempts,
           sets!inner (
             slug,
             games!inner (
@@ -237,8 +228,6 @@ export const retryFailedImageFetches = inngest.createFunction(
           )
         `)
         .is('local_image_url', null)
-        .gt('image_fetch_attempts', 0)
-        .lt('image_fetch_attempts', MAX_FETCH_ATTEMPTS)
         .eq('sets.games.slug', 'pokemon')
         .limit(50);
       return (data as FailedCard[]) || [];
@@ -253,7 +242,7 @@ export const retryFailedImageFetches = inngest.createFunction(
       name: 'images/fetch-card' as const,
       data: {
         cardId: card.id,
-        pokeTcgId: card.poke_tcg_id || undefined,
+        pokeTcgId: null,
         cardName: card.name,
         setSlug: card.sets.slug,
         priority: 'low' as const,

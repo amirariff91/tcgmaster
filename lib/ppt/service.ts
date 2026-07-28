@@ -11,12 +11,31 @@ import {
   withRequestCoalescing,
 } from '@/lib/redis/client';
 import { createServerClient } from '@/lib/supabase/client';
-import type { Tables, InsertTables } from '@/lib/supabase/database.types';
+import type { Tables, TablesInsert } from '@/lib/supabase/database.types';
 import { slugify } from '@/lib/utils';
 
 // Types for transformed data
 export interface CardWithPrices {
-  card: Omit<Tables<'cards'>, 'last_price_fetch' | 'price_cache_ttl'>;
+  card: Pick<
+    Tables<'cards'>,
+    | 'id'
+    | 'set_id'
+    | 'name'
+    | 'slug'
+    | 'number'
+    | 'rarity'
+    | 'artist'
+    | 'description'
+    | 'tcg_player_id'
+    | 'ppt_card_id'
+    | 'image_url'
+    | 'local_image_url'
+    | 'image_fetched_at'
+    | 'lore'
+    | 'print_run_info'
+    | 'created_at'
+    | 'updated_at'
+  >;
   prices: {
     headline: {
       usd: number | null;
@@ -300,7 +319,7 @@ export async function importSet(
     for (let i = 0; i < cards.length; i += batchSize) {
       const batch = cards.slice(i, i + batchSize);
 
-      const cardInserts: InsertTables<'cards'>[] = batch.map((card) => ({
+      const cardInserts: TablesInsert<'cards'>[] = batch.map((card) => ({
         set_id: set.id,
         name: card.name,
         slug: slugify(`${card.name}-${card.cardNumber}`),
@@ -385,7 +404,7 @@ export async function syncSets(): Promise<{
     }
 
     // Upsert all sets
-    const setInserts: InsertTables<'sets'>[] = sets.map((set, index) => ({
+    const setInserts: TablesInsert<'sets'>[] = sets.map((set, index) => ({
       game_id: game2.id,
       name: set.name,
       slug: slugify(set.name),
