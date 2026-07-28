@@ -62,7 +62,8 @@ function updateFailure(card: WorkerCard, operation: string, error: unknown): nev
 
 export async function runScrapeLoop(config: WorkerConfig): Promise<never> {
   const label = `[${config.label}]`;
-  console.log(`${label} boot build=${process.env.BUILD_SHA ?? 'dev'} node=${process.version}`);
+  // Coolify injects SOURCE_COMMIT; BUILD_SHA is the manual override for other hosts.
+  console.log(`${label} boot build=${process.env.BUILD_SHA ?? process.env.SOURCE_COMMIT ?? 'dev'} node=${process.version}`);
   const db: SupabaseClient = createScraperClient();
 
   let previousCardId: string | null = null;
