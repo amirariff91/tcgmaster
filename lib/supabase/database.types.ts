@@ -317,6 +317,50 @@ export interface Database {
           created_at?: string;
         };
       };
+      card_price_current: {
+        Row: {
+          card_id: string
+          computed_at: string
+          graded_prices: Json
+          headline_cents: number | null
+          headline_currency: string | null
+          headline_grade: string | null
+          headline_kind: "market" | "lowest_listing" | "retail_sell" | "sold_guide" | "marketplace_ask" | null
+          headline_source: string | null
+          source_prices: Json
+        }
+        Insert: {
+          card_id: string
+          computed_at?: string
+          graded_prices?: Json
+          headline_cents?: number | null
+          headline_currency?: string | null
+          headline_grade?: string | null
+          headline_kind?: "market" | "lowest_listing" | "retail_sell" | "sold_guide" | "marketplace_ask" | null
+          headline_source?: string | null
+          source_prices?: Json
+        }
+        Update: {
+          card_id?: string
+          computed_at?: string
+          graded_prices?: Json
+          headline_cents?: number | null
+          headline_currency?: string | null
+          headline_grade?: string | null
+          headline_kind?: "market" | "lowest_listing" | "retail_sell" | "sold_guide" | "marketplace_ask" | null
+          headline_source?: string | null
+          source_prices?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "card_price_current_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: true
+            referencedRelation: "cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       price_cache: {
         Row: {
           id: string;

@@ -23,7 +23,7 @@ interface CardData {
   last_price_fetch: string | null;
   sets: SetData;
   card_variants: CardVariant[];
-  price_cache: PriceCacheData | PriceCacheData[] | null;
+  card_price_current: CurrentPriceData | null;
 }
 
 interface SetData {
@@ -49,12 +49,15 @@ interface CardVariant {
   slug: string;
 }
 
-interface PriceCacheData {
-  raw_prices: Record<string, number | null>;
+interface CurrentPriceData {
+  source_prices: Record<string, unknown>;
   graded_prices: Record<string, unknown>;
-  ebay_sales: Record<string, unknown>;
-  fetched_at: string;
-  expires_at: string;
+  headline_cents: number | null;
+  headline_source: string | null;
+  headline_kind: string | null;
+  headline_currency: string | null;
+  headline_grade: string | null;
+  computed_at: string;
 }
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
@@ -100,12 +103,15 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         name,
         slug
       ),
-      price_cache (
-        raw_prices,
+      card_price_current (
+        source_prices,
         graded_prices,
-        ebay_sales,
-        fetched_at,
-        expires_at
+        headline_cents,
+        headline_source,
+        headline_kind,
+        headline_currency,
+        headline_grade,
+        computed_at
       )
     `);
 
@@ -129,20 +135,15 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   // Get population data
   const population = await getPopulationFromDb(card.id, 'psa');
 
-  // Check if price data is stale
-  const priceCache: PriceCacheData | null = Array.isArray(card.price_cache)
-    ? [...card.price_cache]
-        .sort((a, b) => new Date(b.fetched_at).getTime() - new Date(a.fetched_at).getTime())[0] || null
-    : card.price_cache;
-  const isStale = priceCache ?
-    new Date(priceCache.expires_at) < new Date() :
-    true;
+  // The current-price row is keyed by card_id; there is no legacy expiry row to unwrap.
+  const currentPrice = card.card_price_current;
+  const isStale = !currentPrice;
 
   // If we have a tcg_player_id and data is stale, try to refresh
   let prices = {
-    raw: priceCache?.raw_prices || {},
-    graded: priceCache?.graded_prices || {},
-    ebay: priceCache?.ebay_sales || {},
+    raw: currentPrice?.source_prices || {},
+    graded: currentPrice?.graded_prices || {},
+    ebay: {},
   };
   let fromCache = true;
   let staleHours: number | null = null;
@@ -205,7 +206,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         graded: prices.graded,
         fromCache,
         staleHours,
-        lastUpdated: priceCache?.fetched_at,
+        lastUpdated: currentPrice?.computed_at,
       },
       population: population ? {
         gradingCompany: population.gradingCompany,

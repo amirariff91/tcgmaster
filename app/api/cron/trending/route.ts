@@ -42,11 +42,11 @@ export async function GET(request: Request) {
             slug
           )
         ),
-        price_cache (
-          raw_prices
+        card_price_current!inner (
+          headline_cents
         )
       `)
-      .not('price_cache', 'is', null)
+      .gt('card_price_current.headline_cents', 0)
       .limit(1000);
 
     if (error || !cards) {
@@ -54,7 +54,9 @@ export async function GET(request: Request) {
     }
 
     const scoredCards = cards.map((card: any) => {
-      const marketPrice = card.price_cache?.[0]?.raw_prices?.market || 0;
+      const marketPrice = typeof card.card_price_current?.headline_cents === 'number'
+        ? card.card_price_current.headline_cents / 100
+        : 0;
       const score = marketPrice + (Math.random() * 20);
 
       return {

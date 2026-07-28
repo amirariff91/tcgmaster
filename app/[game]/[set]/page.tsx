@@ -37,13 +37,12 @@ async function getSetFromDB(gameSlug: string, setSlug: string): Promise<MockSet 
       id: string; name: string; slug: string; display_name: string;
     };
 
-    // Fetch all cards for this set with price cache (any to bypass join typing)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // Fetch all cards for this set with their single current price row.
     const { data: cardsData } = await (supabase as any)
       .from('cards')
       .select(`
         id, name, slug, number, rarity, artist, image_url, local_image_url, description,
-        price_cache ( raw_prices, graded_prices )
+        card_price_current ( headline_cents, graded_prices )
       `)
       .eq('set_id', setData.id)
       .order('number');
@@ -59,14 +58,16 @@ async function getSetFromDB(gameSlug: string, setSlug: string): Promise<MockSet 
       image_url: string | null;
       local_image_url: string | null;
       description: string | null;
-      price_cache: Array<{
-        raw_prices: Record<string, number | null> | null;
+      card_price_current: {
+        headline_cents: number | null;
         graded_prices: Record<string, { average: number | null } | null> | null;
-      }> | null;
+      } | null;
     }) => {
-      const pc = Array.isArray(c.price_cache) ? c.price_cache[0] : c.price_cache;
-      const raw = pc?.raw_prices;
-      const graded = pc?.graded_prices;
+      const currentPrice = c.card_price_current;
+      const price = currentPrice?.headline_cents == null
+        ? null
+        : currentPrice.headline_cents / 100;
+      const graded = currentPrice?.graded_prices;
 
       const rarity = c.rarity as MockCard['rarity'] || 'common';
 
@@ -80,7 +81,7 @@ async function getSetFromDB(gameSlug: string, setSlug: string): Promise<MockSet 
         // so it moves to R2 on cutover, falling back to the source image_url.
         image_url: c.local_image_url ?? c.image_url,
         prices: {
-          raw: raw?.nearMint ?? null,
+          raw: price,
           psa7: graded?.psa7?.average ?? null,
           psa8: graded?.psa8?.average ?? null,
           psa9: graded?.psa9?.average ?? null,

@@ -41,9 +41,9 @@ interface AlertRow {
   };
 }
 
-interface PriceCacheRow {
-  raw_prices: Record<string, number | null>;
-  graded_prices: Record<string, { average?: number }>;
+interface CurrentPriceRow {
+  headline_cents: number | null;
+  graded_prices: Record<string, { average?: number | null }>;
 }
 
 interface UserAlertRow {
@@ -122,25 +122,27 @@ export async function checkAllAlerts(): Promise<{
       try {
         checked++;
 
-        // Get current price from cache
-        const { data: priceCacheData } = await supabase
-          .from('price_cache')
-          .select('raw_prices, graded_prices')
+        // Get the single current price row for this card.
+        const { data: currentPriceData } = await supabase
+          .from('card_price_current')
+          .select('headline_cents, graded_prices')
           .eq('card_id', alert.card_id)
-          .single();
+          .maybeSingle();
 
-        const priceCache = priceCacheData as PriceCacheRow | null;
+        const currentPriceRow = currentPriceData as CurrentPriceRow | null;
 
-        if (!priceCache) continue;
+        if (!currentPriceRow) continue;
 
         // Determine which price to check based on grade
         let currentPrice: number | null = null;
-        const rawPrices = priceCache.raw_prices;
-        const gradedPrices = priceCache.graded_prices;
+        const rawValue = currentPriceRow.headline_cents === null
+          ? null
+          : currentPriceRow.headline_cents / 100;
+        const gradedPrices = currentPriceRow.graded_prices;
 
         const grade = normalizeGrade(alert.grade);
         if (grade === 'raw') {
-          currentPrice = rawPrices?.nearMint || null;
+          currentPrice = rawValue;
         } else {
           currentPrice = lookupGraded(gradedPrices, grade)?.average || null;
         }
@@ -243,22 +245,24 @@ export async function createPriceAlert(params: {
   const supabase = createServerClient();
 
   // Get current price for baseline
-  const { data: priceCacheData } = await supabase
-    .from('price_cache')
-    .select('raw_prices, graded_prices')
+  const { data: currentPriceData } = await supabase
+    .from('card_price_current')
+    .select('headline_cents, graded_prices')
     .eq('card_id', params.cardId)
-    .single();
+    .maybeSingle();
 
-  const priceCache = priceCacheData as PriceCacheRow | null;
+  const currentPrice = currentPriceData as CurrentPriceRow | null;
 
   const normalizedGrade = normalizeGrade(params.grade);
   let baselinePrice: number | null = null;
-  if (priceCache) {
-    const rawPrices = priceCache.raw_prices;
-    const gradedPrices = priceCache.graded_prices;
+  if (currentPrice) {
+    const rawValue = currentPrice.headline_cents === null
+      ? null
+      : currentPrice.headline_cents / 100;
+    const gradedPrices = currentPrice.graded_prices;
 
     if (normalizedGrade === 'raw') {
-      baselinePrice = rawPrices?.nearMint || null;
+      baselinePrice = rawValue;
     } else {
       baselinePrice = lookupGraded(gradedPrices, normalizedGrade)?.average || null;
     }

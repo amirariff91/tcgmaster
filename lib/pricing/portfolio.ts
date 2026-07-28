@@ -34,9 +34,9 @@ interface CollectionItemForUpdate {
   collections: { user_id: string };
 }
 
-interface PriceCacheRow {
-  raw_prices: Record<string, number>;
-  graded_prices: Record<string, { average: number }>;
+interface CurrentPriceRow {
+  headline_cents: number | null;
+  graded_prices: Record<string, { average?: number | null }>;
 }
 
 interface CollectionWithItems {
@@ -244,24 +244,26 @@ export async function updatePortfolioValues(userId?: string): Promise<{
 
     for (const item of typedItems) {
       try {
-        // Get current price from cache
-        const { data: priceCacheData } = await supabase
-          .from('price_cache')
-          .select('raw_prices, graded_prices')
+        // Get the single current price row for this card.
+        const { data: currentPriceData } = await supabase
+          .from('card_price_current')
+          .select('headline_cents, graded_prices')
           .eq('card_id', item.card_id)
-          .single();
+          .maybeSingle();
 
-        const priceCache = priceCacheData as PriceCacheRow | null;
+        const currentPrice = currentPriceData as CurrentPriceRow | null;
 
-        if (!priceCache) continue;
+        if (!currentPrice) continue;
 
         let currentValue: number | null = null;
-        const rawPrices = priceCache.raw_prices;
-        const gradedPrices = priceCache.graded_prices;
+        const rawValue = currentPrice.headline_cents === null
+          ? null
+          : currentPrice.headline_cents / 100;
+        const gradedPrices = currentPrice.graded_prices;
 
         const grade = normalizeGrade(item.grade);
         if (grade === 'raw') {
-          currentValue = rawPrices?.nearMint || null;
+          currentValue = rawValue;
         } else {
           currentValue = lookupGraded(gradedPrices, grade)?.average || null;
         }
