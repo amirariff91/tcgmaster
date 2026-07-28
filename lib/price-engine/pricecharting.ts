@@ -44,11 +44,139 @@ function parsePrice(text: string): number | undefined {
   return Number.isNaN(value) || value <= 0 ? undefined : value;
 }
 
+function readPsa10Price($: cheerio.CheerioAPI): number | undefined {
+  let gradedPrice: number | undefined;
+  $('#full-prices tr, #price_data tr').each((_, row) => {
+    if (gradedPrice !== undefined) return;
+    const label = $(row).find('td.label').text().replace(/\s+/g, ' ').trim().toLowerCase();
+    if (label !== 'psa 10') return;
+    gradedPrice = parsePrice($(row).find('td.price').text());
+  });
+  return gradedPrice;
+}
+
 // Returns both raw and PSA 10 graded prices
 export interface PriceChartingResult {
   price: number;
   gradedPrice?: number;
   evidence: MatchEvidence;
+}
+
+export interface PriceChartingCandidate {
+  title: string;
+  url: string;
+  price?: number;
+  gradedPrice?: number;
+}
+
+function readProductPage(
+  $: cheerio.CheerioAPI,
+  externalUrl: string,
+  matchedBy: MatchEvidence['matchedBy'],
+  wantedNumber?: string,
+): PriceChartingResult | null {
+  const heading = $('h1').first().text().trim();
+  if (wantedNumber && (!titleHasNumberToken(heading, wantedNumber) || isQualifiedPrinting(heading))) {
+    return null;
+  }
+
+  const productPrice = parsePrice($('#used_price').find('.price').first().text());
+  const externalSet = $('.console, .platform, .system, .set').first().text().trim() || undefined;
+
+  // Graded price only from a cell whose visible label is exactly "PSA 10" — the
+  // positional grade cells (complete/new/graded/box/manual) are never guessed at.
+  const gradedPrice = readPsa10Price($);
+
+  return productPrice === undefined ? null : {
+    price: productPrice,
+    ...(gradedPrice !== undefined ? { gradedPrice } : {}),
+    evidence: {
+      externalTitle: heading,
+      externalUrl,
+      matchedBy,
+      ...(externalSet ? { externalSet } : {}),
+    },
+  };
+}
+
+export async function fetchPriceChartingByAnchor(productUrl: string): Promise<PriceChartingResult | null> {
+  let page;
+
+  try {
+    await waitForSourceRateLimit('pricecharting');
+
+    const browser = await getSharedBrowser();
+    page = await browser.newPage();
+    await page.setViewport({ width: 1280, height: 800 });
+    await page.goto(productUrl, { waitUntil: 'networkidle2', timeout: 60000 });
+    await new Promise(r => setTimeout(r, 1000));
+
+    const html = await page.content();
+    return readProductPage(cheerio.load(html), productUrl, 'cached-url');
+  } catch (err) {
+    console.error(`PriceCharting anchor fetch error for ${productUrl}:`, err);
+  } finally {
+    if (page) {
+      await page.close().catch(() => {});
+    }
+  }
+  return null;
+}
+
+export async function searchPriceChartingCandidates(query: string): Promise<PriceChartingCandidate[]> {
+  let page;
+
+  try {
+    await waitForSourceRateLimit('pricecharting');
+
+    const searchUrl = `https://www.pricecharting.com/search-products?type=prices&q=${encodeURIComponent(query.trim())}`;
+    const browser = await getSharedBrowser();
+    page = await browser.newPage();
+    await page.setViewport({ width: 1280, height: 800 });
+    await page.goto(searchUrl, { waitUntil: 'networkidle2', timeout: 60000 });
+    await new Promise(r => setTimeout(r, 1000));
+
+    const html = await page.content();
+    const $ = cheerio.load(html);
+    const results = $('table#games_table tbody tr');
+    const pageUrl = page.url();
+
+    if (results.length === 0) {
+      const title = $('h1').first().text().trim();
+      const price = parsePrice($('#used_price').find('.price').first().text());
+      const gradedPrice = readPsa10Price($);
+
+      return [{
+        title,
+        url: pageUrl,
+        ...(price !== undefined ? { price } : {}),
+        ...(gradedPrice !== undefined ? { gradedPrice } : {}),
+      }];
+    }
+
+    return results.toArray().map((row) => {
+      const title = $(row).find('td.title a').text().trim();
+      const href = $(row).find('td.title a').attr('href');
+      const url = href ? new URL(href, pageUrl).toString() : pageUrl;
+      const price = parsePrice($(row).find('td.price.used_price span.js-price').text());
+      const gradedPrice = parsePrice($(row).find('td.price.grade10_price span.js-price').text());
+
+      return {
+        title,
+        url,
+        ...(price !== undefined ? { price } : {}),
+        ...(gradedPrice !== undefined ? { gradedPrice } : {}),
+      };
+    });
+  } catch (err) {
+    console.error(`PriceCharting candidate search error for ${query}:`, err);
+  } finally {
+    if (page) {
+      await page.close().catch(() => {});
+    }
+  }
+
+  return [];
 }
 
 export async function fetchPriceChartingPrice(query: string): Promise<PriceChartingResult | null> {
@@ -111,25 +239,12 @@ export async function fetchPriceChartingPrice(query: string): Promise<PriceChart
     // "OP07-034 japanese" redirects to a page quoting $1.59 while the table parser
     // sees zero rows. Verify the heading names our number, then read it directly.
     //
-    // Only the ungraded price is taken here. The product page's graded cells carry
-    // no usable labels, and guessing which tier is PSA 10 would recreate exactly the
-    // mislabelling this function exists to prevent.
+    // The graded price is taken from the product page only when a cell is
+    // explicitly labelled "PSA 10" (see readProductPage) — the positional grade
+    // tiers are never guessed, which would recreate exactly the mislabelling
+    // this function exists to prevent.
     if (results.length === 0) {
-      const heading = $('h1').first().text().trim();
-      if (!titleHasNumberToken(heading, wantedNumber)) return null;
-      if (isQualifiedPrinting(heading)) return null;
-
-      const productPrice = parsePrice($('#used_price').find('.price').first().text());
-      const externalSet = $('.console, .platform, .system, .set').first().text().trim() || undefined;
-      return productPrice === undefined ? null : {
-        price: productPrice,
-        evidence: {
-          externalTitle: heading,
-          externalUrl: page.url(),
-          externalSet,
-          matchedBy: 'search',
-        },
-      };
+      return readProductPage(cheerio.load(html), page.url(), 'search', wantedNumber);
     }
 
     results.each((_, el) => {

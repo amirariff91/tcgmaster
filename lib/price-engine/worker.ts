@@ -1,7 +1,13 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createScraperClient } from './db';
+import { getMappingsForCard, type SourceMapping } from './mapping';
 import { revalidateCardPage } from './revalidate';
-import { persistObservations, type CardRef, type PriceObservation } from './write-path';
+import {
+  persistObservations,
+  type CardRef,
+  type PriceObservation,
+  type PriceSource,
+} from './write-path';
 
 export type WorkerCard = CardRef & {
   tcg_player_id?: string | null;
@@ -21,7 +27,8 @@ export interface QueueQuery {
 export interface WorkerConfig {
   label: string;
   queueFilter: (q: QueueQuery) => QueueQuery;
-  fetchCard: (card: WorkerCard) => Promise<{
+  sources: PriceSource[];
+  fetchCard: (card: WorkerCard, mappings: SourceMapping[]) => Promise<{
     observations: PriceObservation[];
     cardUpdates?: Record<string, unknown>;
   }>;
@@ -99,7 +106,11 @@ export async function runScrapeLoop(config: WorkerConfig): Promise<never> {
     console.log(`${label} Processing: ${card.name} (${card.number})`);
 
     try {
-      const result = await config.fetchCard(card);
+      const mappings = (await getMappingsForCard(db, card.id)).filter((mapping) => (
+        config.sources.includes(mapping.source)
+        && (mapping.confidence === 'confirmed' || mapping.confidence === 'derived')
+      ));
+      const result = await config.fetchCard(card, mappings);
       if (result.observations.length === 0) {
         const timestamp = new Date().toISOString();
         const { error: cardError } = await db
@@ -107,10 +118,20 @@ export async function runScrapeLoop(config: WorkerConfig): Promise<never> {
           .update({ last_price_fetch: timestamp })
           .eq('id', card.id);
         if (cardError) updateFailure(card, 'cards empty-result update', cardError);
-        console.log(`${label} No prices found from any source, skipping... written=0 quarantined=0`);
+        if (mappings.length === 0) {
+          console.log(`${label} no confident mapping, skipped`);
+        } else {
+          console.log(`${label} No prices found from any source, skipping... written=0 quarantined=0`);
+        }
       } else {
         console.log(`${label} Successfully fetched ${result.observations.length} price points.`);
-        const persisted = await persistObservations(db, card, result.observations, result.cardUpdates);
+        const persisted = await persistObservations(
+          db,
+          card,
+          result.observations,
+          result.cardUpdates,
+          mappings,
+        );
         console.log(`${label} Price persistence for ${card.slug}: written=${persisted.written} quarantined=${persisted.quarantined}`);
         await revalidateCardPage(card.id, label);
         previousCardId = card.id;
