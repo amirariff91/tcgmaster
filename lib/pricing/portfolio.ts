@@ -4,6 +4,7 @@
 
 import { createServerClient } from '@/lib/supabase/client';
 import type { Tables } from '@/lib/supabase/database.types';
+import { lookupGraded, normalizeGrade } from '@/lib/pricing/grades';
 
 // Type definitions for Supabase query results
 interface CollectionItemRow {
@@ -258,11 +259,11 @@ export async function updatePortfolioValues(userId?: string): Promise<{
         const rawPrices = priceCache.raw_prices;
         const gradedPrices = priceCache.graded_prices;
 
-        if (!item.grade || item.grade === 'raw') {
+        const grade = normalizeGrade(item.grade);
+        if (grade === 'raw') {
           currentValue = rawPrices?.nearMint || null;
         } else {
-          const gradeKey = item.grade.replace('.', '');
-          currentValue = gradedPrices?.[gradeKey]?.average || null;
+          currentValue = lookupGraded(gradedPrices, grade)?.average || null;
         }
 
         if (currentValue !== null) {

@@ -4,21 +4,15 @@ import { useState, useRef, useEffect } from 'react';
 import { Plus, Check, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { trackQuickAddUsed } from '@/lib/analytics';
+import { GRADE_OPTIONS } from '@/lib/pricing/grades';
+import type { CanonicalGrade } from '@/lib/pricing/grades';
 
 interface QuickAddDropdownProps {
   cardId: string;
   cardName: string;
-  onAdd?: (cardId: string, grade: string) => Promise<void>;
+  onAdd?: (cardId: string, grade: CanonicalGrade) => Promise<void>;
   className?: string;
 }
-
-const grades = [
-  { value: 'raw', label: 'Raw' },
-  { value: 'psa7', label: 'PSA 7' },
-  { value: 'psa8', label: 'PSA 8' },
-  { value: 'psa9', label: 'PSA 9' },
-  { value: 'psa10', label: 'PSA 10' },
-];
 
 export function QuickAddDropdown({ cardId, cardName, onAdd, className }: QuickAddDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -54,7 +48,7 @@ export function QuickAddDropdown({ cardId, cardName, onAdd, className }: QuickAd
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
 
-  const handleAdd = async (grade: string) => {
+  const handleAdd = async (grade: CanonicalGrade) => {
     setIsLoading(true);
     try {
       await onAdd?.(cardId, grade);
@@ -116,7 +110,7 @@ export function QuickAddDropdown({ cardId, cardName, onAdd, className }: QuickAd
           aria-label="Select grade"
           onClick={(e) => e.stopPropagation()}
         >
-          {grades.map((grade) => (
+          {GRADE_OPTIONS.map((grade) => (
             <button
               key={grade.value}
               type="button"

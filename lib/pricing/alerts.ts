@@ -5,6 +5,7 @@
 
 import { createServerClient } from '@/lib/supabase/client';
 import type { Tables } from '@/lib/supabase/database.types';
+import { lookupGraded, normalizeGrade } from '@/lib/pricing/grades';
 
 export interface TriggeredAlert {
   alertId: string;
@@ -137,11 +138,11 @@ export async function checkAllAlerts(): Promise<{
         const rawPrices = priceCache.raw_prices;
         const gradedPrices = priceCache.graded_prices;
 
-        if (alert.grade === 'raw') {
+        const grade = normalizeGrade(alert.grade);
+        if (grade === 'raw') {
           currentPrice = rawPrices?.nearMint || null;
         } else {
-          const gradeKey = alert.grade.replace('.', '');
-          currentPrice = gradedPrices?.[gradeKey]?.average || null;
+          currentPrice = lookupGraded(gradedPrices, grade)?.average || null;
         }
 
         if (currentPrice === null || alert.baseline_price === null) continue;
@@ -250,16 +251,16 @@ export async function createPriceAlert(params: {
 
   const priceCache = priceCacheData as PriceCacheRow | null;
 
+  const normalizedGrade = normalizeGrade(params.grade);
   let baselinePrice: number | null = null;
   if (priceCache) {
     const rawPrices = priceCache.raw_prices;
     const gradedPrices = priceCache.graded_prices;
 
-    if (!params.grade || params.grade === 'raw') {
+    if (normalizedGrade === 'raw') {
       baselinePrice = rawPrices?.nearMint || null;
     } else {
-      const gradeKey = params.grade.replace('.', '');
-      baselinePrice = gradedPrices?.[gradeKey]?.average || null;
+      baselinePrice = lookupGraded(gradedPrices, normalizedGrade)?.average || null;
     }
   }
 
@@ -269,7 +270,7 @@ export async function createPriceAlert(params: {
       user_id: params.userId,
       card_id: params.cardId,
       variant_id: params.variantId,
-      grade: params.grade || 'raw',
+      grade: normalizedGrade,
       grading_company_id: params.gradingCompanyId,
       threshold_percent: params.thresholdPercent,
       direction: params.direction || 'both',

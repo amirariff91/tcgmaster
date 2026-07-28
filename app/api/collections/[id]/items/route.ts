@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { gradeKeyCandidates, lookupGraded, normalizeGrade } from '@/lib/pricing/grades';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -65,6 +66,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     acquisition_type = 'purchase',
     notes = null,
   } = body;
+  const g = normalizeGrade(grade);
 
   if (!card_id) {
     return NextResponse.json(
@@ -83,7 +85,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .from('price_history')
       .select('price')
       .eq('card_id', card_id)
-      .eq('grade', grade)
+      .in('grade', gradeKeyCandidates(g))
       .lte('recorded_at', acquisition_date)
       .order('recorded_at', { ascending: false })
       .limit(1)
@@ -106,11 +108,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const priceCache = priceCacheData as PriceCacheRow | null;
     if (priceCache) {
-      if (grade === 'raw') {
+      if (g === 'raw') {
         finalCostBasis = priceCache.raw_prices?.nearMint || null;
       } else {
-        const gradeKey = `psa${grade}`;
-        finalCostBasis = priceCache.graded_prices?.[gradeKey]?.average || null;
+        finalCostBasis = lookupGraded(priceCache.graded_prices, g)?.average || null;
       }
       if (finalCostBasis !== null) {
         costBasisSource = 'current_price_auto';
@@ -124,7 +125,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       collection_id: collectionId,
       card_id,
       variant_id,
-      grade,
+      grade: g,
       grading_company_id,
       cert_number,
       cost_basis: finalCostBasis,

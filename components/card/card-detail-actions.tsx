@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Bell, Check, Link2, Loader2, Plus, Share2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { GRADE_OPTIONS } from '@/lib/pricing/grades';
+import type { CanonicalGrade } from '@/lib/pricing/grades';
 
 interface CardDetailActionsProps {
   cardId: string;
@@ -17,14 +19,6 @@ interface Collection {
   name: string;
   type: string;
 }
-
-const GRADES = [
-  { value: 'raw', label: 'Raw' },
-  { value: '7', label: 'PSA 7' },
-  { value: '8', label: 'PSA 8' },
-  { value: '9', label: 'PSA 9' },
-  { value: '10', label: 'PSA 10' },
-];
 
 const ALERT_THRESHOLDS = [5, 10, 20];
 
@@ -76,7 +70,7 @@ export function CardDetailActions({ cardId, cardName, defaultGrade = 'raw' }: Ca
     setOpenMenu((current) => (current === menu ? null : menu));
   };
 
-  async function addToCollection(grade: string) {
+  async function addToCollection(grade: CanonicalGrade) {
     setStatus({ kind: 'busy' });
     try {
       const listRes = await fetch('/api/collections');
@@ -188,7 +182,7 @@ export function CardDetailActions({ cardId, cardName, defaultGrade = 'raw' }: Ca
               <p className="px-3 pb-1.5 pt-1 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
                 Which grade do you own?
               </p>
-              {GRADES.map((grade) => (
+              {GRADE_OPTIONS.map((grade) => (
                 <button
                   key={grade.value}
                   type="button"
