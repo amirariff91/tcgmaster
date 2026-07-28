@@ -4,6 +4,7 @@ import { createPublicClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Trophy, ChevronRight, Loader2 } from 'lucide-react';
+import { resolveCardImageUrl } from '@/lib/images/cloudflare-loader';
 
 export const metadata: Metadata = {
   title: 'Global Meta Tier List | TCGMaster',
@@ -45,6 +46,24 @@ type ArchetypeData = {
   tops: number;
 };
 
+type GameRow = {
+  id: string;
+  slug: string;
+  display_name: string;
+};
+
+type GlobalDeckRow = {
+  leader_card_id: string | null;
+  cards: {
+    name: string | null;
+    image_url: string | null;
+    local_image_url: string | null;
+  } | null;
+  tournaments: {
+    games: { id: string; slug: string } | null;
+  } | null;
+};
+
 export default async function GlobalDecksHub() {
   const supabase = createPublicClient();
 
@@ -54,7 +73,7 @@ export default async function GlobalDecksHub() {
     .select('*')
     .eq('is_active', true);
 
-  let games = (gamesData as any[]) || [];
+  const games = (gamesData ?? []) as unknown as GameRow[];
 
   // Enforce strict order: One Piece (left), DBFW (middle), Pokemon (right)
   const order = ['one-piece', 'dbfw', 'pokemon'];
@@ -72,7 +91,7 @@ export default async function GlobalDecksHub() {
     .from('decks')
     .select('*, cards(*), tournaments!inner(games!inner(*))');
 
-  const allDecks = (decksData as any[]) || [];
+  const allDecks = (decksData ?? []) as unknown as GlobalDeckRow[];
 
   // 3. Aggregate Data in JS
   const groupedData: Record<string, Record<string, ArchetypeData>> = {};
@@ -196,7 +215,7 @@ export default async function GlobalDecksHub() {
                       <div className="relative z-10 shrink-0 w-12 h-12 rounded-full overflow-hidden border-2 border-white/10 shadow-lg bg-black/80 mr-4">
                         {arch.leaderCardImage ? (
                           <Image
-                            src={arch.leaderCardImage}
+                            src={resolveCardImageUrl(arch.leaderCardImage) ?? arch.leaderCardImage}
                             alt={arch.leaderCardName}
                             fill
                             className="object-cover object-top group-hover:scale-110 transition-transform duration-500"

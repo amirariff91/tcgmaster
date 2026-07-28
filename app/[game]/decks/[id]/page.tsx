@@ -1,12 +1,12 @@
 import { Metadata } from 'next';
 // Cookie-free anon client keeps this route statically renderable (see card page).
 import { createPublicClient } from '@/lib/supabase/client';
-import { Card, CardContent } from '@/components/ui/card';
 import { FormattedPrice } from '@/components/ui/formatted-price';
 import { Trophy, ChevronLeft, ExternalLink, Copy, ShoppingCart } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
+import { resolveCardImageUrl } from '@/lib/images/cloudflare-loader';
 
 export const metadata: Metadata = {
   title: 'Deck Details | TCGMaster',
@@ -19,6 +19,29 @@ export const revalidate = 60; // Revalidate every minute
 export async function generateStaticParams() {
   return [];
 }
+
+type DeckCardImage = {
+  name: string;
+  image_url: string | null;
+  local_image_url: string | null;
+};
+
+type DeckCardEntry = {
+  count: number;
+  raw_card_name: string | null;
+  raw_card_id_string: string | null;
+  cards: DeckCardImage | null;
+};
+
+type DeckDetail = {
+  placement: string;
+  player_name: string | null;
+  source_url: string | undefined;
+  total_price: number | null;
+  tournaments: { name: string | null } | null;
+  leader_card: DeckCardImage | null;
+  deck_cards: DeckCardEntry[] | null;
+};
 
 export default async function DeckDetailPage({
   params,
@@ -47,9 +70,9 @@ export default async function DeckDetailPage({
   if (!deck) return notFound();
 
   // Group cards by type if available, otherwise just dump them
-  const deckData = deck as any;
+  const deckData = deck as unknown as DeckDetail;
   const leaderCard = deckData.leader_card;
-  const mainDeckCards = deckData.deck_cards || [];
+  const mainDeckCards = deckData.deck_cards ?? [];
 
   return (
     <div className="min-h-screen bg-[#0b1329] text-white pt-24 pb-20">
@@ -70,7 +93,7 @@ export default async function DeckDetailPage({
           {(leaderCard?.image_url || leaderCard?.local_image_url) && (
             <div className="absolute inset-0 opacity-20 pointer-events-none">
                <Image
-                  src={leaderCard.local_image_url || leaderCard.image_url}
+                  src={resolveCardImageUrl(leaderCard.local_image_url || leaderCard.image_url) ?? ''}
                   alt="Background"
                   fill
                   className="object-cover blur-3xl scale-125"
@@ -83,8 +106,8 @@ export default async function DeckDetailPage({
             <div className="shrink-0 rounded-2xl overflow-hidden shadow-2xl border-4 border-white/10 w-40 md:w-56 aspect-[2.5/3.5] bg-black/50">
                {(leaderCard?.image_url || leaderCard?.local_image_url) ? (
                   <Image
-                    src={leaderCard.local_image_url || leaderCard.image_url}
-                    alt={leaderCard.name}
+                    src={resolveCardImageUrl(leaderCard.local_image_url || leaderCard.image_url) ?? ''}
+                    alt={leaderCard.name || 'Leader'}
                     width={224}
                     height={314}
                     className="object-cover w-full h-full"
@@ -117,7 +140,7 @@ export default async function DeckDetailPage({
                   Export Deck
                 </button>
                 <a 
-                  href={deckData.source_url} 
+                  href={deckData.source_url ?? undefined}
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 bg-black/40 hover:bg-black/60 border border-white/10 px-6 py-3 rounded-xl font-bold transition-colors"
@@ -148,14 +171,14 @@ export default async function DeckDetailPage({
         <div className="space-y-6">
           <h2 className="text-2xl font-bold border-b border-white/10 pb-4">Main Deck</h2>
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4">
-            {mainDeckCards.map((c: any, i: number) => {
+            {mainDeckCards.map((c, i) => {
               const card = c.cards;
               return (
                 <div key={i} className="relative group rounded-xl overflow-hidden shadow-lg border border-white/5 bg-black/20 aspect-[2.5/3.5]">
                   {(card?.image_url || card?.local_image_url) ? (
                     <Image
-                      src={card.local_image_url || card.image_url}
-                      alt={card.name}
+                      src={resolveCardImageUrl(card.local_image_url || card.image_url) ?? ''}
+                      alt={card.name || 'Card'}
                       fill
                       className="object-cover group-hover:scale-110 transition-transform duration-300"
                     />
