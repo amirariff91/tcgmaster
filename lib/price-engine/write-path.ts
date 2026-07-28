@@ -235,22 +235,6 @@ function throwIfError(card: CardRef, operation: string, error: unknown): void {
   if (error) writeFailure(card, operation, error);
 }
 
-function shapeRawPrices(obs: PriceObservation[], headline: Headline | null): Record<string, number> {
-  const rawPrices: Record<string, number> = {};
-
-  for (const observation of obs) {
-    if (observation.grade === 'raw' && Number.isFinite(observation.priceUsd)) {
-      rawPrices[observation.source] = observation.priceUsd;
-    }
-  }
-
-  if (headline) {
-    rawPrices.market = headline.cents / 100;
-  }
-
-  return rawPrices;
-}
-
 export interface PersistResult {
   written: number;
   quarantined: number;
@@ -409,30 +393,6 @@ export async function persistObservations(
     price_kind: SOURCE_KIND[observation.source],
     recorded_at: recordedAt,
   }));
-
-  const { data: existingCache, error: cacheReadError } = await db
-    .from('price_cache')
-    .select('ebay_sales, source')
-    .eq('card_id', card.id)
-    .maybeSingle();
-  throwIfError(card, 'price_cache select', cacheReadError);
-
-  const cachePayload = {
-    card_id: card.id,
-    variant_id: null,
-    raw_prices: shapeRawPrices(acceptedObservations, batchHeadline),
-    graded_prices: shapeGradedPrices(acceptedObservations),
-    fetched_at: recordedAt,
-    expires_at: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString(),
-    ...(existingCache?.ebay_sales !== undefined ? { ebay_sales: existingCache.ebay_sales } : {}),
-    ...(existingCache?.source !== undefined ? { source: existingCache.source } : {}),
-  };
-
-  const { error: deleteError } = await db.from('price_cache').delete().eq('card_id', card.id);
-  throwIfError(card, 'price_cache delete', deleteError);
-
-  const { error: cacheError } = await db.from('price_cache').insert(cachePayload);
-  throwIfError(card, 'price_cache insert', cacheError);
 
   if (quarantineRows.length > 0) {
     const { error } = await db.from('price_quarantine').insert(quarantineRows);

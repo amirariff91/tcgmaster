@@ -284,8 +284,8 @@ describe('persistObservations', () => {
       headline_grade: null,
       computed_at: expect.any(String),
     }));
-    expect(inserts.price_cache).toHaveLength(1);
-    expect(deletes.price_cache).toBe(1);
+    expect(inserts.price_cache).toBeUndefined();
+    expect(deletes.price_cache).toBeUndefined();
   });
 
   it('merges source prices from the existing row and recomputes the merged headline', async () => {
@@ -574,9 +574,6 @@ describe('persistObservations', () => {
     expect(inserts.price_quarantine?.[0]).toEqual([
       expect.objectContaining({ source: 'tcgplayer', price: 750, reason: 'number-mismatch' }),
     ]);
-    expect(inserts.price_cache?.[0]).toEqual(expect.objectContaining({
-      raw_prices: { yuyutei: 10, market: 10 },
-    }));
   });
 
   it('suppresses identical observations already written in the last 15 minutes', async () => {

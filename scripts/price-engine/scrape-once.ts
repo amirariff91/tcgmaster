@@ -73,7 +73,7 @@ async function main(): Promise<void> {
   console.log('Headline:', JSON.stringify(persisted.headline, null, 2));
   console.log('Written:', JSON.stringify({
     historyRows: persisted.historyRows,
-    priceCache: true,
+    currentPrice: true,
     cardUpdates: result.cardUpdates ?? {},
   }, null, 2));
 }

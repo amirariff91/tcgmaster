@@ -44,7 +44,7 @@ export default async function AdminHealthDashboard() {
 
   // 1. Fetch Global Vitals
   const { count: totalCards } = await supabase.from('cards').select('*', { count: 'exact', head: true });
-  const { count: cachedPrices } = await supabase.from('price_cache').select('*', { count: 'exact', head: true });
+  const { count: cachedPrices } = await supabase.from('card_price_current').select('*', { count: 'exact', head: true });
   const { count: cardsWithArtist } = await supabase.from('cards').select('*', { count: 'exact', head: true }).not('artist', 'is', null);
   const { count: totalTourneys } = await supabase.from('tournaments').select('*', { count: 'exact', head: true });
   const { count: totalDecks } = await supabase.from('decks').select('*', { count: 'exact', head: true });
