@@ -45,9 +45,15 @@ export async function fetchJapanesePrice(query: string, setName?: string): Promi
         const priceJpy = parseInt(match[1].replace(/,/g, ''), 10);
         const pageText = $('body').text().replace(/\s+/g, ' ');
         const soldOut = $('.soldout, .sold-out, .sold_out, [class*="soldout"], [class*="sold-out"]').length > 0
-          || /売り切れ|在庫なし|SOLD\s*OUT/i.test(pageText);
-        const externalTitle = $('h1').first().text().trim()
+          || /売り切れ|在庫なし|在庫\s*[:：]\s*[×✕]|SOLD\s*OUT/i.test(pageText);
+        // The h1 is "name | 販売 | set | site" and never contains the card number; the
+        // number lives in a spec badge in the body. A single-card page names exactly one
+        // number, so the first match is the card's own — append it to the evidence title
+        // or identity assertion fails closed on every cached fetch.
+        const numberBadge = pageText.match(/[A-Za-z0-9]{2,5}-\d{2,3}/)?.[0] ?? '';
+        const heading = $('h1').first().text().trim()
           || $('.card-product-name, .product-name, .card-name, .item-name').first().text().trim();
+        const externalTitle = `${heading} ${numberBadge}`.trim();
         return {
           price: parseFloat((priceJpy / JPY_TO_USD).toFixed(2)),
           url: rawQuery,
@@ -155,10 +161,12 @@ export async function fetchJapanesePrice(query: string, setName?: string): Promi
       // Convert JPY to USD roughly for the database (150 JPY = 1 USD)
       const rowText = $(selectedProduct).text().replace(/\s+/g, ' ');
       const rowHtml = $(selectedProduct).html() ?? '';
-      const soldOut = /soldout|sold-out|売り切れ|在庫なし|SOLD\s*OUT/i.test(`${rowHtml} ${rowText}`);
-      const externalTitle = $(selectedProduct).find('.name').text().trim()
-        || $(selectedProduct).find('a').first().text().trim()
-        || rowText;
+      const soldOut = /soldout|sold-out|売り切れ|在庫なし|在庫\s*[:：]\s*[×✕]|SOLD\s*OUT/i.test(`${rowHtml} ${rowText}`);
+      // Prefer the full row text: the row includes the card-number badge, which the
+      // .name element alone does not — identity asserts against this string.
+      const externalTitle = (rowText.length > 0 ? rowText.slice(0, 200) : '').trim()
+        || $(selectedProduct).find('.name').text().trim()
+        || $(selectedProduct).find('a').first().text().trim();
       return {
         price: parseFloat((priceJpy / JPY_TO_USD).toFixed(2)),
         url: selectedUrl || searchUrl,
