@@ -14,8 +14,9 @@
  *
  * Workers:
  *   scraper-en-op  — TCGCSV for English One Piece (fast, JSON API, no Puppeteer)
- *   scraper-jp-op  — Yuyutei primary + SnkrDunk fallback for Japanese One Piece
+ *   scraper-jp-op  — Yuyutei + PriceCharting for Japanese One Piece
  *   scraper-dbfw   — CardRush for Dragon Ball Fusion World
+ *   scraper-en-dbfw — TCGCSV for English Dragon Ball Fusion World
  *   artist-vision  — Ollama Cloud vision artist extractor for EN OP cards
  *   variant-mapper — Ollama Cloud variant mapping for English cards
  */
@@ -37,6 +38,7 @@ module.exports = {
       watch: false,
       autorestart: true,
       restart_delay: 5000,   // Wait 5s before restarting on crash
+      exp_backoff_restart_delay: 5000, // transient-dep (DB down) restart storms back off instead of burning max_restarts
       max_restarts: 50,       // If crashes > 50 times, stop (circuit breaker)
       min_uptime: '10s',      // Must stay alive 10s to count as healthy start
       log_file: './logs/scraper-en-op.log',
@@ -57,6 +59,7 @@ module.exports = {
       watch: false,
       autorestart: true,
       restart_delay: 5000,
+      exp_backoff_restart_delay: 5000, // transient-dep (DB down) restart storms back off instead of burning max_restarts
       max_restarts: 50,
       min_uptime: '10s',
       log_file: './logs/scraper-jp-op.log',
@@ -77,6 +80,7 @@ module.exports = {
       watch: false,
       autorestart: true,
       restart_delay: 5000,
+      exp_backoff_restart_delay: 5000, // transient-dep (DB down) restart storms back off instead of burning max_restarts
       max_restarts: 50,
       min_uptime: '10s',
       log_file: './logs/scraper-dbfw.log',
@@ -84,8 +88,7 @@ module.exports = {
       time: true,
     },
 
-    // ─────────────────────────────────────────────
-    // English Dragon Ball Fusion World — TCGPlayer
+    // English Dragon Ball Fusion World — TCGCSV
     // ─────────────────────────────────────────────
     {
       name: 'scraper-en-dbfw',
@@ -97,6 +100,7 @@ module.exports = {
       watch: false,
       autorestart: true,
       restart_delay: 5000,
+      exp_backoff_restart_delay: 5000, // transient-dep (DB down) restart storms back off instead of burning max_restarts
       max_restarts: 50,
       min_uptime: '10s',
       log_file: './logs/scraper-en-dbfw.log',
@@ -105,6 +109,25 @@ module.exports = {
     },
 
     // ─────────────────────────────────────────────
+    // Persist source identities before the pricers fetch by anchor
+    // ─────────────────────────────────────────────
+    {
+      name: 'scraper-resolver',
+      script: 'bun',
+      args: 'run scripts/price-engine/resolver.ts --source pricecharting --loop',
+      env: {
+        RESOLVER_SLEEP_MS: '20000',
+      },
+      watch: false,
+      autorestart: true,
+      restart_delay: 5000,
+      exp_backoff_restart_delay: 5000,
+      max_restarts: 50,
+      min_uptime: '10s',
+      log_file: './logs/scraper-resolver.log',
+      error_file: './logs/scraper-resolver-error.log',
+      time: true,
+    },
     // Vision Artist Extractor (Ollama Cloud) — EN One Piece first
     // Runs as idle-loop: waits 5min when backlog is empty
     // Expand to JA OP + DBFW in Phase 2

@@ -1,154 +1,96 @@
-import { createClient } from '@supabase/supabase-js';
-import { fetchEnglishPrice } from '../../lib/price-engine/tcgcsv';
-import { fetchPriceChartingPrice } from '../../lib/price-engine/pricecharting';
+import { fileURLToPath } from 'node:url';
+import { fetchPriceChartingByAnchor } from '../../lib/price-engine/pricecharting';
+import { fetchTcgplayerByAnchor } from '../../lib/price-engine/tcgcsv';
+import { assertIdentity } from '../../lib/price-engine/identity';
+import type { SourceMapping } from '../../lib/price-engine/mapping';
+import {
+  SOURCE_CURRENCY,
+  type PriceObservation,
+} from '../../lib/price-engine/write-path';
+import { runScrapeLoop, type WorkerCard, type WorkerConfig } from '../../lib/price-engine/worker';
+import { normalizeGrade } from '../../lib/pricing/grades';
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!);
+export const fetchCard = async (card: WorkerCard, mappings: SourceMapping[]): Promise<{
+  observations: PriceObservation[];
+  cardUpdates?: Record<string, unknown>;
+}> => {
+  const observations: PriceObservation[] = [];
+  const cardUpdates: Record<string, unknown> = {};
 
-// SAFE_MODE=1 → slower sleep to reduce ban risk; set in .env or environment
-const SAFE_MODE = process.env.SAFE_MODE === '1';
-const SLEEP_MS = SAFE_MODE ? 40000 : 17000; // 40s in safe mode, 17s normal
-
-async function run() {
-  console.log(`Starting Continuous Scrape Engine (English One Piece) [SAFE_MODE=${SAFE_MODE}]...`);
-  
-  while (true) {
-    // English OP cards start with 'op-' and do NOT end with '-ja'
-    const { data: cards, error } = await supabase
-      .from('cards')
-      .select('id, name, slug, number, tcg_player_id, pricecharting_url, print_run_info, sets ( name )')
-      .like('slug', 'op-%')
-      .not('slug', 'like', '%-ja')
-      .order('last_price_fetch', { ascending: true, nullsFirst: true })
-      .limit(1);
-      
-    if (error || !cards || cards.length === 0) {
-      console.error("Failed to fetch queue", error);
-      await new Promise(r => setTimeout(r, SLEEP_MS));
-      continue;
-    }
-    
-    const card = cards[0];
-    console.log(`[English OP] Processing: ${card.name} (${card.number})`);
-    
-    const results: { price: number; source: string; grade: string }[] = [];
-    const updatePayload: any = {};
-    
-    // 1. TCGPlayer (Fast)
-    console.log('[English OP] Fetching from TCGPlayer...');
-    const tcgPlayerResult = await fetchEnglishPrice(card.number, (card as any).sets?.name, card.tcg_player_id);
+  const tcgPlayerMapping = mappings.find((mapping) => mapping.source === 'tcgplayer');
+  if (!tcgPlayerMapping?.externalId) {
+    console.log('[English OP] tcgplayer: no mapping, skipped');
+  } else {
+    console.log(`[English OP] Fetching from TCGPlayer anchor ${tcgPlayerMapping.externalId}...`);
+    const tcgPlayerResult = await fetchTcgplayerByAnchor(tcgPlayerMapping.externalId);
     if (tcgPlayerResult !== null) {
-      results.push({ price: tcgPlayerResult.price, source: 'tcgplayer', grade: 'raw' });
+      observations.push({
+        source: 'tcgplayer',
+        grade: normalizeGrade('raw'),
+        priceUsd: tcgPlayerResult.price,
+        priceNative: tcgPlayerResult.price,
+        currency: SOURCE_CURRENCY.tcgplayer,
+        evidence: tcgPlayerResult.evidence,
+      });
       console.log(`[English OP] TCGPlayer: $${tcgPlayerResult.price}`);
-    }
 
-    // 2. PriceCharting (Puppeteer-based)
-    console.log('[English OP] Fetching from PriceCharting...');
-    const pcQueryOrUrl = card.pricecharting_url || `${card.name} ${card.number} One Piece`;
-    const pcResult = await fetchPriceChartingPrice(pcQueryOrUrl);
-    if (pcResult !== null) {
-      results.push({ price: pcResult.price, source: 'pricecharting', grade: 'raw' });
-      console.log(`[English OP] PriceCharting: $${pcResult.price}`);
-      if (pcResult.gradedPrice) {
-        results.push({ price: pcResult.gradedPrice, source: 'pricecharting', grade: 'psa10' });
-        console.log(`[English OP] PriceCharting PSA 10: $${pcResult.gradedPrice}`);
-      }
-      if (pcResult.url && pcResult.url !== card.pricecharting_url) {
-        updatePayload.pricecharting_url = pcResult.url;
-      }
-    }
-    
-    if (results.length > 0) {
-      console.log(`[English OP] Successfully fetched ${results.length} price points.`);
-      
-      const rawPrices = results.filter(r => r.grade === 'raw').map(r => r.price);
-      let ttlPrice = 0;
-      if (rawPrices.length > 0) {
-        const lowestPrice = Math.min(...rawPrices);
-        ttlPrice = Math.round(lowestPrice * 100);
-      }
-      
-      const updatePayload: any = {
-        last_price_fetch: new Date().toISOString()
-      };
-      if (ttlPrice > 0) updatePayload.price_cache_ttl = ttlPrice;
+      const identity = assertIdentity({ number: card.number, name: card.name }, tcgPlayerResult.evidence);
+      if (identity.ok) {
+        cardUpdates.tcg_player_id = String(tcgPlayerResult.tcgProductId);
 
-      // If we got a successful TCGPlayer match, save it permanently
-      if (tcgPlayerResult !== null) {
-        updatePayload.tcg_player_id = String(tcgPlayerResult.tcgProductId);
         if (tcgPlayerResult.tcgProductName) {
-          const printRunInfo = { ...(card.print_run_info as any || {}) };
+          const printRunInfo = card.print_run_info && typeof card.print_run_info === 'object'
+            ? { ...(card.print_run_info as Record<string, unknown>) }
+            : {};
           printRunInfo.tcgplayer_card_name = tcgPlayerResult.tcgProductName;
-          updatePayload.print_run_info = printRunInfo;
+          cardUpdates.print_run_info = printRunInfo;
         }
       }
-
-      await supabase
-        .from('cards')
-        .update(updatePayload)
-        .eq('id', card.id);
-
-      // Also update price_cache table for fast reads
-      const cacheRawPrices: Record<string, number> = {};
-      const cacheGradedPrices: Record<string, Record<string, number>> = {};
-      
-      for (const res of results) {
-        if (res.grade === 'raw') {
-          cacheRawPrices[res.source] = res.price;
-        } else {
-          if (!cacheGradedPrices[res.grade]) cacheGradedPrices[res.grade] = {};
-          cacheGradedPrices[res.grade][res.source] = res.price;
-        }
-      }
-      
-      const rawVals = Object.values(cacheRawPrices);
-      if (rawVals.length > 0) {
-        cacheRawPrices.market = Math.min(...rawVals);
-      }
-      
-      await supabase.from('price_cache').upsert({
-        card_id: card.id,
-        variant_id: null,
-        raw_prices: cacheRawPrices,
-        graded_prices: cacheGradedPrices,
-        fetched_at: new Date().toISOString(),
-        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-      }).throwOnError();
-        
-      for (const result of results) {
-        let finalGrade = result.grade;
-        let finalCompany = null;
-        if (finalGrade.startsWith('psa')) {
-          finalCompany = '74c51627-cc4b-4a82-a1c0-52b3975b47b7';
-          finalGrade = finalGrade.replace('psa', '');
-        } else if (finalGrade.startsWith('bgs')) {
-          finalCompany = 'cda2045f-5d78-49e7-b1c8-de04dac9888d';
-          finalGrade = finalGrade.replace('bgs', '');
-        }
-        
-        const { error: insertError } = await supabase
-          .from('price_history')
-          .insert({
-            card_id: card.id,
-            price: result.price,
-            source: result.source,
-            grade: finalGrade,
-            grading_company_id: finalCompany
-          });
-        if (insertError) {
-          console.error(`[English OP] Failed to insert ${result.source} ${result.grade} price for ${card.number}:`, insertError);
-        }
-      }
-    } else {
-      console.log(`[English OP] Failed to find any prices, skipping...`);
-      await supabase
-        .from('cards')
-        .update({ last_price_fetch: new Date().toISOString() })
-        .eq('id', card.id);
     }
-    
-    console.log(`[English OP] Sleeping for ${SLEEP_MS / 1000}s... Zzz...\n`);
-    await new Promise(r => setTimeout(r, SLEEP_MS));
   }
-}
 
-run();
+  const priceChartingMapping = mappings.find((mapping) => mapping.source === 'pricecharting');
+  if (!priceChartingMapping?.externalUrl) {
+    console.log('[English OP] pricecharting: no mapping, skipped');
+  } else {
+    console.log(`[English OP] Fetching from PriceCharting anchor ${priceChartingMapping.externalUrl}...`);
+    const priceChartingResult = await fetchPriceChartingByAnchor(priceChartingMapping.externalUrl);
+    if (priceChartingResult !== null) {
+      observations.push({
+        source: 'pricecharting',
+        grade: normalizeGrade('raw'),
+        priceUsd: priceChartingResult.price,
+        priceNative: priceChartingResult.price,
+        currency: SOURCE_CURRENCY.pricecharting,
+        evidence: priceChartingResult.evidence,
+      });
+      console.log(`[English OP] PriceCharting: $${priceChartingResult.price}`);
+
+      if (priceChartingResult.gradedPrice) {
+        observations.push({
+          source: 'pricecharting',
+          grade: normalizeGrade('psa10'),
+          priceUsd: priceChartingResult.gradedPrice,
+          priceNative: priceChartingResult.gradedPrice,
+          currency: SOURCE_CURRENCY.pricecharting,
+          evidence: priceChartingResult.evidence,
+        });
+        console.log(`[English OP] PriceCharting PSA 10: $${priceChartingResult.gradedPrice}`);
+      }
+    }
+  }
+
+  return { observations, cardUpdates };
+};
+
+export const workerConfig: WorkerConfig = {
+  label: 'English OP',
+  queueFilter: (q) => q.ilike('slug', 'op-%').not('slug', 'ilike', '%-ja'),
+  sources: ['tcgplayer', 'pricecharting'],
+  fetchCard,
+  sleepMs: process.env.SAFE_MODE === '1' ? 40000 : 17000,
+};
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  void runScrapeLoop(workerConfig);
+}

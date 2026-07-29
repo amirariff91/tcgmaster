@@ -1,11 +1,12 @@
 import { Metadata } from 'next';
 // Cookie-free anon client keeps this route statically renderable (see card page).
 import { createPublicClient } from '@/lib/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { FormattedPrice } from '@/components/ui/formatted-price';
 import { Trophy, Calendar, Users, Target } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { resolveCardImageUrl } from '@/lib/images/cloudflare-loader';
 
 export const metadata: Metadata = {
   title: 'Top Decks & Tournaments | TCGMaster',
@@ -19,6 +20,29 @@ export const revalidate = 60; // Revalidate every minute to keep meta fresh
 export async function generateStaticParams() {
   return [];
 }
+
+type DeckLeader = {
+  name: string;
+  image_url: string | null;
+  local_image_url: string | null;
+};
+
+type DeckRow = {
+  id: string;
+  placement: string;
+  player_name: string | null;
+  total_price: number | null;
+  cards: DeckLeader | null;
+};
+
+type TournamentRow = {
+  id: string;
+  date: string;
+  name: string;
+  format: string | null;
+  source_url: string | undefined;
+  num_players: number | null;
+};
 
 export default async function DecksPage({
   params,
@@ -44,6 +68,9 @@ export default async function DecksPage({
     .in('placement', ['1st', '1', '2nd', '2', '3rd', '3', '4th', '4'])
     .order('created_at', { ascending: false })
     .limit(24);
+
+  const deckRows = (decks ?? []) as unknown as DeckRow[];
+  const tournamentRows = (tournaments ?? []) as unknown as TournamentRow[];
 
   return (
     <div className="min-h-screen bg-[#0b1329] text-white pt-24 pb-20">
@@ -73,15 +100,15 @@ export default async function DecksPage({
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {(decks as any[])?.map((deck) => (
+            {deckRows.map((deck) => (
               <Link key={deck.id} href={`/${game}/decks/${deck.id}`}>
                 <Card className="group overflow-hidden rounded-2xl border-white/10 bg-white/5 hover:bg-white/10 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-orange-500/20 h-full flex flex-col">
                   {/* Leader Image Header */}
                   <div className="relative h-32 w-full bg-black/50 overflow-hidden">
                     {(deck.cards?.image_url || deck.cards?.local_image_url) ? (
                       <Image
-                        src={deck.cards.local_image_url || deck.cards.image_url}
-                        alt={deck.cards.name}
+                        src={resolveCardImageUrl(deck.cards.local_image_url || deck.cards.image_url) ?? ''}
+                        alt={deck.cards.name || 'Leader'}
                         fill
                         className="object-cover object-top opacity-70 group-hover:opacity-100 group-hover:scale-110 transition-all duration-500"
                       />
@@ -123,7 +150,7 @@ export default async function DecksPage({
               </Link>
             ))}
 
-            {(!decks || decks.length === 0) && (
+            {deckRows.length === 0 && (
               <div className="col-span-full py-20 text-center border border-dashed border-white/10 rounded-2xl bg-white/5">
                 <Trophy className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
                 <h3 className="text-xl font-bold text-zinc-400">No Decks Found</h3>
@@ -152,13 +179,13 @@ export default async function DecksPage({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/10 text-sm">
-                  {(tournaments as any[])?.map((t) => (
+                  {tournamentRows.map((t) => (
                     <tr key={t.id} className="hover:bg-white/5 transition-colors group">
                       <td className="p-4 text-zinc-400 whitespace-nowrap">
                         {new Date(t.date).toLocaleDateString()}
                       </td>
                       <td className="p-4 font-medium text-white">
-                        <a href={t.source_url} target="_blank" rel="noopener noreferrer" className="hover:text-orange-400 transition-colors">
+                        <a href={t.source_url ?? undefined} target="_blank" rel="noopener noreferrer" className="hover:text-orange-400 transition-colors">
                           {t.name}
                         </a>
                       </td>
@@ -171,7 +198,7 @@ export default async function DecksPage({
                       </td>
                     </tr>
                   ))}
-                  {(!tournaments || tournaments.length === 0) && (
+                  {tournamentRows.length === 0 && (
                     <tr>
                       <td colSpan={4} className="p-8 text-center text-zinc-500">
                         No tournaments recorded yet. Waiting for sync...

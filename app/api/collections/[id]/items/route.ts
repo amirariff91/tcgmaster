@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { gradeKeyCandidates, lookupGraded, normalizeGrade } from '@/lib/pricing/grades';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -13,9 +14,9 @@ interface PriceHistoryRow {
   price: number;
 }
 
-interface PriceCacheRow {
-  raw_prices: Record<string, number | null>;
-  graded_prices: Record<string, { average?: number }>;
+interface CurrentPriceRow {
+  headline_cents: number | null;
+  graded_prices: Record<string, { average?: number | null }>;
 }
 
 interface CollectionItemRow {
@@ -65,6 +66,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     acquisition_type = 'purchase',
     notes = null,
   } = body;
+  const g = normalizeGrade(grade);
 
   if (!card_id) {
     return NextResponse.json(
@@ -83,7 +85,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .from('price_history')
       .select('price')
       .eq('card_id', card_id)
-      .eq('grade', grade)
+      .in('grade', gradeKeyCandidates(g))
       .lte('recorded_at', acquisition_date)
       .order('recorded_at', { ascending: false })
       .limit(1)
@@ -98,19 +100,21 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
   // If still no cost basis, try to get current price
   if (finalCostBasis === null) {
-    const { data: priceCacheData } = await supabase
-      .from('price_cache')
-      .select('raw_prices, graded_prices')
+    const { data: currentPriceData } = await supabase
+      .from('card_price_current')
+      .select('headline_cents, graded_prices')
       .eq('card_id', card_id)
-      .single();
+      .maybeSingle();
 
-    const priceCache = priceCacheData as PriceCacheRow | null;
-    if (priceCache) {
-      if (grade === 'raw') {
-        finalCostBasis = priceCache.raw_prices?.nearMint || null;
+    const currentPrice = currentPriceData as CurrentPriceRow | null;
+    if (currentPrice) {
+      const rawValue = currentPrice.headline_cents === null
+        ? null
+        : currentPrice.headline_cents / 100;
+      if (g === 'raw') {
+        finalCostBasis = rawValue;
       } else {
-        const gradeKey = `psa${grade}`;
-        finalCostBasis = priceCache.graded_prices?.[gradeKey]?.average || null;
+        finalCostBasis = lookupGraded(currentPrice.graded_prices, g)?.average || null;
       }
       if (finalCostBasis !== null) {
         costBasisSource = 'current_price_auto';
@@ -124,7 +128,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       collection_id: collectionId,
       card_id,
       variant_id,
-      grade,
+      grade: g,
       grading_company_id,
       cert_number,
       cost_basis: finalCostBasis,

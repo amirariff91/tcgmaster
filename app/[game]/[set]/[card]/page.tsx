@@ -7,14 +7,15 @@ import { CardDetailActions } from '@/components/card/card-detail-actions';
 import { RelatedCards, type RelatedCard } from '@/components/card/related-cards';
 import { FormattedPrice } from '@/components/ui/formatted-price';
 import { CollectrChart } from '@/components/charts/collectr-chart';
+import { PriceFreshness } from '@/components/card/price-freshness';
 import { formatPrice, formatNumber, getRarityDisplay, formatDate, formatDisplayNumber, formatSetName, splitCardName } from '@/lib/utils';
 import { getCardWithPrices } from '@/lib/ppt/service';
 // Public catalog data only, so use the cookie-free anon client. Reading cookies()
 // (which lib/supabase/server does) opts the route into dynamic rendering and
 // silently defeats `revalidate` — that is why card pages served no-store.
-import { createPublicClient, createServerClient } from '@/lib/supabase/client';
+import { createPublicClient } from '@/lib/supabase/client';
 import { calculatePriceChange24h } from '@/lib/pricing/trending';
-import { redis } from '@/lib/redis/client';
+import { latestRecordedAt, priceKindLabel, type PriceKind } from '@/lib/pricing/price-labels';
 
 // `price_history.source` values are lowercase enum members; match on substring so
 // display casing and multi-word names ("TCG Republic") still resolve.
@@ -44,18 +45,25 @@ interface CardDataSet {
 
 interface GradedPriceData {
   average: number | null;
-  median: number | null;
-  low: number | null;
-  high: number | null;
-  count: number;
+  sources?: Record<string, number | null>;
 }
 
-interface CardDataPriceCache {
-  raw_prices: Record<string, number | null>;
+interface CurrentSourcePrice {
+  usd: number | null;
+  native: number | null;
+  currency: string | null;
+  kind: PriceKind | null;
+  recorded_at: string | null;
+}
+
+interface CardDataPriceCurrent {
+  source_prices: Record<string, CurrentSourcePrice>;
   graded_prices: Record<string, GradedPriceData>;
-  ebay_sales: Record<string, unknown>;
-  fetched_at: string;
-  expires_at: string;
+  headline_cents: number | null;
+  headline_source: string | null;
+  headline_kind: PriceKind | null;
+  headline_currency: string | null;
+  headline_grade: string | null;
 }
 
 interface CardDataPriceHistory {
@@ -88,7 +96,7 @@ interface CardData {
   tcg_player_id: string | null;
   sets: CardDataSet;
   card_variants: { id: string; variant_type: string; name: string; slug: string }[];
-  price_cache: CardDataPriceCache | CardDataPriceCache[] | null;
+  card_price_current: CardDataPriceCurrent | null;
   price_cache_ttl: number | null;
   price_history: CardDataPriceHistory[];
   population_reports: CardDataPopulation[];
@@ -140,12 +148,14 @@ async function getCardData(gameSlug: string, setSlug: string, cardSlug: string):
         name,
         slug
       ),
-      price_cache (
-        raw_prices,
+      card_price_current (
+        source_prices,
         graded_prices,
-        ebay_sales,
-        fetched_at,
-        expires_at
+        headline_cents,
+        headline_source,
+        headline_kind,
+        headline_currency,
+        headline_grade
       ),
       price_history (
         id,
@@ -224,7 +234,17 @@ interface PageProps {
   }>;
 }
 
-export const revalidate = 300;
+// Prices change roughly once every couple of days per card, while a card gets ~5
+// views/day — so a short TTL never catches a second view and just re-renders on
+// almost every request. Instead this is a long ceiling plus on-demand purging:
+// the price scrapers POST to /api/revalidate/card and the Inngest price jobs call
+// revalidatePath directly, so a page is invalidated when its price actually
+// changes rather than on a timer. That is both a real cache hit rate and better
+// freshness than a 5-minute TTL delivered.
+//
+// Anything derived from Date.now() during render now freezes for up to a day —
+// see components/card/price-freshness.tsx.
+export const revalidate = 86400;
 
 // Next 16 only puts a dynamic segment on the ISR path when it declares
 // generateStaticParams. The catalogue is ~15k cards, so prerender nothing at build
@@ -241,13 +261,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const cardName = cardData?.name || cardSlug;
   const setName = cardData?.sets?.name || set;
-  const priceCache = Array.isArray(cardData?.price_cache)
-    ? cardData?.price_cache[0]
-    : cardData?.price_cache;
-  const gradedPrices = priceCache?.graded_prices || {};
-  const psa10Price = gradedPrices?.psa10?.average ?? gradedPrices?.psa9?.average ?? null;
-  const priceDescription = psa10Price
-    ? `Current PSA comp reference: ${formatPrice(psa10Price)}.`
+  const currentPrice = cardData?.card_price_current;
+  const headlinePrice = currentPrice?.headline_cents == null
+    ? null
+    : currentPrice.headline_cents / 100;
+  const priceDescription = headlinePrice !== null
+    ? `Current ${priceKindLabel(currentPrice?.headline_kind).toLowerCase()} reference: ${formatPrice(headlinePrice)}.`
     : 'No verified market price is available yet.';
 
   return {
@@ -299,34 +318,42 @@ export default async function CardDetailPage({ params }: PageProps) {
     },
   };
 
-  const dbPriceCache = Array.isArray(cardData?.price_cache)
-    ? cardData?.price_cache[0] || null
-    : cardData?.price_cache || null;
-
-  let livePrices: { raw: Record<string, number | null>; graded: Record<string, GradedPriceData> } | null = null;
-  const tcgPlayerId = cardData?.tcg_player_id;
-  if (!dbPriceCache && tcgPlayerId) {
+  const currentPrices = cardData.card_price_current;
+  const shouldUseLivePrices = currentPrices === null || (
+    currentPrices.headline_cents === null &&
+    Object.keys(currentPrices.graded_prices || {}).length === 0
+  );
+  let livePrices: {
+    headline: { usd: number | null; kind: PriceKind };
+    graded: Record<string, GradedPriceData>;
+  } | null = null;
+  if (shouldUseLivePrices && cardData.tcg_player_id) {
     try {
-      const pptData = await getCardWithPrices(tcgPlayerId, { includeEbay: true });
+      const pptData = await getCardWithPrices(cardData.tcg_player_id, { includeEbay: true });
       if (pptData) {
         livePrices = {
-          raw: pptData.prices.raw as Record<string, number | null>,
+          headline: pptData.prices.headline,
           graded: pptData.prices.graded as Record<string, GradedPriceData>,
         };
       }
     } catch {}
   }
 
-  const rawPrices = {
-    nearMint: dbPriceCache?.raw_prices?.nearMint ?? dbPriceCache?.raw_prices?.market ?? livePrices?.raw?.nearMint ?? null,
-    lightlyPlayed: dbPriceCache?.raw_prices?.lightlyPlayed ?? dbPriceCache?.raw_prices?.low ?? livePrices?.raw?.lightlyPlayed ?? null,
-    moderatelyPlayed: dbPriceCache?.raw_prices?.moderatelyPlayed ?? livePrices?.raw?.moderatelyPlayed ?? null,
-    heavilyPlayed: dbPriceCache?.raw_prices?.heavilyPlayed ?? livePrices?.raw?.heavilyPlayed ?? null,
-  };
-
-  const gradedPrices: Record<string, GradedPriceData> =
-    dbPriceCache?.graded_prices || livePrices?.graded || {};
-
+  const sourcePrices = currentPrices?.source_prices || {};
+  const gradedPrices: Record<string, GradedPriceData> = currentPrices?.graded_prices || livePrices?.graded || {};
+  const featuredPrice = currentPrices?.headline_cents != null
+    ? currentPrices.headline_cents / 100
+    : livePrices?.headline.usd ?? null;
+  const featuredKind = currentPrices?.headline_kind ?? livePrices?.headline.kind;
+  const headlineGrade = currentPrices?.headline_grade || (livePrices ? 'raw' : null);
+  const gradeLabel = !headlineGrade || headlineGrade === 'raw'
+    ? 'Raw'
+    : headlineGrade.replace(/^psa/i, 'PSA ');
+  const activeGradeForChart = !headlineGrade || headlineGrade === 'raw'
+    ? 'raw'
+    : headlineGrade.replace(/^psa/i, '');
+  const winningSource = currentPrices?.headline_source;
+  const rawPrice = !headlineGrade || headlineGrade === 'raw' ? featuredPrice : null;
 
   const populationReports = cardData?.population_reports || [];
   const population: Record<string, number> = {};
@@ -337,97 +364,9 @@ export default async function CardDetailPage({ params }: PageProps) {
   }
   const psa10Pop = population['psa-10'] || 0;
 
-  const getGradedPrice = (gradeObj: any): number => {
-    if (!gradeObj) return 0;
-    if (typeof gradeObj.average === 'number') return gradeObj.average;
-    const vals = Object.values(gradeObj).filter(v => typeof v === 'number') as number[];
-    if (vals.length > 0) return Math.min(...vals);
-    return 0;
-  };
+  const priceHistoryData = (cardData?.price_history || []).filter((h) => h.source !== 'ppt-api');
 
-  const psa10Price = getGradedPrice(gradedPrices['psa-10']) || getGradedPrice(gradedPrices.psa10) || getGradedPrice(gradedPrices['10']);
-  const psa9Price = getGradedPrice(gradedPrices['psa-9']) || getGradedPrice(gradedPrices.psa9) || getGradedPrice(gradedPrices['9']);
-  const COMPANY_UUIDS_TO_SLUG: Record<string, string> = {
-    '74c51627-cc4b-4a82-a1c0-52b3975b47b7': 'psa',
-    'cda2045f-5d78-49e7-b1c8-de04dac9888d': 'bgs',
-    'dce6169f-8958-4229-861b-686a4644c984': 'cgc',
-    '7a7b5849-788b-40f6-9f42-14f2f27f68b3': 'sgc'
-  };
-
-  const rawPriceHistory = cardData?.price_history || [];
-  const priceHistoryData = rawPriceHistory
-    .filter((h) => h.source !== 'ppt-api')
-    .map(h => ({
-      ...h,
-      grading_company_id: h.grading_company_id ? COMPANY_UUIDS_TO_SLUG[h.grading_company_id] || h.grading_company_id : null
-    }));
-
-  const rawPopulationReports = cardData?.population_reports || [];
-  const populationReportsData = rawPopulationReports.map(r => ({
-    ...r,
-    grading_company_id: r.grading_company_id ? COMPANY_UUIDS_TO_SLUG[r.grading_company_id] || r.grading_company_id : null
-  }));
-
-  const availableGradesMap = new Map<string, any>();
-  availableGradesMap.set('raw', { grade: 'raw', grading_company: null, hasData: rawPrices.nearMint !== null });
-  
-  if (psa10Price > 0) availableGradesMap.set('psa-10', { grade: '10', grading_company: 'psa', hasData: true });
-  if (psa9Price > 0) availableGradesMap.set('psa-9', { grade: '9', grading_company: 'psa', hasData: true });
-
-  priceHistoryData.forEach(h => {
-    if (h.grade !== 'raw' && h.grading_company_id) {
-       const key = `${h.grading_company_id}-${h.grade}`;
-       if (!availableGradesMap.has(key)) {
-         availableGradesMap.set(key, { grade: h.grade, grading_company: h.grading_company_id, hasData: true });
-       }
-    }
-  });
-
-  const availableGrades = Array.from(availableGradesMap.values()).filter(g => g.hasData);
-  
-  const hasPsa10 = availableGrades.find(g => g.grading_company === 'psa' && g.grade === '10');
-  const hasPsa9 = availableGrades.find(g => g.grading_company === 'psa' && g.grade === '9');
-  
-  let gradeLabel = 'Raw';
-  let activeGradeForChart = 'raw';
-  
-  if (hasPsa10) { gradeLabel = 'PSA 10'; activeGradeForChart = '10'; }
-  else if (hasPsa9) { gradeLabel = 'PSA 9'; activeGradeForChart = '9'; }
-  else if (availableGrades.length > 1) {
-     const firstGraded = availableGrades.find(g => g.grade !== 'raw');
-     if (firstGraded) {
-         gradeLabel = `${(firstGraded.grading_company || '').toUpperCase()} ${firstGraded.grade}`;
-         activeGradeForChart = firstGraded.grade;
-     }
-  }
   const relevantHistory = priceHistoryData.filter(h => h.grade === activeGradeForChart || h.grade === `psa${activeGradeForChart}`);
-
-  // "Compared Markets" must always list every provider, so it reads raw prices only.
-  // SnkrDunk is the sole source that writes psa10, so filtering by the active grade
-  // collapsed the list to a single row on every card that had a SnkrDunk graded price.
-  const rawHistory = priceHistoryData.filter(h => h.grade === 'raw');
-
-  let featuredPrice = psa10Price || psa9Price || rawPrices.nearMint || null;
-  let winningSource = 'Market';
-
-  if (relevantHistory.length > 0) {
-    const latestEntry = [...relevantHistory].sort((a, b) => new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime())[0];
-    featuredPrice = latestEntry.price;
-    winningSource = latestEntry.source || 'Market';
-  }
-
-  // --- Start DB Sync (Self-Healing) ---
-  const currentTtl = cardData.price_cache_ttl;
-  const newTtl = rawPrices.nearMint ? Math.round(rawPrices.nearMint * 100) : null;
-  
-  if (currentTtl !== newTtl) {
-    const adminClient = createServerClient();
-    // @ts-ignore - Supabase type inference issue with the update payload
-    adminClient.from('cards').update({ price_cache_ttl: newTtl as any }).eq('id', cardData.id).then(({ error }) => {
-      if (error) console.error('Failed to sync price_cache_ttl:', error);
-    });
-  }
-  // --- End DB Sync ---
 
   const chartDataMap = new Map<string, Record<string, string | number>>();
   const availableSources = new Set<string>();
@@ -453,123 +392,56 @@ export default async function CardDetailPage({ params }: PageProps) {
 
   const priceChange24h = calculatePriceChange24h(relevantHistory);
 
-  const dynamicLadder = new Map<string, any>();
-  priceHistoryData.forEach(h => {
-     if (h.grade === 'raw') return; 
-     const company = h.grading_company_id || 'psa';
-     const key = `${company}-${h.grade}`;
-     if (!dynamicLadder.has(key) || new Date(h.recorded_at) > new Date(dynamicLadder.get(key).last_sale_date)) {
-        dynamicLadder.set(key, {
-           grade: h.grade,
-           grading_company: company,
-           price: h.price,
-           confidence: 'medium',
-           last_sale_date: h.recorded_at,
-           population: null // Population for non-PSA not fully supported yet
-        });
-     }
-  });
-
-  const baseEntries = [
-    { grade: 'raw', grading_company: null, price: rawPrices.nearMint || 0, confidence: 'high', last_sale_date: null, population: null },
-    { grade: '7', grading_company: 'psa', price: getGradedPrice(gradedPrices.psa7) || 0, confidence: 'high', last_sale_date: null, population: population['psa-7'] || null },
-    { grade: '8', grading_company: 'psa', price: getGradedPrice(gradedPrices.psa8) || 0, confidence: 'high', last_sale_date: null, population: population['psa-8'] || null },
-    { grade: '9', grading_company: 'psa', price: psa9Price || 0, confidence: 'high', last_sale_date: null, population: population['psa-9'] || null },
-    { grade: '10', grading_company: 'psa', price: psa10Price || 0, confidence: 'medium', last_sale_date: null, population: population['psa-10'] || null },
-  ];
-
-  baseEntries.forEach(e => {
-     if (e.grade !== 'raw' && e.price > 0) {
-        const key = `${e.grading_company}-${e.grade}`;
-        const existing = dynamicLadder.get(key) || {};
-        dynamicLadder.set(key, {
-           ...existing,
-           ...e, 
-        });
-     }
-  });
-
   const priceLadderEntries = [
-     baseEntries[0], // Keep raw at the top/front
-     ...Array.from(dynamicLadder.values())
+    { grade: 'raw' as const, grading_company: null, price: rawPrice || 0, confidence: 'high' as const, last_sale_date: null, population: null },
+    { grade: '7' as const, grading_company: 'psa' as const, price: gradedPrices.psa7?.average || 0, confidence: 'high' as const, last_sale_date: null, population: population['psa-7'] || null },
+    { grade: '8' as const, grading_company: 'psa' as const, price: gradedPrices.psa8?.average || 0, confidence: 'high' as const, last_sale_date: null, population: population['psa-8'] || null },
+    { grade: '9' as const, grading_company: 'psa' as const, price: gradedPrices.psa9?.average || 0, confidence: 'high' as const, last_sale_date: null, population: population['psa-9'] || null },
+    { grade: '10' as const, grading_company: 'psa' as const, price: gradedPrices.psa10?.average || 0, confidence: 'medium' as const, last_sale_date: null, population: population['psa-10'] || null },
   ].filter(e => e.price > 0);
+
+  const availableGrades = [
+    { grade: 'raw' as const, grading_company: null, hasData: rawPrice !== null },
+    { grade: '9' as const, grading_company: 'psa' as const, hasData: !!gradedPrices.psa9?.average },
+    { grade: '10' as const, grading_company: 'psa' as const, hasData: !!gradedPrices.psa10?.average },
+  ].filter(g => g.hasData);
   
-  const ebaySales = dbPriceCache?.ebay_sales;
-  let totalSalesVolume = 0;
-  if (ebaySales && typeof ebaySales === 'object') {
-      for (const data of Object.values(ebaySales)) {
-          if (data && typeof data === 'object' && 'count' in data) {
-              totalSalesVolume += (data as { count?: number }).count || 0;
-          }
-      }
-  }
-
-  const latestPricesMap = new Map<string, { price: number; date: string }>();
-  rawHistory.forEach(h => {
-    const source = h.source || 'Market';
-    if (source === 'Market') return; // Skip Market from compared markets
-    const current = latestPricesMap.get(source);
-    if (!current || new Date(h.recorded_at) > new Date(current.date)) {
-      latestPricesMap.set(source, { price: h.price, date: h.recorded_at });
-    }
-  });
-
-  const latestPricesList = Array.from(latestPricesMap.entries())
-    .map(([source, data]) => ({ source, price: data.price, date: data.date }))
+  const latestPricesList = Object.entries(sourcePrices)
+    .flatMap(([source, data]) => {
+      if (!data || typeof data.usd !== 'number' || !Number.isFinite(data.usd)) return [];
+      return [{
+        source,
+        price: data.usd,
+        date: data.recorded_at ?? '',
+        kind: data.kind,
+      }];
+    })
     .sort((a, b) => a.price - b.price);
 
-  // Freshness of the newest raw price we hold, so the page states how current it is
+  // Freshness of the newest price we hold, so the page states how current it is
   // instead of asserting a hardcoded "Availability: High".
-  const newestPriceAt = latestPricesList.reduce<string | null>(
-    (newest, item) => (!newest || new Date(item.date) > new Date(newest) ? item.date : newest),
-    null,
-  );
-  const priceFreshness = (() => {
-    if (!newestPriceAt) return { label: '--', isStale: false };
-    // eslint-disable-next-line react-hooks/purity
-    const hours = (Date.now() - new Date(newestPriceAt).getTime()) / 36e5;
-    if (hours < 1) return { label: '<1h', isStale: false };
-    if (hours < 48) return { label: `${Math.round(hours)}h`, isStale: hours >= 24 };
-    return { label: `${Math.round(hours / 24)}d`, isStale: true };
-  })();
+  //
+  const newestHistoryAt = priceHistoryData.reduce<string | null>((newest, item) => {
+    const itemTime = Date.parse(item.recorded_at);
+    if (!Number.isFinite(itemTime)) return newest;
+
+    if (!newest || itemTime > Date.parse(newest)) return item.recorded_at;
+    return newest;
+  }, null);
+  const newestPriceAt = latestRecordedAt(sourcePrices) ?? newestHistoryAt;
+  // The label itself is computed client-side — at revalidate=86400 a server-rendered
+  // relative time would freeze into the cached payload for up to a day.
 
   // Vendor URLs are stored per card and drive the scrapers; reuse them so each
-  // "Compared Markets" row links out to the listing the price came from.
+  // Compared-source rows link out to the listing the price came from.
   const marketUrls: Record<string, string> = {};
-  
-  // Read URL verification status
-  let urlStatus: Record<string, string> = {};
-  try {
-    const statusStr = await redis.get(`source_status:${card.id}`);
-    if (statusStr) {
-      if (typeof statusStr === 'string' && statusStr.startsWith('{')) {
-        urlStatus = JSON.parse(statusStr);
-      } else if (typeof statusStr === 'object') {
-        urlStatus = statusStr as Record<string, string>;
-      }
-    }
-  } catch (e) {
-    console.error('Failed to parse source status from Redis', e);
-  }
-
   for (const [source, url] of Object.entries({
     tcgplayer: cardData.tcgplayer_url,
     snkrdunk: cardData.snkrdunk_url,
     yuyutei: cardData.yuyutei_url,
     cardrush: cardData.cardrush_url,
   })) {
-    if (url) {
-      // Only require verification for image-based Japanese sources that are prone to errors
-      if (source === 'snkrdunk' || source === 'yuyutei') {
-        if (urlStatus[source] === 'verified') {
-          marketUrls[source] = url;
-        }
-        // If 'rejected' or unverified, it won't be added to marketUrls, falling back to search
-      } else {
-        // TCGPlayer and Cardrush are currently trusted
-        marketUrls[source] = url;
-      }
-    }
+    if (url) marketUrls[source] = url;
   }
 
   const { baseName: cleanName, variantInfo } = splitCardName(card.name);
@@ -643,8 +515,8 @@ export default async function CardDetailPage({ params }: PageProps) {
             {/* Price */}
             <div>
               <p className="text-sm font-semibold text-zinc-400 uppercase tracking-widest mb-2 flex items-center">
-                Market Value ({gradeLabel})
-                {winningSource && winningSource !== 'Market' && <span className="ml-3 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-white/10 text-zinc-300 tracking-wider">Source: {winningSource}</span>}
+                {priceKindLabel(featuredKind)} ({gradeLabel})
+                {winningSource && <span className="ml-3 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-white/10 text-zinc-300 tracking-wider">Source: {winningSource}</span>}
               </p>
               <div className="flex items-baseline gap-4">
                 {featuredPrice ? (
@@ -708,15 +580,13 @@ export default async function CardDetailPage({ params }: PageProps) {
                 <span className="text-zinc-500 text-[10px] mt-1 font-medium">{totalPop > 0 ? formatNumber(totalPop) : '--'} total</span>
               </div>
               <div className="px-4 flex flex-col items-center text-center">
-                <span className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest mb-2">Recent Sales</span>
-                <span className="text-2xl font-black text-white tabular-nums">{totalSalesVolume > 0 ? totalSalesVolume : '--'}</span>
-                <span className="text-zinc-500 text-[10px] mt-1 font-medium">Tracked volume</span>
+                <span className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest mb-2">Price Sources</span>
+                <span className="text-2xl font-black text-white tabular-nums">{latestPricesList.length > 0 ? latestPricesList.length : '--'}</span>
+                <span className="text-zinc-500 text-[10px] mt-1 font-medium">Current snapshot</span>
               </div>
               <div className="px-4 flex flex-col items-center text-center">
                 <span className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest mb-2">Last Updated</span>
-                <span className={`text-2xl font-black ${priceFreshness.isStale ? 'text-amber-400' : 'text-white'}`}>
-                  {priceFreshness.label}
-                </span>
+                <PriceFreshness newestPriceAt={newestPriceAt} />
                 <span className="text-zinc-500 text-[10px] mt-1 font-medium">
                   {latestPricesList.length > 0
                     ? `${latestPricesList.length} source${latestPricesList.length === 1 ? '' : 's'}`
@@ -736,11 +606,11 @@ export default async function CardDetailPage({ params }: PageProps) {
 
 
 
-            {/* Compared Markets */}
+            {/* Compared Sources */}
             {latestPricesList.length > 0 && (
               <div className="bg-[#0b1329]/80 backdrop-blur-sm rounded-2xl border border-white/10 overflow-hidden shadow-sm">
                 <div className="bg-white/5 px-5 py-3 border-b border-white/10">
-                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">Compared Markets (Raw)</h3>
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">Compared Sources</h3>
                 </div>
                 <div className="divide-y divide-white/10">
                   {latestPricesList.map((item) => {
@@ -748,20 +618,7 @@ export default async function CardDetailPage({ params }: PageProps) {
                     const logo = MARKET_LOGOS.find(m => s.includes(m.match))?.logo ?? null;
                     // Logos with transparent backgrounds need a white plate to stay legible on the dark card.
                     const needsWhitePlate = !s.includes('snkrdunk');
-                    let href = marketUrls[s] ?? null;
-                    if (!href) {
-                      if (s.includes('pricecharting')) {
-                        href = `https://www.pricecharting.com/search-products?q=${encodeURIComponent(cleanName)}&type=prices`;
-                      } else if (s.includes('ebay')) {
-                        href = `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(cleanName + ' ' + card.number)}`;
-                      } else if (s.includes('tcg republic')) {
-                        href = `https://tcgrepublic.com/product/text_search.html?q=${encodeURIComponent(cleanName)}`;
-                      } else if (s.includes('tcgplayer')) {
-                        href = `https://www.tcgplayer.com/search/all/product?q=${encodeURIComponent(cleanName)}`;
-                      } else {
-                        href = `https://www.google.com/search?q=${encodeURIComponent(cleanName + ' ' + card.number + ' ' + item.source)}`;
-                      }
-                    }
+                    const href = marketUrls[item.source] ?? null;
 
                     const body = (
                       <>
@@ -782,6 +639,7 @@ export default async function CardDetailPage({ params }: PageProps) {
                             </div>
                           )}
                           <span className="text-white font-bold capitalize">{item.source}</span>
+                          <span className="text-[10px] text-zinc-500 uppercase tracking-wider">{priceKindLabel(item.kind)}</span>
                           {href && <ExternalLink className="h-3.5 w-3.5 text-zinc-500" aria-hidden />}
                         </div>
                         <div className="text-right flex flex-col items-end">

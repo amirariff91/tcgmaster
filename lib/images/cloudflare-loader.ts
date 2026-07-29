@@ -11,9 +11,10 @@ import type { ImageLoaderProps } from 'next/image';
  * at cutover (see docs/r2-migration-runbook.md); a runtime-only env will NOT flip it.
  * While disabled, card <Image>s pass `unoptimized`, so behaviour is identical to today.
  *
- * Only absolute URLs whose host is the CDN host are transformed; foreign hosts
- * (tcgplayer, pokemontcg, onepiece-cardgame, Supabase during cutover), data/blob URLs,
- * relative paths, SVG/GIF/animated, and already-transformed URLs pass through unchanged.
+ * Supabase `card-images` URLs are deterministically host-swapped to the matching R2
+ * object key when the CDN is enabled. Foreign hosts (tcgplayer, pokemontcg,
+ * onepiece-cardgame), data/blob URLs, relative paths, SVG/GIF/animated, and already-
+ * transformed URLs pass through unchanged.
  */
 
 function parseOrigin(raw: string | undefined): URL | null {
@@ -35,6 +36,8 @@ export const isImageCdnEnabled = CDN_URL !== null;
 
 const CDN_ORIGIN = CDN_URL ? CDN_URL.origin : '';
 const CDN_HOST = CDN_URL ? CDN_URL.host : '';
+const SUPABASE_CARD_IMAGES_ORIGIN = 'https://mquqwlxqrsvfflsgfhmi.supabase.co';
+const SUPABASE_CARD_IMAGES_PATH = '/storage/v1/object/public/card-images/';
 
 const BYPASS_EXTENSION_RE = /\.(svg|gif)(?:$|\?)/i;
 const ANIMATED_HINT_RE = /(?:^|[?&])(?:anim|animated)=/i;
@@ -55,6 +58,38 @@ function snapWidth(width: number): number {
   return WIDTH_BUCKETS.find((bucket) => width <= bucket) ?? WIDTH_BUCKETS[WIDTH_BUCKETS.length - 1];
 }
 
+/**
+ * Resolve a card image to its delivery origin without probing either backend.
+ *
+ * The R2 bucket deliberately mirrors Supabase Storage's object keys, so a legacy
+ * Supabase URL can be mapped locally and deterministically once the build-time CDN
+ * switch is enabled. With the switch unset, return the original URL byte-for-byte.
+ */
+export function resolveCardImageUrl(
+  src: string | null | undefined,
+): string | null | undefined {
+  if (!src || !isImageCdnEnabled) return src;
+
+  let url: URL;
+  try {
+    url = new URL(src);
+  } catch {
+    return src;
+  }
+
+  if (
+    url.origin !== SUPABASE_CARD_IMAGES_ORIGIN ||
+    !url.pathname.startsWith(SUPABASE_CARD_IMAGES_PATH)
+  ) {
+    return src;
+  }
+
+  const objectKey = url.pathname.slice(SUPABASE_CARD_IMAGES_PATH.length);
+  if (!objectKey) return src;
+
+  return `${CDN_ORIGIN}/${objectKey}${url.search}${url.hash}`;
+}
+
 export default function cloudflareImageLoader({
   src,
   width,
@@ -62,19 +97,20 @@ export default function cloudflareImageLoader({
 }: ImageLoaderProps): string {
   if (!isImageCdnEnabled) return src;
 
+  const resolvedSrc = resolveCardImageUrl(src) ?? src;
   let url: URL;
   try {
     // Absolute URLs only. Relative paths, data:, blob: and protocol-relative "//host"
     // throw here (no base) → pass through untouched.
-    url = new URL(src);
+    url = new URL(resolvedSrc);
   } catch {
     return src;
   }
 
   if (url.host !== CDN_HOST) return src; // foreign host (incl. Supabase during cutover)
-  if (url.pathname.startsWith('/cdn-cgi/image/')) return src; // don't double-transform
+  if (url.pathname.startsWith('/cdn-cgi/image/')) return resolvedSrc; // don't double-transform
   if (BYPASS_EXTENSION_RE.test(url.pathname) || ANIMATED_HINT_RE.test(url.search)) {
-    return src;
+    return resolvedSrc;
   }
 
   // fit=scale-down never upscales past the source (~600px card art).

@@ -5,6 +5,7 @@
 
 import { createServerClient } from '@/lib/supabase/client';
 import type { Tables } from '@/lib/supabase/database.types';
+import { lookupGraded, normalizeGrade } from '@/lib/pricing/grades';
 
 export interface TriggeredAlert {
   alertId: string;
@@ -40,9 +41,9 @@ interface AlertRow {
   };
 }
 
-interface PriceCacheRow {
-  raw_prices: Record<string, number | null>;
-  graded_prices: Record<string, { average?: number }>;
+interface CurrentPriceRow {
+  headline_cents: number | null;
+  graded_prices: Record<string, { average?: number | null }>;
 }
 
 interface UserAlertRow {
@@ -121,27 +122,29 @@ export async function checkAllAlerts(): Promise<{
       try {
         checked++;
 
-        // Get current price from cache
-        const { data: priceCacheData } = await supabase
-          .from('price_cache')
-          .select('raw_prices, graded_prices')
+        // Get the single current price row for this card.
+        const { data: currentPriceData } = await supabase
+          .from('card_price_current')
+          .select('headline_cents, graded_prices')
           .eq('card_id', alert.card_id)
-          .single();
+          .maybeSingle();
 
-        const priceCache = priceCacheData as PriceCacheRow | null;
+        const currentPriceRow = currentPriceData as CurrentPriceRow | null;
 
-        if (!priceCache) continue;
+        if (!currentPriceRow) continue;
 
         // Determine which price to check based on grade
         let currentPrice: number | null = null;
-        const rawPrices = priceCache.raw_prices;
-        const gradedPrices = priceCache.graded_prices;
+        const rawValue = currentPriceRow.headline_cents === null
+          ? null
+          : currentPriceRow.headline_cents / 100;
+        const gradedPrices = currentPriceRow.graded_prices;
 
-        if (alert.grade === 'raw') {
-          currentPrice = rawPrices?.nearMint || null;
+        const grade = normalizeGrade(alert.grade);
+        if (grade === 'raw') {
+          currentPrice = rawValue;
         } else {
-          const gradeKey = alert.grade.replace('.', '');
-          currentPrice = gradedPrices?.[gradeKey]?.average || null;
+          currentPrice = lookupGraded(gradedPrices, grade)?.average || null;
         }
 
         if (currentPrice === null || alert.baseline_price === null) continue;
@@ -242,24 +245,26 @@ export async function createPriceAlert(params: {
   const supabase = createServerClient();
 
   // Get current price for baseline
-  const { data: priceCacheData } = await supabase
-    .from('price_cache')
-    .select('raw_prices, graded_prices')
+  const { data: currentPriceData } = await supabase
+    .from('card_price_current')
+    .select('headline_cents, graded_prices')
     .eq('card_id', params.cardId)
-    .single();
+    .maybeSingle();
 
-  const priceCache = priceCacheData as PriceCacheRow | null;
+  const currentPrice = currentPriceData as CurrentPriceRow | null;
 
+  const normalizedGrade = normalizeGrade(params.grade);
   let baselinePrice: number | null = null;
-  if (priceCache) {
-    const rawPrices = priceCache.raw_prices;
-    const gradedPrices = priceCache.graded_prices;
+  if (currentPrice) {
+    const rawValue = currentPrice.headline_cents === null
+      ? null
+      : currentPrice.headline_cents / 100;
+    const gradedPrices = currentPrice.graded_prices;
 
-    if (!params.grade || params.grade === 'raw') {
-      baselinePrice = rawPrices?.nearMint || null;
+    if (normalizedGrade === 'raw') {
+      baselinePrice = rawValue;
     } else {
-      const gradeKey = params.grade.replace('.', '');
-      baselinePrice = gradedPrices?.[gradeKey]?.average || null;
+      baselinePrice = lookupGraded(gradedPrices, normalizedGrade)?.average || null;
     }
   }
 
@@ -269,7 +274,7 @@ export async function createPriceAlert(params: {
       user_id: params.userId,
       card_id: params.cardId,
       variant_id: params.variantId,
-      grade: params.grade || 'raw',
+      grade: normalizedGrade,
       grading_company_id: params.gradingCompanyId,
       threshold_percent: params.thresholdPercent,
       direction: params.direction || 'both',

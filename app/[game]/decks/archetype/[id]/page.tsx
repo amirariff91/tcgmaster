@@ -6,6 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Trophy, Calendar, Users, ChevronRight, Coins } from 'lucide-react';
 import { format } from 'date-fns';
+import { resolveCardImageUrl } from '@/lib/images/cloudflare-loader';
 
 export const revalidate = 60;
 
@@ -22,11 +23,35 @@ interface ArchetypePageProps {
   }>;
 }
 
+type CardImageRecord = {
+  name: string | null;
+  image_url: string | null;
+  local_image_url: string | null;
+};
+
+type ArchetypeDeck = {
+  id: string;
+  placement: string | null;
+  total_price: number | null;
+  player_name: string | null;
+  tournaments: {
+    name: string | null;
+    date: string | null;
+    num_players: number | null;
+    source_url: string | null;
+  } | null;
+};
+
+type StandardDeckCard = {
+  count: number;
+  cards: CardImageRecord | null;
+};
+
 export async function generateMetadata({ params }: ArchetypePageProps): Promise<Metadata> {
   const { id } = await params;
   const supabase = createPublicClient();
   const { data: leader } = await supabase.from('cards').select('name').eq('id', id).single();
-  const leaderName = (leader as any)?.name || 'Archetype';
+  const leaderName = (leader as { name: string | null } | null)?.name || 'Archetype';
   
   return {
     title: `${leaderName} Decks & Meta | TCGMaster`,
@@ -56,7 +81,7 @@ export default async function ArchetypePage({ params }: ArchetypePageProps) {
     .eq('leader_card_id', id)
     .order('created_at', { ascending: false });
 
-  const decks = (decksData as any[]) || [];
+  const decks = (decksData ?? []) as unknown as ArchetypeDeck[];
 
   // Sort decks by the actual date of the tournament (most recent first)
   decks.sort((a, b) => {
@@ -77,20 +102,22 @@ export default async function ArchetypePage({ params }: ArchetypePageProps) {
     }
   });
 
-  const leaderCardAny = leaderCard as any;
+  const leaderCardRecord = leaderCard as unknown as CardImageRecord;
   const averagePrice = decksWithPrice > 0 ? (totalPriceSum / decksWithPrice).toFixed(2) : 'N/A';
-  const leaderImage = leaderCardAny.local_image_url || leaderCardAny.image_url;
+  const leaderImage = resolveCardImageUrl(
+    leaderCardRecord.local_image_url || leaderCardRecord.image_url,
+  );
 
   // Find the standard build (most recent 1st place deck, or just most recent deck)
   const standardDeck = decks.find(d => d.placement === '1') || decks[0];
   
-  let standardCards: any[] = [];
+  let standardCards: StandardDeckCard[] = [];
   if (standardDeck) {
     const { data } = await supabase
       .from('deck_cards')
       .select('count, cards(name, image_url, local_image_url)')
       .eq('deck_id', standardDeck.id);
-    standardCards = data || [];
+    standardCards = (data ?? []) as unknown as StandardDeckCard[];
   }
 
   return (
@@ -117,7 +144,7 @@ export default async function ArchetypePage({ params }: ArchetypePageProps) {
           <ChevronRight className="w-4 h-4" />
           <Link href={`/${game}/decks`} className="hover:text-white transition-colors capitalize">{game.replace('-', ' ')}</Link>
           <ChevronRight className="w-4 h-4" />
-          <span className="text-zinc-100">{leaderCardAny.name}</span>
+          <span className="text-zinc-100">{leaderCardRecord.name}</span>
         </nav>
 
         {/* Hero Section */}
@@ -127,7 +154,7 @@ export default async function ArchetypePage({ params }: ArchetypePageProps) {
             {leaderImage ? (
               <Image 
                 src={leaderImage}
-                alt={leaderCardAny.name}
+                alt={leaderCardRecord.name || 'Leader'}
                 width={256}
                 height={352}
                 className="w-full h-auto object-cover"
@@ -144,7 +171,7 @@ export default async function ArchetypePage({ params }: ArchetypePageProps) {
                 Meta Archetype
               </div>
               <h1 className="text-3xl md:text-6xl font-black tracking-tight text-white drop-shadow-md mb-2">
-                {leaderCardAny.name}
+                {leaderCardRecord.name}
               </h1>
               <p className="text-xl text-zinc-400 font-medium max-w-2xl">
                 Explore the top-performing decklists and tournament results for this archetype.
@@ -185,8 +212,8 @@ export default async function ArchetypePage({ params }: ArchetypePageProps) {
             <div className="bg-black/40 backdrop-blur-md border border-white/5 rounded-3xl p-6 shadow-2xl">
               <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-3 md:gap-4">
                 {standardCards.map((dc, i) => {
-                  const card = dc.cards || {};
-                  const imgUrl = card.local_image_url || card.image_url;
+                  const card = dc.cards;
+                  const imgUrl = resolveCardImageUrl(card?.local_image_url || card?.image_url);
                   
                   return (
                     <div key={i} className="relative group">
@@ -194,13 +221,13 @@ export default async function ArchetypePage({ params }: ArchetypePageProps) {
                         {imgUrl ? (
                           <Image 
                             src={imgUrl} 
-                            alt={card.name || 'Card'} 
+                            alt={card?.name || 'Card'}
                             fill 
                             className="object-cover"
                           />
                         ) : (
                           <div className="w-full h-full bg-zinc-800 flex items-center justify-center text-xs text-center text-zinc-500 p-2">
-                            {card.name || 'Unknown'}
+                            {card?.name || 'Unknown'}
                           </div>
                         )}
                       </div>

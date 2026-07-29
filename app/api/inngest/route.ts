@@ -1,8 +1,6 @@
 import { serve } from 'inngest/next';
 import { inngest } from '@/inngest/client';
 import {
-  syncPrices,
-  syncSetPrices,
   checkAlerts,
   sendAlertDigests,
   calculateTrending,
@@ -19,8 +17,6 @@ import {
 export const { GET, POST, PUT } = serve({
   client: inngest,
   functions: [
-    syncPrices,
-    syncSetPrices,
     checkAlerts,
     sendAlertDigests,
     calculateTrending,
@@ -32,9 +28,8 @@ export const { GET, POST, PUT } = serve({
     batchFetchImages,
     scheduledPokemonImageFetch,
     retryFailedImageFetches,
-    // NOT registered: scrapePricesJob (inngest/functions/scrape-prices.ts).
-    // Its '* * * * *' cron scrapes the same `cards` rows as the PM2 queue-*.ts
-    // workers, so enabling it would double-scrape and raise ban risk. Register it
-    // only once the PM2-vs-Inngest split is decided.
+    // Price scraping is owned by the PM2 queue-*.ts workers (scrapers app), not
+    // Inngest. The old scrapePricesJob/syncPrices functions were deleted with the
+    // price_cache table they wrote to.
   ],
 });

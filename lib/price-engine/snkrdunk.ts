@@ -1,11 +1,21 @@
 import * as cheerio from 'cheerio';
+import type { Element } from 'domhandler';
 import { getSharedBrowser } from './browser';
 import { waitForSourceRateLimit } from './rate-limiter';
+import type { MatchEvidence } from './identity';
 
 // Return an object that can contain both raw and graded prices
-export async function fetchSnkrdunkPrice(query: string, setName?: string): Promise<{ price: number; gradedPrice?: number; url: string } | null> {
+export interface SnkrdunkPriceResult {
+  price: number;
+  gradedPrice?: number;
+  url: string;
+  evidence: MatchEvidence;
+}
+
+export async function fetchSnkrdunkPrice(query: string, setName?: string): Promise<SnkrdunkPriceResult | null> {
   let page;
   try {
+    void setName;
     await waitForSourceRateLimit('snkrdunk');
 
     let rawQuery = query;
@@ -46,7 +56,18 @@ export async function fetchSnkrdunkPrice(query: string, setName?: string): Promi
       if (match) {
         const price = parseFloat(match[1].replace(/,/g, ''));
         if (!isNaN(price) && price > 0) {
-          return { price, gradedPrice, url: rawQuery };
+          const externalTitle = $('h1').first().text().trim()
+            || $('.product-detail__name, .product-name, .product-title').first().text().trim();
+          return {
+            price,
+            gradedPrice,
+            url: rawQuery,
+            evidence: {
+              externalUrl: rawQuery,
+              externalTitle,
+              matchedBy: 'cached-url',
+            },
+          };
         }
       }
       return null;
@@ -60,7 +81,7 @@ export async function fetchSnkrdunkPrice(query: string, setName?: string): Promi
         if (keyword) {
           rawQuery = keyword;
         }
-      } catch (e) {}
+      } catch {}
     }
 
     let suffix = '';
@@ -81,13 +102,15 @@ export async function fetchSnkrdunkPrice(query: string, setName?: string): Promi
     const html = await page.content();
     const $ = cheerio.load(html);
     
-    let selectedResult: any = null;
+    let selectedResult: Element | null = null;
     let selectedUrl = '';
+    let selectedTitle = '';
     const results = $('.product__item-textarea');
     
     results.each((_, el) => {
       if (selectedResult) return;
-      const text = $(el).find('.product__item-name').text().trim().toLowerCase();
+      const rawTitle = $(el).find('.product__item-name').text().trim();
+      const text = rawTitle.toLowerCase();
       
       // Exclude English/Chinese/Korean cards
       if (text.includes('[en]') || text.includes('[cn]') || text.includes('[kr]')) return;
@@ -106,12 +129,8 @@ export async function fetchSnkrdunkPrice(query: string, setName?: string): Promi
              if (!text.includes('gold')) selectedResult = el;
           }
         }
-      } else if (suffix === 'p6' || suffix === 'p7') {
-        if (suffix === 'p6') {
-          if (text.includes('silver')) selectedResult = el;
-        } else {
-          if (text.includes('gold')) selectedResult = el;
-        }
+      } else if (suffix === 'p6') {
+        if (text.includes('silver')) selectedResult = el;
       } else if (suffix === 'p1' || suffix.startsWith('p') || suffix === 'alt') {
         if (isParallel && !isManga && !text.includes('sp') && !text.includes('wanted poster')) {
           selectedResult = el;
@@ -129,6 +148,7 @@ export async function fetchSnkrdunkPrice(query: string, setName?: string): Promi
       }
       
       if (selectedResult) {
+        selectedTitle = rawTitle;
         const link = $(el).closest('a').attr('href');
         if (link) selectedUrl = 'https://snkrdunk.com' + link;
       }
@@ -142,7 +162,15 @@ export async function fetchSnkrdunkPrice(query: string, setName?: string): Promi
       if (match) {
         const price = parseFloat(match[1].replace(/,/g, ''));
         if (!isNaN(price) && price > 0) {
-          return { price, url: selectedUrl || searchUrl };
+          return {
+            price,
+            url: selectedUrl || searchUrl,
+            evidence: {
+              externalUrl: selectedUrl || searchUrl,
+              externalTitle: selectedTitle,
+              matchedBy: 'search',
+            },
+          };
         }
       }
     }

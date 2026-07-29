@@ -18,8 +18,11 @@ build now emits:
 
 | route | before | after |
 |---|---|---|
-| `/[game]/[set]/[card]` | `private, no-store` | `s-maxage=300, stale-while-revalidate=31535700` |
+| `/[game]/[set]/[card]` | `private, no-store` | `s-maxage=86400, stale-while-revalidate=31449600` |
 | `/[game]/[set]` | `private, no-store` | `s-maxage=3600, stale-while-revalidate=31532400` |
+
+The card page went to 86400 once on-demand purging landed — see "Why card pages are split
+out at 60s" below. It is **not** a bare TTL raise.
 
 Cloudflare will only act on those headers once the app is redeployed. The steps below
 then compound it.
@@ -82,8 +85,18 @@ curl -s -X PUT "https://api.cloudflare.com/client/v4/zones/$ZONE/rulesets/phases
       }
     },
     {
-      "description": "ISR catalog pages - bounded edge TTL, never respect_origin",
-      "expression": "(http.host eq \"tcgmaster.com\" and not starts_with(http.request.uri.path, \"/api/\") and not starts_with(http.request.uri.path, \"/admin\") and not starts_with(http.request.uri.path, \"/collection\") and not starts_with(http.request.uri.path, \"/portfolio\") and not starts_with(http.request.uri.path, \"/alerts\") and not starts_with(http.request.uri.path, \"/settings\") and not starts_with(http.request.uri.path, \"/achievements\") and not starts_with(http.request.uri.path, \"/login\") and not starts_with(http.request.uri.path, \"/signup\") and not starts_with(http.request.uri.path, \"/auth\"))",
+      "description": "Card pages - 60s edge TTL so an on-demand purge is not outlived at the edge",
+      "expression": "(http.host eq \"tcgmaster.com\" and http.request.uri.path wildcard \"/*/*/*\" and not starts_with(http.request.uri.path, \"/_next/\") and not starts_with(http.request.uri.path, \"/api/\") and not starts_with(http.request.uri.path, \"/admin\") and not starts_with(http.request.uri.path, \"/collection\") and not starts_with(http.request.uri.path, \"/portfolio\") and not starts_with(http.request.uri.path, \"/alerts\") and not starts_with(http.request.uri.path, \"/settings\") and not starts_with(http.request.uri.path, \"/achievements\") and not starts_with(http.request.uri.path, \"/login\") and not starts_with(http.request.uri.path, \"/signup\") and not starts_with(http.request.uri.path, \"/auth\"))",
+      "action": "set_cache_settings",
+      "action_parameters": {
+        "cache": true,
+        "edge_ttl": { "mode": "override_origin", "default": 60 },
+        "browser_ttl": { "mode": "override_origin", "default": 0 }
+      }
+    },
+    {
+      "description": "Rest of ISR catalog - bounded edge TTL, never respect_origin",
+      "expression": "(http.host eq \"tcgmaster.com\" and not http.request.uri.path wildcard \"/*/*/*\" and not starts_with(http.request.uri.path, \"/api/\") and not starts_with(http.request.uri.path, \"/admin\") and not starts_with(http.request.uri.path, \"/collection\") and not starts_with(http.request.uri.path, \"/portfolio\") and not starts_with(http.request.uri.path, \"/alerts\") and not starts_with(http.request.uri.path, \"/settings\") and not starts_with(http.request.uri.path, \"/achievements\") and not starts_with(http.request.uri.path, \"/login\") and not starts_with(http.request.uri.path, \"/signup\") and not starts_with(http.request.uri.path, \"/auth\"))",
       "action": "set_cache_settings",
       "action_parameters": {
         "cache": true,
@@ -95,13 +108,47 @@ curl -s -X PUT "https://api.cloudflare.com/client/v4/zones/$ZONE/rulesets/phases
 }' | python3 -m json.tool | head -20
 ```
 
-Rule 3 deliberately excludes every authenticated surface. Ship it **after** the app
-redeploy — before that, the pages still say `no-store` and the rule is a no-op at best.
+Rules 3a/3b deliberately exclude every authenticated surface. Ship them **after** the app
+redeploy — before that, the pages still say `no-store` and the rules are a no-op at best.
 
-> **Do not use `edge_ttl: respect_origin` on rule 3.** Next emits
+### Why card pages are split out at 60s
+
+Card pages moved to `revalidate = 86400` with **on-demand purging**: the price scrapers POST
+to `/api/revalidate/card` and the Inngest price jobs call `revalidatePath` directly, so a page
+is invalidated when its price actually changes. `revalidatePath` purges Next's ISR entry — it
+has **no effect on Cloudflare's copy**. At `edge_ttl: 3600` the edge would keep serving the old
+price for up to an hour after the origin was already purged, which is *worse* than the 300s TTL
+this replaced. 60s bounds that below the old staleness.
+
+This costs almost no hit rate. A card gets ~5 views/day — a ~4.8h view inter-arrival — so no
+realistic edge TTL catches a long-tail card anyway; the cache win is at the ISR layer, which is
+persistent and per-container. 60s still coalesces bursts on the high-traffic head.
+
+Three things that are easy to get wrong here:
+
+- **`matches` (regex) is Business/Enterprise only**, so "three path segments" cannot be expressed
+  with a regex on this Free zone. The `wildcard` operator *is* available on all plans, and its `*`
+  crosses `/` ("slashes have no special meaning in wildcard matches") with the whole value required
+  to match — so `"/*/*/*"` means "at least three slashes": card pages match, `/one-piece/op-eb-01`
+  (two) does not.
+- **Cache Rules merge and the LAST matching rule wins per setting.** `"/*/*/*"` also matches
+  `/_next/static/chunks/x.js`, so without the `not starts_with(…, "/_next/")` guard rule 3a would
+  silently replace the immutable-asset rule's **1-year** edge TTL with 60s. That guard is load-bearing,
+  not decoration. Rules 3a and 3b are also written mutually exclusive so their order never matters.
+- **Deck routes** (`/[game]/decks/[id]`) match `"/*/*/*"` and land in 3a at 60s. That is correct —
+  those pages are `revalidate = 60` anyway.
+
+If a write-scoped **Zone → Cache Purge → Purge** token is ever minted, adding a purge-by-URL call
+to `/api/revalidate/card` would let 3a go back up to 3600+ and stay correct. Volume is a non-issue:
+Free allows 800 URLs/s per account and 100 URLs per request with no daily quota, against a measured
+~2,032 price writes/day (~0.024/s).
+
+> **Do not use `edge_ttl: respect_origin` on rules 3a/3b.** Next emits
 > `stale-while-revalidate = ONE_YEAR − revalidate` automatically — confirmed exactly:
-> the card page sends `31535700` (= 31536000 − 300) and the set page `31532400`
-> (= 31536000 − 3600). It is not a tuned value. Today it is inert because nothing
+> at `revalidate = 86400` the card page now sends `31449600` (= 31536000 − 86400) and
+> the set page `31532400` (= 31536000 − 3600). It is not a tuned value, and raising the
+> card TTL made it *larger*, so this prohibition matters more now than it did at 300.
+> Today it is inert because nothing
 > caches the HTML, but `respect_origin` would adopt the whole directive set and
 > license Cloudflare to serve a card page **up to a year stale** whenever origin
 > revalidation fails — and the most likely trigger is a Coolify redeploy, which is

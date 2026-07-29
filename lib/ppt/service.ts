@@ -9,16 +9,38 @@ import {
   CACHE_KEYS,
   CACHE_TTL,
   withRequestCoalescing,
-  cacheAside,
 } from '@/lib/redis/client';
 import { createServerClient } from '@/lib/supabase/client';
-import type { Tables, InsertTables } from '@/lib/supabase/database.types';
+import type { Tables, TablesInsert } from '@/lib/supabase/database.types';
 import { slugify } from '@/lib/utils';
 
 // Types for transformed data
 export interface CardWithPrices {
-  card: Tables<'cards'>;
+  card: Pick<
+    Tables<'cards'>,
+    | 'id'
+    | 'set_id'
+    | 'name'
+    | 'slug'
+    | 'number'
+    | 'rarity'
+    | 'artist'
+    | 'description'
+    | 'tcg_player_id'
+    | 'ppt_card_id'
+    | 'image_url'
+    | 'local_image_url'
+    | 'image_fetched_at'
+    | 'lore'
+    | 'print_run_info'
+    | 'created_at'
+    | 'updated_at'
+  >;
   prices: {
+    headline: {
+      usd: number | null;
+      kind: 'market';
+    };
     raw: {
       nearMint: number | null;
       lightlyPlayed: number | null;
@@ -148,7 +170,7 @@ async function fetchCardFromAPI(
 }
 
 /**
- * Fetch card and update database cache
+ * Fetch card and cache the request-scoped result in Redis.
  */
 async function fetchAndCacheCard(
   tcgPlayerId: string,
@@ -165,30 +187,6 @@ async function fetchAndCacheCard(
     result,
     { ex: CACHE_TTL.prices }
   );
-
-  // Update database cache
-  const supabase = createServerClient();
-  const ttlHours = determineCacheTTL(result);
-
-  const payload = {
-    card_id: result.card.id,
-    variant_id: null,
-    raw_prices: result.prices.raw,
-    graded_prices: result.prices.graded,
-    expires_at: new Date(Date.now() + ttlHours * 60 * 60 * 1000).toISOString(),
-    fetched_at: new Date().toISOString(),
-  };
-
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.from('price_cache') as any)
-      .upsert(payload, { onConflict: 'card_id' });
-  } catch {
-    // Backward-compatible fallback for databases without unique(card_id)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.from('price_cache') as any)
-      .upsert(payload, { onConflict: 'card_id,variant_id' });
-  }
 
   return { ...result, fromCache: false };
 }
@@ -215,14 +213,16 @@ function transformPPTCard(pptCard: PPTCard): CardWithPrices {
       image_url: pptCard.imageCdnUrl.large,
       local_image_url: null,
       image_fetched_at: null,
-      last_price_fetch: new Date().toISOString(),
-      price_cache_ttl: 3600,
       lore: null,
       print_run_info: null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     },
     prices: {
+      headline: {
+        usd: toNumberOrNull(pptCard.prices.market ?? pptCard.prices.conditions.nearMint),
+        kind: 'market',
+      },
       raw: {
         nearMint: pptCard.prices.conditions.nearMint,
         lightlyPlayed: pptCard.prices.conditions.lightlyPlayed,
@@ -234,22 +234,6 @@ function transformPPTCard(pptCard: PPTCard): CardWithPrices {
     lastUpdated: pptCard.lastUpdated,
     fromCache: false,
   };
-}
-
-/**
- * Determine cache TTL based on card activity
- */
-function determineCacheTTL(card: CardWithPrices): number {
-  // High-value or active cards get shorter TTL
-  const nmPrice = card.prices.raw.nearMint || 0;
-
-  if (nmPrice > 1000) {
-    return 1; // 1 hour for high-value cards
-  } else if (nmPrice > 100) {
-    return 2; // 2 hours for mid-value cards
-  } else {
-    return 4; // 4 hours for low-value cards
-  }
 }
 
 /**
@@ -335,7 +319,7 @@ export async function importSet(
     for (let i = 0; i < cards.length; i += batchSize) {
       const batch = cards.slice(i, i + batchSize);
 
-      const cardInserts: InsertTables<'cards'>[] = batch.map((card) => ({
+      const cardInserts: TablesInsert<'cards'>[] = batch.map((card) => ({
         set_id: set.id,
         name: card.name,
         slug: slugify(`${card.name}-${card.cardNumber}`),
@@ -420,7 +404,7 @@ export async function syncSets(): Promise<{
     }
 
     // Upsert all sets
-    const setInserts: InsertTables<'sets'>[] = sets.map((set, index) => ({
+    const setInserts: TablesInsert<'sets'>[] = sets.map((set, index) => ({
       game_id: game2.id,
       name: set.name,
       slug: slugify(set.name),
@@ -500,59 +484,50 @@ function calculateSetPriority(set: PPTSet, index: number): number {
 export async function getStaleCardPrices(
   tcgPlayerId: string
 ): Promise<{
-  prices: CardWithPrices['prices'] | null;
+  prices: {
+    raw: Record<string, unknown>;
+    graded: Record<string, unknown>;
+  } | null;
   lastUpdated: string | null;
   hoursStale: number;
 } | null> {
   const supabase = createServerClient();
 
-  const { data: cardData } = await supabase
-    .from('cards')
-    .select(`
-      id,
-      last_price_fetch,
-      price_cache!inner (
-        raw_prices,
-        graded_prices,
-        fetched_at
-      )
-    `)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: cardData } = await (supabase.from('cards') as any)
+    .select('id')
     .eq('tcg_player_id', tcgPlayerId)
     .single();
+  const card = cardData as { id: string } | null;
 
-  interface StaleCardData {
-    id: string;
-    last_price_fetch: string | null;
-    price_cache: {
-      raw_prices: Record<string, number | null>;
-      graded_prices: Record<string, unknown>;
-      fetched_at: string;
-    } | Array<{
-      raw_prices: Record<string, number | null>;
-      graded_prices: Record<string, unknown>;
-      fetched_at: string;
-    }>;
-  }
-
-  const card = cardData as StaleCardData | null;
-
-  if (!card || !card.price_cache) {
+  if (!card) {
     return null;
   }
 
-  const cache = Array.isArray(card.price_cache)
-    ? card.price_cache[0]
-    : card.price_cache;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: currentPriceData } = await (supabase.from('card_price_current') as any)
+    .select('source_prices, graded_prices, computed_at')
+    .eq('card_id', card.id)
+    .maybeSingle();
+  const currentPrice = currentPriceData as {
+    source_prices: unknown;
+    graded_prices: unknown;
+    computed_at: string;
+  } | null;
 
-  const fetchedAt = new Date(cache.fetched_at);
+  if (!currentPrice) return null;
+
+  const sourcePrices = currentPrice.source_prices as Record<string, unknown>;
+  const gradedPrices = currentPrice.graded_prices as Record<string, unknown>;
+  const fetchedAt = new Date(currentPrice.computed_at);
   const hoursStale = (Date.now() - fetchedAt.getTime()) / (1000 * 60 * 60);
 
   return {
     prices: {
-      raw: cache.raw_prices as CardWithPrices['prices']['raw'],
-      graded: cache.graded_prices as CardWithPrices['prices']['graded'],
+      raw: sourcePrices,
+      graded: gradedPrices,
     },
-    lastUpdated: cache.fetched_at,
+    lastUpdated: currentPrice.computed_at,
     hoursStale: Math.round(hoursStale * 10) / 10,
   };
 }

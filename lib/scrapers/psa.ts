@@ -390,7 +390,7 @@ export async function getCertFromDb(certNumber: string): Promise<PSACertData | n
       raw_data,
       scraped_at,
       is_verified,
-      grading_companies!inner (slug)
+      grading_companies!cert_history_grading_company_id_fkey!inner (slug)
     `)
     .eq('cert_number', certNumber)
     .single();

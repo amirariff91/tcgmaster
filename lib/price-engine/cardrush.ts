@@ -1,5 +1,7 @@
 import * as cheerio from 'cheerio';
 import { waitForSourceRateLimit } from './rate-limiter';
+import { parseCardNumber } from './card-number';
+import type { MatchEvidence } from './identity';
 
 // JPY to USD conversion rate — update periodically (check xe.com). ~157 as of mid-2026.
 const JPY_TO_USD = 157;
@@ -8,6 +10,18 @@ export interface CardrushResult {
   priceUsd: number | null;
   imageUrl: string | null;
   url: string | null;
+  evidence: MatchEvidence;
+}
+
+function emptyEvidence(matchedBy: MatchEvidence['matchedBy']): MatchEvidence {
+  return { matchedBy };
+}
+
+export async function fetchCardrushByAnchor(url: string): Promise<{ price: number, url: string, evidence: MatchEvidence } | null> {
+  if (!url.startsWith('http') || !url.includes('/product/')) {
+    throw new Error(`Cardrush anchor must contain /product/: ${url}`);
+  }
+  return fetchCardrushPrice(url);
 }
 
 export async function fetchCardrushData(cardNumber: string): Promise<CardrushResult> {
@@ -19,13 +33,18 @@ export async function fetchCardrushData(cardNumber: string): Promise<CardrushRes
       const response = await fetch(cardNumber, {
         headers: { 'User-Agent': 'Mozilla/5.0' }
       });
-      if (!response.ok) return { priceUsd: null, imageUrl: null, url: null };
+      if (!response.ok) return { priceUsd: null, imageUrl: null, url: null, evidence: emptyEvidence('cached-url') };
       
       const html = await response.text();
       const $ = cheerio.load(html);
       
       const priceText = $('.figure').text().trim() || $('.price').text().trim();
       const imageSrc = $('.item_img img').attr('src') || $('img').attr('src');
+      const pageText = $('body').text().replace(/\s+/g, ' ');
+      const externalTitle = $('h1').first().text().trim()
+        || $('.card-product-name, .product-name, .item-name, .name').first().text().trim();
+      const soldOut = $('.soldout, .sold-out, .sold_out, [class*="soldout"], [class*="sold-out"]').length > 0
+        || /売り切れ|在庫なし|SOLD\s*OUT/i.test(pageText);
       
       if (priceText) {
         const match = priceText.match(/([0-9,]+)円/);
@@ -34,17 +53,27 @@ export async function fetchCardrushData(cardNumber: string): Promise<CardrushRes
           if (!isNaN(jpyPrice)) {
             const usdPrice = Math.round((jpyPrice / JPY_TO_USD) * 100) / 100;
             const fullImg = imageSrc ? (imageSrc.startsWith('http') ? imageSrc : `https://www.cardrush-db.jp${imageSrc}`) : null;
-            return { priceUsd: usdPrice, imageUrl: fullImg, url: cardNumber };
+            return {
+              priceUsd: usdPrice,
+              imageUrl: fullImg,
+              url: cardNumber,
+              evidence: {
+                externalUrl: cardNumber,
+                externalTitle,
+                inStock: soldOut ? false : undefined,
+                matchedBy: 'cached-url',
+              },
+            };
           }
         }
       }
-      return { priceUsd: null, imageUrl: null, url: null };
+      return { priceUsd: null, imageUrl: null, url: null, evidence: emptyEvidence('cached-url') };
     }
 
     // 1. Separate base number from suffix (e.g. FB01-129-p2 -> base: FB01-129, suffix: p2)
-    const matchBase = cardNumber.match(/^([A-Z0-9]+-[0-9]+)(?:[-_](.*))?$/);
-    const baseNumber = matchBase ? matchBase[1] : cardNumber;
-    const suffix = matchBase && matchBase[2] ? matchBase[2].toLowerCase() : '';
+    const parsedCardNumber = parseCardNumber(cardNumber);
+    const baseNumber = parsedCardNumber.base;
+    const suffix = parsedCardNumber.suffix ?? '';
     
     const searchUrl = `https://www.cardrush-db.jp/product-list?keyword=${encodeURIComponent(baseNumber)}`;
     const response = await fetch(searchUrl, {
@@ -53,7 +82,7 @@ export async function fetchCardrushData(cardNumber: string): Promise<CardrushRes
       }
     });
     
-    if (!response.ok) return { priceUsd: null, imageUrl: null, url: null };
+    if (!response.ok) return { priceUsd: null, imageUrl: null, url: null, evidence: emptyEvidence('search') };
     
     const html = await response.text();
     const $ = cheerio.load(html);
@@ -61,10 +90,13 @@ export async function fetchCardrushData(cardNumber: string): Promise<CardrushRes
     let lowestPrice: number | null = null;
     let bestImage: string | null = null;
     let bestUrl: string | null = null;
+    let bestEvidence: MatchEvidence | null = null;
     
     $('.item_data').each((i, el) => {
       const title = $(el).find('.name').text().trim() || $(el).find('a').text().trim();
       const url = $(el).find('a').attr('href');
+      const rowHtml = $(el).html() ?? '';
+      const inStock = !/soldout|sold-out|売り切れ|在庫なし|SOLD\s*OUT/i.test(`${rowHtml} ${title}`);
       
       // Filter out damaged or graded cards
       if (title.includes('〔状態') || title.includes('PSA')) {
@@ -107,6 +139,12 @@ export async function fetchCardrushData(cardNumber: string): Promise<CardrushRes
               if (url) {
                  bestUrl = url.startsWith('http') ? url : `https://www.cardrush-db.jp${url}`;
               }
+              bestEvidence = {
+                externalUrl: bestUrl ?? undefined,
+                externalTitle: title,
+                inStock: inStock ? undefined : false,
+                matchedBy: 'search',
+              };
               if (imageSrc) {
                 // Ensure absolute URL
                 bestImage = imageSrc.startsWith('http') ? imageSrc : `https://www.cardrush-db.jp${imageSrc}`;
@@ -121,18 +159,19 @@ export async function fetchCardrushData(cardNumber: string): Promise<CardrushRes
       priceUsd: lowestPrice,
       imageUrl: bestImage,
       url: bestUrl,
+      evidence: bestEvidence ?? emptyEvidence('search'),
     };
     
   } catch (err) {
     console.error(`Cardrush fetch error for ${cardNumber}:`, err);
   }
-  return { priceUsd: null, imageUrl: null, url: null };
+  return { priceUsd: null, imageUrl: null, url: null, evidence: emptyEvidence('search') };
 }
 
-export async function fetchCardrushPrice(cardNumber: string): Promise<{ price: number, url: string } | null> {
+export async function fetchCardrushPrice(cardNumber: string): Promise<{ price: number, url: string, evidence: MatchEvidence } | null> {
   const result = await fetchCardrushData(cardNumber);
   if (result.priceUsd !== null && result.url !== null) {
-     return { price: result.priceUsd, url: result.url };
+     return { price: result.priceUsd, url: result.url, evidence: result.evidence };
   }
   return null;
 }

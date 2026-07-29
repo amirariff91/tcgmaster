@@ -1,16 +1,33 @@
 import * as cheerio from 'cheerio';
+import type { Element } from 'domhandler';
 import { waitForSourceRateLimit } from './rate-limiter';
+import { parseCardNumber } from './card-number';
+import type { MatchEvidence } from './identity';
 
 // JPY to USD conversion rate — update periodically (check xe.com). ~157 as of mid-2026.
 const JPY_TO_USD = 157;
 
-export async function fetchJapanesePrice(query: string, setName?: string): Promise<{ price: number; url: string } | null> {
+export interface JapanesePriceResult {
+  price: number;
+  url: string;
+  evidence: MatchEvidence;
+}
+
+export async function fetchYuyuteiByAnchor(url: string): Promise<JapanesePriceResult | null> {
+  if (!url.startsWith('http') || !url.includes('/sell/opc/card/')) {
+    throw new Error(`Yuyutei anchor must contain /sell/opc/card/: ${url}`);
+  }
+  return fetchJapanesePrice(url);
+}
+
+export async function fetchJapanesePrice(query: string, setName?: string): Promise<JapanesePriceResult | null> {
   try {
+    void setName;
     await waitForSourceRateLimit('yuyutei');
 
     let rawQuery = query;
     const isUrl = rawQuery.startsWith('http');
-    const isVariant = rawQuery.includes('_');
+    const isVariant = !isUrl && parseCardNumber(rawQuery).suffix !== null;
 
     if (isVariant && !isUrl) {
       console.log(`[Yuyutei] Refusing to guess variant for query: ${rawQuery}`);
@@ -33,7 +50,27 @@ export async function fetchJapanesePrice(query: string, setName?: string): Promi
       const match = priceText.match(/([0-9,]+)\s*円/);
       if (match) {
         const priceJpy = parseInt(match[1].replace(/,/g, ''), 10);
-        return { price: parseFloat((priceJpy / JPY_TO_USD).toFixed(2)), url: rawQuery };
+        const pageText = $('body').text().replace(/\s+/g, ' ');
+        const soldOut = $('.soldout, .sold-out, .sold_out, [class*="soldout"], [class*="sold-out"]').length > 0
+          || /売り切れ|在庫なし|在庫\s*[:：]\s*[×✕]|SOLD\s*OUT/i.test(pageText);
+        // The h1 is "name | 販売 | set | site" and never contains the card number; the
+        // number lives in a spec badge in the body. A single-card page names exactly one
+        // number, so the first match is the card's own — append it to the evidence title
+        // or identity assertion fails closed on every cached fetch.
+        const numberBadge = pageText.match(/[A-Za-z0-9]{2,5}-\d{2,3}/)?.[0] ?? '';
+        const heading = $('h1').first().text().trim()
+          || $('.card-product-name, .product-name, .card-name, .item-name').first().text().trim();
+        const externalTitle = `${heading} ${numberBadge}`.trim();
+        return {
+          price: parseFloat((priceJpy / JPY_TO_USD).toFixed(2)),
+          url: rawQuery,
+          evidence: {
+            externalUrl: rawQuery,
+            externalTitle,
+            inStock: soldOut ? false : undefined,
+            matchedBy: 'cached-url',
+          },
+        };
       }
       return null;
     }
@@ -46,15 +83,13 @@ export async function fetchJapanesePrice(query: string, setName?: string): Promi
         if (searchWord) {
           rawQuery = searchWord;
         }
-      } catch (e) {}
+      } catch {}
     }
 
     // Determine the variant based on the query suffix
-    let suffix = '';
-    let baseQuery = rawQuery;
-    if (rawQuery.includes('_')) {
-      [baseQuery, suffix] = rawQuery.split('_');
-    }
+    const parsedQuery = parseCardNumber(rawQuery);
+    const baseQuery = parsedQuery.base;
+    const suffix = parsedQuery.suffix ?? '';
 
     const searchUrl = `https://yuyu-tei.jp/sell/opc/s/search?search_word=${encodeURIComponent(baseQuery)}`;
     const response = await fetch(searchUrl, {
@@ -69,7 +104,7 @@ export async function fetchJapanesePrice(query: string, setName?: string): Promi
     const $ = cheerio.load(html);
     
     // Yuyutei lists products in .card-product
-    let selectedProduct: any = null;
+    let selectedProduct: Element | null = null;
     let selectedUrl = '';
     
     $('.card-product').each((_, el) => {
@@ -91,13 +126,9 @@ export async function fetchJapanesePrice(query: string, setName?: string): Promi
               if (!text.includes('ゴールド') && !text.includes('金')) selectedProduct = el;
            }
         }
-      } else if (suffix === 'p6' || suffix === 'p7') {
+      } else if (suffix === 'p6') {
         // Silver SP (p6 = 銀パラレル) and Gold SP (p7 = 金パラレル)
-        if (suffix === 'p6') {
-          if (text.includes('銀パラレル') || (text.includes('銀') && text.includes('パラレル'))) selectedProduct = el;
-        } else {
-          if (text.includes('金パラレル') || (text.includes('金') && text.includes('パラレル'))) selectedProduct = el;
-        }
+        if (text.includes('銀パラレル') || (text.includes('銀') && text.includes('パラレル'))) selectedProduct = el;
       } else if (suffix === 'p1' || suffix.startsWith('p')) {
         // Normal Parallel
         if (text.includes('パラレル') && !text.includes('スーパーパラレル') && !text.includes('(PRB)') && !text.includes('スペシャル') && !text.includes('トレジャー') && !text.includes('手配書')) {
@@ -135,7 +166,24 @@ export async function fetchJapanesePrice(query: string, setName?: string): Promi
     if (match) {
       const priceJpy = parseInt(match[1].replace(/,/g, ''), 10);
       // Convert JPY to USD roughly for the database (150 JPY = 1 USD)
-      return { price: parseFloat((priceJpy / JPY_TO_USD).toFixed(2)), url: selectedUrl || searchUrl };
+      const rowText = $(selectedProduct).text().replace(/\s+/g, ' ');
+      const rowHtml = $(selectedProduct).html() ?? '';
+      const soldOut = /soldout|sold-out|売り切れ|在庫なし|在庫\s*[:：]\s*[×✕]|SOLD\s*OUT/i.test(`${rowHtml} ${rowText}`);
+      // Prefer the full row text: the row includes the card-number badge, which the
+      // .name element alone does not — identity asserts against this string.
+      const externalTitle = (rowText.length > 0 ? rowText.slice(0, 200) : '').trim()
+        || $(selectedProduct).find('.name').text().trim()
+        || $(selectedProduct).find('a').first().text().trim();
+      return {
+        price: parseFloat((priceJpy / JPY_TO_USD).toFixed(2)),
+        url: selectedUrl || searchUrl,
+        evidence: {
+          externalUrl: selectedUrl || searchUrl,
+          externalTitle,
+          inStock: soldOut ? false : undefined,
+          matchedBy: 'search',
+        },
+      };
     }
     
   } catch (err) {

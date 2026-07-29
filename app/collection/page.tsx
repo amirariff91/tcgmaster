@@ -495,10 +495,12 @@ export default function CollectionPage() {
               ) : (
                 collections.map((collection) => {
                   const Icon = getCollectionIcon(collection.type);
+                  const totalCostBasis = collection.total_cost_basis ?? 0;
+                  const collectionTotalValue = collection.total_value ?? 0;
                   const pctChange =
-                    collection.total_cost_basis > 0
-                      ? ((collection.total_value - collection.total_cost_basis) /
-                          collection.total_cost_basis) *
+                    totalCostBasis > 0
+                      ? ((collectionTotalValue - totalCostBasis) /
+                          totalCostBasis) *
                         100
                       : 0;
                   return (
@@ -520,7 +522,7 @@ export default function CollectionPage() {
                           {collection.items_count} items
                         </p>
                       </div>
-                      {collection.total_cost_basis > 0 && (
+                      {totalCostBasis > 0 && (
                         <span
                           className={`text-sm font-medium ${
                             pctChange >= 0
