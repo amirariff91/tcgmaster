@@ -13,21 +13,12 @@ import { getCardWithPrices } from '@/lib/ppt/service';
 // Public catalog data only, so use the cookie-free anon client. Reading cookies()
 // (which lib/supabase/server does) opts the route into dynamic rendering and
 // silently defeats `revalidate` — that is why card pages served no-store.
-import { createPublicClient } from '@/lib/supabase/client';
+import { createServerClient, createPublicClient } from '@/lib/supabase/client';
 import { calculatePriceChange24h } from '@/lib/pricing/trending';
 import { latestRecordedAt, priceKindLabel, type PriceKind } from '@/lib/pricing/price-labels';
 
 // `price_history.source` values are lowercase enum members; match on substring so
 // display casing and multi-word names ("TCG Republic") still resolve.
-const MARKET_LOGOS = [
-  { match: 'snkrdunk', logo: '/logos/snkrdunk.png' },
-  { match: 'yuyutei', logo: '/logos/yuyutei.png' },
-  { match: 'cardrush', logo: '/logos/cardrush.png' },
-  { match: 'tcgplayer', logo: '/logos/tcgplayer.png' },
-  { match: 'pricecharting', logo: '/logos/pricecharting.png' },
-  { match: 'tcgrepublic', logo: '/logos/tcgrepublic.png' },
-  { match: 'tcg republic', logo: '/logos/tcgrepublic.png' },
-] as const;
 
 interface CardDataSet {
   id: string;
@@ -56,6 +47,13 @@ interface CurrentSourcePrice {
   recorded_at: string | null;
 }
 
+interface CardDataVariant {
+  id: string;
+  variant_type: string;
+  name: string;
+  slug: string;
+}
+
 interface CardDataPriceCurrent {
   source_prices: Record<string, CurrentSourcePrice>;
   graded_prices: Record<string, GradedPriceData>;
@@ -71,16 +69,16 @@ interface CardDataPriceHistory {
   card_id: string;
   variant_id: string | null;
   grading_company_id: string | null;
-  grade: string;
+  grade: string | null;
   price: number;
   recorded_at: string;
-  source: string;
+  source: string | null;
 }
 
 interface CardDataPopulation {
-  grade: number;
+  grade: string;
   count: number;
-  grading_company_id: string;
+  grading_company_id: string | null;
 }
 
 interface CardData {
@@ -88,14 +86,14 @@ interface CardData {
   name: string;
   slug: string;
   number: string;
-  rarity: string | null;
+  rarity: string;
   artist: string | null;
   description: string | null;
-  image_url: string | null;
+  image_url: string;
   local_image_url: string | null;
-  tcg_player_id: string | null;
+  tcg_player_id: number | null;
   sets: CardDataSet;
-  card_variants: { id: string; variant_type: string; name: string; slug: string }[];
+  card_variants: CardDataVariant[];
   card_price_current: CardDataPriceCurrent | null;
   price_cache_ttl: number | null;
   price_history: CardDataPriceHistory[];
@@ -105,10 +103,11 @@ interface CardData {
   snkrdunk_url?: string;
   cardrush_url?: string;
   yuyutei_url?: string;
+  card_source_mapping?: { source: string; external_url: string }[];
 }
 
 async function getCardData(gameSlug: string, setSlug: string, cardSlug: string): Promise<CardData | null> {
-  const supabase = createPublicClient();
+  const supabase = createServerClient();
 
   const { data: card, error } = await supabase
     .from('cards')
@@ -166,6 +165,10 @@ async function getCardData(gameSlug: string, setSlug: string, cardSlug: string):
         price,
         recorded_at,
         source
+      ),
+      card_source_mapping (
+        source,
+        external_url
       ),
       population_reports (
         grade,
@@ -244,7 +247,7 @@ interface PageProps {
 //
 // Anything derived from Date.now() during render now freezes for up to a day —
 // see components/card/price-freshness.tsx.
-export const revalidate = 86400;
+export const revalidate = 0;
 
 // Next 16 only puts a dynamic segment on the ISR path when it declares
 // generateStaticParams. The catalogue is ~15k cards, so prerender nothing at build
@@ -434,7 +437,7 @@ export default async function CardDetailPage({ params }: PageProps) {
 
   // Vendor URLs are stored per card and drive the scrapers; reuse them so each
   // Compared-source rows link out to the listing the price came from.
-  const marketUrls: Record<string, string> = {};
+  const marketUrls: Record<string, string> = {}; 
   for (const [source, url] of Object.entries({
     tcgplayer: cardData.tcgplayer_url,
     snkrdunk: cardData.snkrdunk_url,
@@ -443,6 +446,20 @@ export default async function CardDetailPage({ params }: PageProps) {
   })) {
     if (url) marketUrls[source] = url;
   }
+  
+  // Also merge any new mapping records
+  if (cardData.card_source_mapping) {
+    for (const mapping of cardData.card_source_mapping) {
+      if (mapping.external_url) {
+        marketUrls[mapping.source] = mapping.external_url;
+      }
+    }
+  }
+  
+  require('fs').writeFileSync('/tmp/next-debug.log', JSON.stringify({
+    card_source_mapping: cardData.card_source_mapping,
+    marketUrls
+  }, null, 2));
 
   const { baseName: cleanName, variantInfo } = splitCardName(card.name);
 
@@ -601,74 +618,9 @@ export default async function CardDetailPage({ params }: PageProps) {
           <div className="lg:col-span-5 flex flex-col space-y-6">
             <CollectrChart 
               priceHistory={priceHistoryData} 
-              gradeInfos={priceLadderEntries} 
+              gradeInfos={priceLadderEntries}
+              marketUrls={marketUrls}
             />
-
-
-
-            {/* Compared Sources */}
-            {latestPricesList.length > 0 && (
-              <div className="bg-[#0b1329]/80 backdrop-blur-sm rounded-2xl border border-white/10 overflow-hidden shadow-sm">
-                <div className="bg-white/5 px-5 py-3 border-b border-white/10">
-                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">Compared Sources</h3>
-                </div>
-                <div className="divide-y divide-white/10">
-                  {latestPricesList.map((item) => {
-                    const s = item.source.toLowerCase();
-                    const logo = MARKET_LOGOS.find(m => s.includes(m.match))?.logo ?? null;
-                    // Logos with transparent backgrounds need a white plate to stay legible on the dark card.
-                    const needsWhitePlate = !s.includes('snkrdunk');
-                    const href = marketUrls[item.source] ?? null;
-
-                    const body = (
-                      <>
-                        <div className="flex items-center gap-3">
-                          {logo ? (
-                            <img
-                              src={logo}
-                              alt={item.source}
-                              className={`w-8 h-8 rounded-md border border-white/10 shadow-sm ${
-                                needsWhitePlate
-                                  ? 'bg-white object-contain p-1'
-                                  : 'bg-white/5 object-cover p-0 overflow-hidden'
-                              }`}
-                            />
-                          ) : (
-                            <div className="w-8 h-8 rounded-md border border-white/10 shadow-sm bg-white/5 flex items-center justify-center text-zinc-400">
-                              <span className="text-xs font-bold">{item.source.charAt(0).toUpperCase()}</span>
-                            </div>
-                          )}
-                          <span className="text-white font-bold capitalize">{item.source}</span>
-                          <span className="text-[10px] text-zinc-500 uppercase tracking-wider">{priceKindLabel(item.kind)}</span>
-                          {href && <ExternalLink className="h-3.5 w-3.5 text-zinc-500" aria-hidden />}
-                        </div>
-                        <div className="text-right flex flex-col items-end">
-                          <FormattedPrice price={item.price} className="text-orange-400 font-bold text-lg tabular-nums leading-none" />
-                          <span className="text-[10px] text-zinc-500 mt-1 font-medium uppercase tracking-wider">{formatDate(item.date)}</span>
-                        </div>
-                      </>
-                    );
-
-                    const rowClass = 'flex justify-between items-center px-5 py-4 hover:bg-white/5 transition-colors';
-
-                    return href ? (
-                      <a
-                        key={item.source}
-                        href={href}
-                        target="_blank"
-                        rel="noopener noreferrer nofollow sponsored"
-                        className={rowClass}
-                      >
-                        {body}
-                      </a>
-                    ) : (
-                      <div key={item.source} className={rowClass}>{body}</div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-            
           </div>
         </div>
 

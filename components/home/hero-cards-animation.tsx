@@ -5,12 +5,12 @@ import { motion } from 'framer-motion';
 import Image from 'next/image';
 
 const CARDS = [
-  { id: 1, src: 'https://www.onepiece-cardgame.com/images/cardlist/card/EB03-053_p2.png?260630', alt: 'Card 1', rot: -25, y: 34, x: -136 },
-  { id: 2, src: 'https://www.onepiece-cardgame.com/images/cardlist/card/OP12-020_p3.png?260630', alt: 'Card 2', rot: -15, y: 13, x: -82 },
-  { id: 3, src: 'https://www.onepiece-cardgame.com/images/cardlist/card/OP09-050_p3.png?260630', alt: 'Card 3', rot: -5, y: 0, x: -27 },
-  { id: 4, src: 'https://www.onepiece-cardgame.com/images/cardlist/card/OP05-060_p4.png?260630', alt: 'Card 4', rot: 5, y: 0, x: 27 },
-  { id: 5, src: 'https://www.onepiece-cardgame.com/images/cardlist/card/OP13-118_p3.png?260630', alt: 'Card 5', rot: 15, y: 13, x: 82 },
-  { id: 6, src: 'https://www.onepiece-cardgame.com/images/cardlist/card/EB03-061_p2.png?260630', alt: 'Card 6', rot: 25, y: 34, x: 136 },
+  { id: 1, src: 'https://images.tcgmaster.com/one-piece/op-op05-119_p2-ja.png', alt: 'Card 1', rot: -25, y: 34, x: -136 },
+  { id: 2, src: 'https://images.tcgmaster.com/dbfw/promotion/E-10.webp', alt: 'Card 2', rot: -15, y: 13, x: -82 },
+  { id: 3, src: 'https://images.tcgmaster.com/one-piece/569106/OP06-001_p1.png', alt: 'Card 3', rot: -5, y: 0, x: -27 },
+  { id: 4, src: 'https://images.tcgmaster.com/dbfw/promotion/FB01-096-p2.webp', alt: 'Card 4', rot: 5, y: 0, x: 27 },
+  { id: 5, src: 'https://images.tcgmaster.com/one-piece/op-op13-118_p3-ja.png', alt: 'Card 5', rot: 15, y: 13, x: 82 },
+  { id: 6, src: 'https://images.tcgmaster.com/dbfw/fb04/dbfw-fb04-129-p2-ja.webp', alt: 'Card 6', rot: 25, y: 34, x: 136 },
 ];
 
 export function HeroCardsAnimation() {

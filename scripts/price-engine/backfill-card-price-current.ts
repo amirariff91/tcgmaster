@@ -12,14 +12,15 @@ import { normalizeGrade, type CanonicalGrade } from '../../lib/pricing/grades';
 const CARD_BATCH_SIZE = 500;
 const HISTORY_PAGE_SIZE = 1000;
 const WRITE_BATCH_SIZE = 500;
-const SUPPORTED_SOURCES: readonly Exclude<PriceSource, 'snkrdunk'>[] = [
+const SUPPORTED_SOURCES: readonly PriceSource[] = [
   'tcgplayer',
   'pricecharting',
   'yuyutei',
   'cardrush',
+  'snkrdunk',
 ];
 
-type BackfillSource = Exclude<PriceSource, 'snkrdunk'>;
+type BackfillSource = PriceSource;
 
 type Card = {
   id: string;

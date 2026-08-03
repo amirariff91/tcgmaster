@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { fetchPriceChartingByAnchor } from '../../lib/price-engine/pricecharting';
 import { fetchYuyuteiByAnchor } from '../../lib/price-engine/yuyutei';
+import { fetchSnkrdunkPrice } from '../../lib/price-engine/snkrdunk';
 import type { SourceMapping } from '../../lib/price-engine/mapping';
 import {
   SOURCE_CURRENCY,
@@ -66,13 +67,44 @@ export const fetchCard = async (card: WorkerCard, mappings: SourceMapping[]): Pr
     }
   }
 
+  const snkrdunkMapping = mappings.find((mapping) => mapping.source === 'snkrdunk');
+  if (!snkrdunkMapping?.externalUrl) {
+    console.log('[Japanese OP] snkrdunk: no mapping, skipped');
+  } else {
+    console.log(`[Japanese OP] Fetching from SnkrDunk anchor ${snkrdunkMapping.externalUrl}...`);
+    const snkrdunkResult = await fetchSnkrdunkPrice(snkrdunkMapping.externalUrl);
+    if (snkrdunkResult !== null) {
+      observations.push({
+        source: 'snkrdunk',
+        grade: normalizeGrade('raw'),
+        priceUsd: snkrdunkResult.price,
+        priceNative: snkrdunkResult.price,
+        currency: SOURCE_CURRENCY.snkrdunk,
+        evidence: snkrdunkResult.evidence,
+      });
+      console.log(`[Japanese OP] SnkrDunk: $${snkrdunkResult.price}`);
+
+      if (snkrdunkResult.gradedPrice) {
+        observations.push({
+          source: 'snkrdunk',
+          grade: normalizeGrade('psa10'),
+          priceUsd: snkrdunkResult.gradedPrice,
+          priceNative: snkrdunkResult.gradedPrice,
+          currency: SOURCE_CURRENCY.snkrdunk,
+          evidence: snkrdunkResult.evidence,
+        });
+        console.log(`[Japanese OP] SnkrDunk PSA 10: $${snkrdunkResult.gradedPrice}`);
+      }
+    }
+  }
+
   return { observations, cardUpdates };
 };
 
 export const workerConfig: WorkerConfig = {
   label: 'Japanese OP',
   queueFilter: (q) => q.ilike('slug', 'op-%').ilike('slug', '%-ja'),
-  sources: ['yuyutei', 'pricecharting'],
+  sources: ['yuyutei', 'pricecharting', 'snkrdunk'],
   fetchCard,
   sleepMs: process.env.SAFE_MODE === '1' ? 40000 : 17000,
 };

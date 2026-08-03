@@ -116,7 +116,7 @@ async function run() {
                  card_id: cardId,
                  source: 'pricecharting',
                  grade: parsedGrade,
-                 grading_company_id: parsedGrade !== 'raw' && parsedGrade !== 'new' ? 'psa' : null,
+                 grading_company_id: parsedGrade !== 'raw' && parsedGrade !== 'new' ? '74c51627-cc4b-4a82-a1c0-52b3975b47b7' : null,
                  price: price,
                  recorded_at: date.toISOString(),
                });
@@ -124,14 +124,107 @@ async function run() {
          });
          
          if (insertRows.length > 0) {
-            const { error: insertError } = await supabase.from('price_history').upsert(
-              insertRows,
-              { onConflict: 'card_id, source, grade, recorded_at', ignoreDuplicates: true }
-            );
-            if (insertError) {
-               console.error('  ✗ Error inserting rows:', insertError.message);
-            } else {
-               console.log(`  ✓ Saved ${insertRows.length} historical PriceCharting trades.`);
+            const oldest = insertRows.reduce((min, r) => r.recorded_at < min ? r.recorded_at : min, insertRows[0].recorded_at);
+            const newest = insertRows.reduce((max, r) => r.recorded_at > max ? r.recorded_at : max, insertRows[0].recorded_at);
+            
+            const { data: existingRows } = await supabase
+              .from('price_history')
+              .select('recorded_at, grade')
+              .eq('card_id', cardId)
+              .eq('source', 'pricecharting')
+              .gte('recorded_at', oldest)
+              .lte('recorded_at', newest);
+
+            const existingKeys = new Set(existingRows?.map(r => `${r.grade}-${r.recorded_at}`) || []);
+            const newRows = insertRows.filter(r => !existingKeys.has(`${r.grade}-${r.recorded_at}`));
+
+            if (newRows.length > 0) {
+               const { error: insertError } = await supabase.from('price_history').insert(newRows);
+               if (insertError) {
+                  console.error('  ✗ Error inserting rows:', insertError.message);
+               } else {
+                  console.log(`  ✓ Saved ${newRows.length} historical PriceCharting trades.`);
+                  
+                  // Update card_price_current.graded_prices based on the latest price_history
+               const { data: latestPrices, error: historyError } = await supabase
+                 .from('price_history')
+                 .select('source, grade, price')
+                 .eq('card_id', cardId)
+                 .order('recorded_at', { ascending: false });
+             
+               if (!historyError && latestPrices && latestPrices.length > 0) {
+                 const latestPerSourceGrade = new Map<string, any>();
+                 for (const row of latestPrices) {
+                   const key = `${row.source}\u0000${row.grade}`;
+                   if (!latestPerSourceGrade.has(key)) {
+                     latestPerSourceGrade.set(key, row);
+                   }
+                 }
+             
+                 const grouped = new Map<string, any[]>();
+                 for (const row of latestPerSourceGrade.values()) {
+                   if (row.grade === 'raw') continue;
+                   
+                   let grade = String(row.grade).toLowerCase().trim();
+                   if (/^\d+(?:\.\d+)?$/.test(grade)) {
+                     grade = `psa${grade.replace('.', '')}`;
+                   } else if (grade.startsWith('psa')) {
+                     const match = grade.match(/^psa[\s-]?(\d+(?:\.\d+)?)$/);
+                     if (match) {
+                       grade = `psa${match[1].replace('.', '')}`;
+                     }
+                   }
+                   
+                   const group = grouped.get(grade) ?? [];
+                   group.push(row);
+                   grouped.set(grade, group);
+                 }
+                 
+                 const freshGradedPrices: Record<string, any> = {};
+                 for (const [grade, rows] of grouped.entries()) {
+                   const sources: Record<string, number> = {};
+                   let sum = 0;
+                   for (const row of rows) {
+                     sources[row.source] = row.price;
+                     sum += row.price;
+                   }
+                   freshGradedPrices[grade] = { average: sum / rows.length, sources };
+                 }
+             
+                 const { data: existingCurrent } = await supabase
+                   .from('card_price_current')
+                   .select('graded_prices, source_prices, headline_cents, headline_source, headline_kind, headline_currency, headline_grade, computed_at')
+                   .eq('card_id', cardId)
+                   .maybeSingle();
+                   
+                 const existingGraded = existingCurrent?.graded_prices || {};
+                 const mergedGraded: Record<string, any> = { ...existingGraded };
+                 
+                 for (const [grade, fresh] of Object.entries(freshGradedPrices)) {
+                   const exGrade = existingGraded[grade];
+                   const sources = {
+                     ...(exGrade?.sources ?? {}),
+                     ...fresh.sources,
+                   };
+                   const values = Object.values(sources) as number[];
+                   mergedGraded[grade] = { average: values.reduce((sum, val) => sum + val, 0) / values.length, sources };
+                 }
+             
+                 const currentRow = {
+                   card_id: cardId,
+                   source_prices: existingCurrent?.source_prices || {},
+                   graded_prices: mergedGraded,
+                   headline_cents: existingCurrent?.headline_cents ?? null,
+                   headline_source: existingCurrent?.headline_source ?? null,
+                   headline_kind: existingCurrent?.headline_kind ?? null,
+                   headline_currency: existingCurrent?.headline_currency ?? null,
+                   headline_grade: existingCurrent?.headline_grade ?? null,
+                   computed_at: existingCurrent?.computed_at ?? new Date().toISOString(),
+                 };
+             
+                 await supabase.from('card_price_current').upsert(currentRow, { onConflict: 'card_id' });
+               }
+               }
             }
          }
       }

@@ -13,6 +13,9 @@ import {
 } from 'recharts';
 import { cn, formatDate } from '@/lib/utils';
 import { useCurrencyContext } from '@/lib/currency-context';
+import { ExternalLink } from 'lucide-react';
+import { FormattedPrice } from '@/components/ui/formatted-price';
+import { priceKindLabel, type PriceKind } from '@/lib/pricing/price-labels';
 
 export interface PriceHistoryPoint {
   grade: string;
@@ -32,6 +35,7 @@ export interface GradeInfo {
 export interface CollectrChartProps {
   priceHistory: PriceHistoryPoint[];
   gradeInfos: GradeInfo[];
+  marketUrls?: Record<string, string>;
   className?: string;
 }
 
@@ -48,12 +52,30 @@ const SOURCE_COLORS: Record<string, string> = {
   default: '#a1a1aa' // Gray
 };
 
-export function CollectrChart({ priceHistory, gradeInfos, className }: CollectrChartProps) {
+const MARKET_LOGOS = [
+  { match: 'snkrdunk', logo: '/logos/snkrdunk.png' },
+  { match: 'yuyutei', logo: '/logos/yuyutei.png' },
+  { match: 'cardrush', logo: '/logos/cardrush.png' },
+  { match: 'tcgplayer', logo: '/logos/tcgplayer.png' },
+  { match: 'pricecharting', logo: '/logos/pricecharting.png' },
+  { match: 'tcgrepublic', logo: '/logos/tcgrepublic.png' },
+  { match: 'tcg republic', logo: '/logos/tcgrepublic.png' },
+] as const;
+
+const SOURCE_KIND: Record<string, PriceKind> = {
+  tcgplayer: 'market',
+  pricecharting: 'sold_guide',
+  yuyutei: 'retail_sell',
+  cardrush: 'lowest_listing',
+  snkrdunk: 'marketplace_ask',
+};
+
+export function CollectrChart({ priceHistory, gradeInfos, marketUrls = {}, className }: CollectrChartProps) {
   const { format } = useCurrencyContext();
 
   const hasRaw = priceHistory.some(h => h.grade === 'raw');
   const gradedList = gradeInfos.filter(g => g.grade !== 'raw');
-  const hasGraded = priceHistory.some(h => h.grade !== 'raw');
+  const hasGraded = gradeInfos.some(g => g.grade !== 'raw' && g.price > 0);
 
   const [activeTab, setActiveTab] = React.useState<ChartType>(hasRaw ? 'RAW' : (hasGraded ? 'GRADED' : 'RAW'));
   
@@ -125,7 +147,7 @@ export function CollectrChart({ priceHistory, gradeInfos, className }: CollectrC
     });
   }, [priceHistory, activeGrade, activeCompany]);
 
-  const { chartData, activeSources, minPrice, maxPrice } = React.useMemo(() => {
+  const { chartData, activeSources, minPrice, maxPrice, latestPricesList } = React.useMemo(() => {
     const now = new Date();
     const ranges: Record<TimeRange, number> = {
       '1W': 7,
@@ -201,16 +223,24 @@ export function CollectrChart({ priceHistory, gradeInfos, className }: CollectrC
       chartDataArr.push(entry);
     }
 
-    return {
-      chartData: chartDataArr,
-      activeSources: activeSourcesArr,
-      minPrice: min === Infinity ? 0 : min,
-      maxPrice: max === -Infinity ? 100 : max
-    };
+    // Build the dynamic "Compared Sources" list based on the exact data currently shown on the chart.
+    const latestPricesList = activeSourcesArr.map(source => {
+      // Find the most recent history point for this source
+      const latestPoint = sortedHistory.slice().reverse().find(p => p.source === source);
+      return {
+        source,
+        price: latestPoint?.price || lastKnownPrices[source] || 0,
+        date: latestPoint?.recorded_at || cutoff.toISOString(),
+        kind: SOURCE_KIND[source] || 'market',
+      };
+    }).sort((a, b) => a.price - b.price);
+
+    return { chartData: chartDataArr, activeSources: activeSourcesArr, minPrice: min === Infinity ? 0 : min, maxPrice: max === -Infinity ? 100 : max, latestPricesList };
   }, [filteredByGrade, timeRange]);
 
   return (
-    <div className={cn('relative w-full rounded-2xl bg-[#141414] border border-[#222222] p-4 text-white overflow-hidden shadow-2xl', className)}>
+    <div className={cn("flex flex-col space-y-6 w-full", className)}>
+    <div className="relative w-full rounded-2xl bg-[#141414] border border-[#222222] p-4 text-white overflow-hidden shadow-2xl">
       
       {/* Top Header Row */}
       <div className="relative z-10 flex items-center justify-between w-full">
@@ -393,6 +423,70 @@ export function CollectrChart({ priceHistory, gradeInfos, className }: CollectrC
             )}
           </div>
       )}
+
+    </div>
+
+    {/* Compared Sources */}
+    {latestPricesList.length > 0 && (
+      <div className="bg-[#0b1329]/80 backdrop-blur-sm rounded-2xl border border-white/10 overflow-hidden shadow-sm">
+        <div className="bg-white/5 px-5 py-3 border-b border-white/10">
+          <h3 className="text-sm font-bold text-white uppercase tracking-wider">Compared Sources</h3>
+        </div>
+        <div className="divide-y divide-white/10">
+          {latestPricesList.map((item) => {
+            const s = item.source.toLowerCase();
+            const logo = MARKET_LOGOS.find(m => s.includes(m.match))?.logo ?? null;
+            const needsWhitePlate = !s.includes('snkrdunk');
+            const href = marketUrls[item.source] ?? null;
+
+            const body = (
+              <>
+                <div className="flex items-center gap-3">
+                  {logo ? (
+                    <img
+                      src={logo}
+                      alt={item.source}
+                      className={`w-8 h-8 rounded-md border border-white/10 shadow-sm ${
+                        needsWhitePlate
+                          ? 'bg-white object-contain p-1'
+                          : 'bg-white/5 object-cover p-0 overflow-hidden'
+                      }`}
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-md border border-white/10 shadow-sm bg-white/5 flex items-center justify-center text-zinc-400">
+                      <span className="text-xs font-bold">{item.source.charAt(0).toUpperCase()}</span>
+                    </div>
+                  )}
+                  <span className="text-white font-bold capitalize">{item.source}</span>
+                  <span className="text-[10px] text-zinc-500 uppercase tracking-wider">{priceKindLabel(item.kind)}</span>
+                  {href && <ExternalLink className="h-3.5 w-3.5 text-zinc-500" aria-hidden />}
+                </div>
+                <div className="text-right flex flex-col items-end">
+                  <FormattedPrice price={item.price} className="text-orange-400 font-bold text-lg tabular-nums leading-none" />
+                  <span className="text-[10px] text-zinc-500 mt-1 font-medium uppercase tracking-wider">{formatDate(item.date)}</span>
+                </div>
+              </>
+            );
+
+            const rowClass = 'flex justify-between items-center px-5 py-4 hover:bg-white/5 transition-colors';
+
+            return href ? (
+              <a
+                key={item.source}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer nofollow sponsored"
+                className={rowClass}
+              >
+                {body}
+              </a>
+            ) : (
+              <div key={item.source} className={rowClass}>{body}</div>
+            );
+          })}
+        </div>
+      </div>
+    )}
 
     </div>
   );

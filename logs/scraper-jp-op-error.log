@@ -1450,3 +1450,148 @@
 2026-07-27T11:45:17:       at async fetchSnkrdunkPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/snkrdunk.ts:78:16)
 2026-07-27T11:45:17:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-jp-op.ts:49:34)
 2026-07-27T11:45:17: 
+2026-07-27T13:57:57: 87 |     if (rawPrice !== undefined) {
+2026-07-27T13:57:57: 88 |       return { price: rawPrice, gradedPrice, url: finalUrl };
+2026-07-27T13:57:57: 89 |     }
+2026-07-27T13:57:57: 90 | 
+2026-07-27T13:57:57: 91 |   } catch (err) {
+2026-07-27T13:57:57: 92 |     console.error(`PriceCharting fetch error for ${query}:`, err);
+2026-07-27T13:57:57:                                                         ^
+2026-07-27T13:57:57: ReferenceError: query is not defined
+2026-07-27T13:57:57:       at fetchPriceChartingPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/pricecharting.ts:92:52)
+2026-07-27T13:57:57: 
+2026-07-27T13:57:57: Bun v1.3.14 (macOS arm64)
+2026-07-27T13:59:02: Snkrdunk fetch error for Yokozuna OP04-068 One Piece: 52 |     });
+2026-07-27T13:59:02: 53 |     #timeoutId;
+2026-07-27T13:59:02: 54 |     #timeoutError;
+2026-07-27T13:59:02: 55 |     constructor(opts) {
+2026-07-27T13:59:02: 56 |         if (opts && opts.timeout > 0) {
+2026-07-27T13:59:02: 57 |             this.#timeoutError = new TimeoutError(opts.message);
+2026-07-27T13:59:02:                                       ^
+2026-07-27T13:59:02: TimeoutError: Navigation timeout of 30000 ms exceeded
+2026-07-27T13:59:02:       at new Deferred (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/util/Deferred.js:57:34)
+2026-07-27T13:59:02:       at create (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/util/Deferred.js:18:16)
+2026-07-27T13:59:02:       at new LifecycleWatcher (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/LifecycleWatcher.js:70:46)
+2026-07-27T13:59:02:       at goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:150:29)
+2026-07-27T13:59:02:       at goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/api/Page.js:576:43)
+2026-07-27T13:59:02:       at fetchSnkrdunkPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/snkrdunk.ts:78:16)
+2026-07-27T13:59:02:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-jp-op.ts:49:34)
+2026-07-27T13:59:02: 
+2026-07-27T13:59:03: 87 |     if (rawPrice !== undefined) {
+2026-07-27T13:59:03: 88 |       return { price: rawPrice, gradedPrice, url: finalUrl };
+2026-07-27T13:59:03: 89 |     }
+2026-07-27T13:59:03: 90 | 
+2026-07-27T13:59:03: 91 |   } catch (err) {
+2026-07-27T13:59:03: 92 |     console.error(`PriceCharting fetch error for ${query}:`, err);
+2026-07-27T13:59:03:                                                         ^
+2026-07-27T13:59:03: ReferenceError: query is not defined
+2026-07-27T13:59:03:       at fetchPriceChartingPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/pricecharting.ts:92:52)
+2026-07-27T13:59:03:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-jp-op.ts:77:28)
+2026-07-27T13:59:03: 
+2026-07-27T13:59:03: Bun v1.3.14 (macOS arm64)
+2026-07-27T16:04:48: Yuyutei fetch error for https://yuyu-tei.jp/sell/opc/card/op05/10012: DOMException {
+2026-07-27T16:04:48:   stack: "",
+2026-07-27T16:04:48:   code: 23,
+2026-07-27T16:04:48:   name: "TimeoutError",
+2026-07-27T16:04:48:   message: "The operation timed out.",
+2026-07-27T16:04:48:   INDEX_SIZE_ERR: 1,
+2026-07-27T16:04:48:   DOMSTRING_SIZE_ERR: 2,
+2026-07-27T16:04:48:   HIERARCHY_REQUEST_ERR: 3,
+2026-07-27T16:04:48:   WRONG_DOCUMENT_ERR: 4,
+2026-07-27T16:04:48:   INVALID_CHARACTER_ERR: 5,
+2026-07-27T16:04:48:   NO_DATA_ALLOWED_ERR: 6,
+2026-07-27T16:04:48:   NO_MODIFICATION_ALLOWED_ERR: 7,
+2026-07-27T16:04:48:   NOT_FOUND_ERR: 8,
+2026-07-27T16:04:48:   NOT_SUPPORTED_ERR: 9,
+2026-07-27T16:04:48:   INUSE_ATTRIBUTE_ERR: 10,
+2026-07-27T16:04:48:   INVALID_STATE_ERR: 11,
+2026-07-27T16:04:48:   SYNTAX_ERR: 12,
+2026-07-27T16:04:48:   INVALID_MODIFICATION_ERR: 13,
+2026-07-27T16:04:48:   NAMESPACE_ERR: 14,
+2026-07-27T16:04:48:   INVALID_ACCESS_ERR: 15,
+2026-07-27T16:04:48:   VALIDATION_ERR: 16,
+2026-07-27T16:04:48:   TYPE_MISMATCH_ERR: 17,
+2026-07-27T16:04:48:   SECURITY_ERR: 18,
+2026-07-27T16:04:48:   NETWORK_ERR: 19,
+2026-07-27T16:04:48:   ABORT_ERR: 20,
+2026-07-27T16:04:48:   URL_MISMATCH_ERR: 21,
+2026-07-27T16:04:48:   QUOTA_EXCEEDED_ERR: 22,
+2026-07-27T16:04:48:   TIMEOUT_ERR: 23,
+2026-07-27T16:04:48:   INVALID_NODE_TYPE_ERR: 24,
+2026-07-27T16:04:48:   DATA_CLONE_ERR: 25,
+2026-07-27T16:04:48:   toString: [Function: toString],
+2026-07-27T16:04:48: }
+2026-07-27T16:04:52: Snkrdunk fetch error for Chaka OP05-008 One Piece: 180 |                     ensureNewDocumentNavigation = !!response.loaderId;
+2026-07-27T16:04:52: 181 |                     if (response.errorText === 'net::ERR_HTTP_RESPONSE_CODE_FAILURE') {
+2026-07-27T16:04:52: 182 |                         return null;
+2026-07-27T16:04:52: 183 |                     }
+2026-07-27T16:04:52: 184 |                     return response.errorText
+2026-07-27T16:04:52: 185 |                         ? new Error(`${response.errorText} at ${url}`)
+2026-07-27T16:04:52:                                     ^
+2026-07-27T16:04:52: error: net::ERR_NETWORK_CHANGED at https://snkrdunk.com/en/search/result?keyword=Chaka%20OP05-008%20One%20Piece
+2026-07-27T16:04:52:       at navigate (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:185:31)
+2026-07-27T16:04:52:       at async race (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/util/Deferred.js:33:34)
+2026-07-27T16:04:52:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:151:40)
+2026-07-27T16:04:52:       at async goto (/Users/ioi/Documents/TcgMaster/tcgmaster/node_modules/puppeteer-core/lib/puppeteer/api/Page.js:576:43)
+2026-07-27T16:04:52:       at async fetchSnkrdunkPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/snkrdunk.ts:78:16)
+2026-07-27T16:04:52: 
+2026-07-27T16:12:55: 87 |     if (rawPrice !== undefined) {
+2026-07-27T16:12:55: 88 |       return { price: rawPrice, gradedPrice, url: finalUrl };
+2026-07-27T16:12:55: 89 |     }
+2026-07-27T16:12:55: 90 | 
+2026-07-27T16:12:55: 91 |   } catch (err) {
+2026-07-27T16:12:55: 92 |     console.error(`PriceCharting fetch error for ${query}:`, err);
+2026-07-27T16:12:55:                                                         ^
+2026-07-27T16:12:55: ReferenceError: query is not defined
+2026-07-27T16:12:55:       at fetchPriceChartingPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/pricecharting.ts:92:52)
+2026-07-27T16:12:55:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-jp-op.ts:77:28)
+2026-07-27T16:25:59: 87 |     if (rawPrice !== undefined) {
+2026-07-27T16:25:59: 88 |       return { price: rawPrice, gradedPrice, url: finalUrl };
+2026-07-27T16:25:59: 89 |     }
+2026-07-27T16:25:59: 90 | 
+2026-07-27T16:25:59: 91 |   } catch (err) {
+2026-07-27T16:25:59: 92 |     console.error(`PriceCharting fetch error for ${query}:`, err);
+2026-07-27T16:25:59:                                                         ^
+2026-07-27T16:25:59: ReferenceError: query is not defined
+2026-07-27T16:25:59:       at fetchPriceChartingPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/pricecharting.ts:92:52)
+2026-07-27T16:25:59:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-jp-op.ts:77:28)
+2026-07-27T16:25:59: 
+2026-07-27T16:25:59: Bun v1.3.14 (macOS arm64)
+2026-07-27T16:41:55: [scraper-rate-limit] Redis unavailable; using local fallback: Redis rate limiter timed out
+2026-07-27T17:15:03: 87 |     if (rawPrice !== undefined) {
+2026-07-27T17:15:03: 88 |       return { price: rawPrice, gradedPrice, url: finalUrl };
+2026-07-27T17:15:03: 89 |     }
+2026-07-27T17:15:03: 90 | 
+2026-07-27T17:15:03: 91 |   } catch (err) {
+2026-07-27T17:15:03: 92 |     console.error(`PriceCharting fetch error for ${query}:`, err);
+2026-07-27T17:15:03:                                                         ^
+2026-07-27T17:15:03: ReferenceError: query is not defined
+2026-07-27T17:15:03:       at fetchPriceChartingPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/pricecharting.ts:92:52)
+2026-07-27T17:15:03:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-jp-op.ts:77:28)
+2026-07-27T17:15:03: 
+2026-07-27T17:15:03: Bun v1.3.14 (macOS arm64)
+2026-07-27T17:16:13: 87 |     if (rawPrice !== undefined) {
+2026-07-27T17:16:13: 88 |       return { price: rawPrice, gradedPrice, url: finalUrl };
+2026-07-27T17:16:13: 89 |     }
+2026-07-27T17:16:13: 90 | 
+2026-07-27T17:16:13: 91 |   } catch (err) {
+2026-07-27T17:16:13: 92 |     console.error(`PriceCharting fetch error for ${query}:`, err);
+2026-07-27T17:16:13:                                                         ^
+2026-07-27T17:16:13: ReferenceError: query is not defined
+2026-07-27T17:16:13:       at fetchPriceChartingPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/pricecharting.ts:92:52)
+2026-07-27T17:16:13:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-jp-op.ts:77:28)
+2026-07-27T17:16:13: 
+2026-07-27T17:16:13: Bun v1.3.14 (macOS arm64)
+2026-07-27T17:16:48: [scraper-rate-limit] Redis unavailable; using local fallback: Redis rate limiter timed out
+2026-07-27T17:26:21: 87 |     if (rawPrice !== undefined) {
+2026-07-27T17:26:21: 88 |       return { price: rawPrice, gradedPrice, url: finalUrl };
+2026-07-27T17:26:21: 89 |     }
+2026-07-27T17:26:21: 90 | 
+2026-07-27T17:26:21: 91 |   } catch (err) {
+2026-07-27T17:26:21: 92 |     console.error(`PriceCharting fetch error for ${query}:`, err);
+2026-07-27T17:26:21:                                                         ^
+2026-07-27T17:26:21: ReferenceError: query is not defined
+2026-07-27T17:26:21:       at fetchPriceChartingPrice (/Users/ioi/Documents/TcgMaster/tcgmaster/lib/price-engine/pricecharting.ts:92:52)
+2026-07-27T17:26:21:       at async run (/Users/ioi/Documents/TcgMaster/tcgmaster/scripts/price-engine/queue-jp-op.ts:77:28)
+2026-07-27T17:26:21: 
+2026-07-27T17:26:21: Bun v1.3.14 (macOS arm64)

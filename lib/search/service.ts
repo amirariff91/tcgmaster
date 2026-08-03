@@ -403,6 +403,7 @@ export async function getSearchSuggestions(
         marketPrice: null,
         slug: card.slug,
         game: game?.slug || 'pokemon',
+        curationStatus: (card as any).curation_status || null,
         score: 0,
       };
     }),

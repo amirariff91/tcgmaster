@@ -36,7 +36,7 @@ export default async function SourcesDashboardPage() {
         </div>
 
         <div className="bg-[#0b1329] rounded-xl border border-white/10 overflow-hidden">
-          <SourcesTable initialCards={cards} />
+          <SourcesTable initialCards={cards as any} />
         </div>
       </div>
     </div>
