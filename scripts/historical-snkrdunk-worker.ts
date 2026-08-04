@@ -91,7 +91,8 @@ async function fetchHistoricalSalesForCard(cardId: string, snkrdunkId: string) {
           psa: '74c51627-cc4b-4a82-a1c0-52b3975b47b7',
           bgs: 'cda2045f-5d78-49e7-b1c8-de04dac9888d',
           cgc: 'dce6169f-8958-4229-861b-686a4644c984',
-          sgc: '7a7b5849-788b-40f6-9f42-14f2f27f68b3'
+          sgc: '7a7b5849-788b-40f6-9f42-14f2f27f68b3',
+          tag: 'da09e2df-2464-40f2-ae0e-0296253d811f'
         };
         const finalCompanyId = gradingCompany ? COMPANY_UUIDS[gradingCompany] || null : null;
 

@@ -194,7 +194,7 @@ async function getRelatedCards(setId: string, excludeCardId: string): Promise<Re
 
   const { data } = await supabase
     .from('cards')
-    .select('id, slug, name, number, image_url, local_image_url, price_cache_ttl')
+    .select('id, slug, name, number, rarity, image_url, local_image_url, price_cache_ttl')
     .eq('set_id', setId)
     .neq('id', excludeCardId)
     // price_cache_ttl holds the featured price in cents, so this surfaces the
@@ -362,7 +362,8 @@ export default async function CardDetailPage({ params }: PageProps) {
   const population: Record<string, number> = {};
   let totalPop = 0;
   for (const pop of populationReports) {
-    population[`psa-${pop.grade}`] = pop.count;
+    const company = (pop.grading_company_id ?? 'psa').toLowerCase().replace(/[^a-z]/g, '');
+    population[`${company}-${pop.grade}`] = pop.count;
     totalPop += pop.count;
   }
   const psa10Pop = population['psa-10'] || 0;
@@ -396,11 +397,26 @@ export default async function CardDetailPage({ params }: PageProps) {
   const priceChange24h = calculatePriceChange24h(relevantHistory);
 
   const priceLadderEntries = [
-    { grade: 'raw' as const, grading_company: null, price: rawPrice || 0, confidence: 'high' as const, last_sale_date: null, population: null },
-    { grade: '7' as const, grading_company: 'psa' as const, price: gradedPrices.psa7?.average || 0, confidence: 'high' as const, last_sale_date: null, population: population['psa-7'] || null },
-    { grade: '8' as const, grading_company: 'psa' as const, price: gradedPrices.psa8?.average || 0, confidence: 'high' as const, last_sale_date: null, population: population['psa-8'] || null },
-    { grade: '9' as const, grading_company: 'psa' as const, price: gradedPrices.psa9?.average || 0, confidence: 'high' as const, last_sale_date: null, population: population['psa-9'] || null },
-    { grade: '10' as const, grading_company: 'psa' as const, price: gradedPrices.psa10?.average || 0, confidence: 'medium' as const, last_sale_date: null, population: population['psa-10'] || null },
+    { grade: 'raw' as const, grading_company: null, price: rawPrice || 0, sources: {}, confidence: 'high' as const, last_sale_date: null, population: null },
+    { grade: '10' as const, grading_company: 'psa' as const, price: gradedPrices.psa10?.average || 0, sources: gradedPrices.psa10?.sources, confidence: 'medium' as const, last_sale_date: null, population: population['psa-10'] || null },
+    { grade: '9' as const, grading_company: 'psa' as const, price: gradedPrices.psa9?.average || 0, sources: gradedPrices.psa9?.sources, confidence: 'high' as const, last_sale_date: null, population: population['psa-9'] || null },
+    { grade: '8' as const, grading_company: 'psa' as const, price: gradedPrices.psa8?.average || 0, sources: gradedPrices.psa8?.sources, confidence: 'high' as const, last_sale_date: null, population: population['psa-8'] || null },
+    { grade: '7' as const, grading_company: 'psa' as const, price: gradedPrices.psa7?.average || 0, sources: gradedPrices.psa7?.sources, confidence: 'high' as const, last_sale_date: null, population: population['psa-7'] || null },
+    // CGC
+    { grade: '10' as const, grading_company: 'cgc' as const, price: gradedPrices.cgc10?.average || 0, sources: gradedPrices.cgc10?.sources, confidence: 'medium' as const, last_sale_date: null, population: population['cgc-10'] || null },
+    { grade: '9' as const, grading_company: 'cgc' as const, price: gradedPrices.cgc9?.average || 0, sources: gradedPrices.cgc9?.sources, confidence: 'high' as const, last_sale_date: null, population: population['cgc-9'] || null },
+    { grade: '8' as const, grading_company: 'cgc' as const, price: gradedPrices.cgc8?.average || 0, sources: gradedPrices.cgc8?.sources, confidence: 'high' as const, last_sale_date: null, population: population['cgc-8'] || null },
+    { grade: '7' as const, grading_company: 'cgc' as const, price: gradedPrices.cgc7?.average || 0, sources: gradedPrices.cgc7?.sources, confidence: 'high' as const, last_sale_date: null, population: population['cgc-7'] || null },
+    // BGS
+    { grade: '10' as const, grading_company: 'bgs' as const, price: gradedPrices.bgs10?.average || 0, sources: gradedPrices.bgs10?.sources, confidence: 'medium' as const, last_sale_date: null, population: population['bgs-10'] || null },
+    { grade: '9' as const, grading_company: 'bgs' as const, price: gradedPrices.bgs9?.average || 0, sources: gradedPrices.bgs9?.sources, confidence: 'high' as const, last_sale_date: null, population: population['bgs-9'] || null },
+    { grade: '8' as const, grading_company: 'bgs' as const, price: gradedPrices.bgs8?.average || 0, sources: gradedPrices.bgs8?.sources, confidence: 'high' as const, last_sale_date: null, population: population['bgs-8'] || null },
+    { grade: '7' as const, grading_company: 'bgs' as const, price: gradedPrices.bgs7?.average || 0, sources: gradedPrices.bgs7?.sources, confidence: 'high' as const, last_sale_date: null, population: population['bgs-7'] || null },
+    // TAG
+    { grade: '10' as const, grading_company: 'tag' as const, price: gradedPrices.tag10?.average || 0, sources: gradedPrices.tag10?.sources, confidence: 'medium' as const, last_sale_date: null, population: population['tag-10'] || null },
+    { grade: '9' as const, grading_company: 'tag' as const, price: gradedPrices.tag9?.average || 0, sources: gradedPrices.tag9?.sources, confidence: 'high' as const, last_sale_date: null, population: population['tag-9'] || null },
+    { grade: '8' as const, grading_company: 'tag' as const, price: gradedPrices.tag8?.average || 0, sources: gradedPrices.tag8?.sources, confidence: 'high' as const, last_sale_date: null, population: population['tag-8'] || null },
+    { grade: '7' as const, grading_company: 'tag' as const, price: gradedPrices.tag7?.average || 0, sources: gradedPrices.tag7?.sources, confidence: 'high' as const, last_sale_date: null, population: population['tag-7'] || null },
   ].filter(e => e.price > 0);
 
   const availableGrades = [

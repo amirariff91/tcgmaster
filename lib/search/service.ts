@@ -206,13 +206,13 @@ export async function searchCards(
   // Helper to apply sorting
   const applySort = (q: any) => {
     if (options.sort === 'price-desc') {
-      return q.order('price_cache_ttl', { ascending: false, nullsFirst: false });
+      return q.order('price_cache_ttl', { ascending: false, nullsFirst: false }).order('id');
     } else if (options.sort === 'price-asc') {
-      return q.order('price_cache_ttl', { ascending: true, nullsFirst: false });
+      return q.order('price_cache_ttl', { ascending: true, nullsFirst: false }).order('id');
     } else if (options.sort === 'name-asc') {
-      return q.order('name', { ascending: true });
+      return q.order('name', { ascending: true }).order('id');
     } else {
-      return q.order('last_price_fetch', { ascending: false, nullsFirst: false }).order('name');
+      return q.order('last_price_fetch', { ascending: false, nullsFirst: false }).order('name').order('id');
     }
   };
 

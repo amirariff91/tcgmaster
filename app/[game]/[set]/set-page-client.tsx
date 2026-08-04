@@ -204,59 +204,59 @@ export function SetPageClient({
   };
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-[#060c18] pt-24 pb-20">
       {/* Breadcrumb */}
-      <div className="bg-white border-b border-zinc-200">
-        <div className="container py-3">
-          <nav className="flex items-center gap-2 text-sm">
-            <Link href={`/${gameSlug}`} className="text-zinc-500 hover:text-zinc-900">
+      <div className="bg-transparent">
+        <div className="container py-3 max-w-[1400px] mx-auto px-4 sm:px-6">
+          <nav className="flex items-center gap-2 text-[13px]">
+            <Link href={`/${gameSlug}`} className="text-zinc-400 hover:text-white transition-colors">
               {setData.game}
             </Link>
-            <ChevronRight className="h-4 w-4 text-zinc-400" />
-            <span className="text-zinc-900 font-medium">{setData.name}</span>
+            <ChevronRight className="h-3.5 w-3.5 text-zinc-500 opacity-50" />
+            <span className="text-white font-medium">{setData.name}</span>
           </nav>
         </div>
       </div>
 
       {/* Hero Section */}
-      <div className="bg-white border-b border-zinc-200">
-        <div className="container py-8">
+      <div className="container max-w-[1400px] mx-auto px-4 sm:px-6 mb-8">
+        <div className="bg-[#0b1329]/80 backdrop-blur-sm border border-white/10 rounded-2xl p-6 lg:p-8">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-zinc-900">{setData.name}</h1>
-              <div className="flex items-center gap-4 mt-2 text-sm text-zinc-500">
-                <span className="flex items-center gap-1">
-                  <Calendar className="h-4 w-4" />
+              <h1 className="text-2xl sm:text-[32px] font-[800] text-white tracking-tight leading-tight mb-1 font-sans">{setData.name}</h1>
+              <div className="flex items-center gap-4 mt-2 text-[13px] font-medium text-zinc-400">
+                <span className="flex items-center gap-1.5">
+                  <Calendar className="h-4 w-4 opacity-70" />
                   {new Date(setData.release_date).toLocaleDateString('en-US', {
                     year: 'numeric',
                     month: 'long',
                     day: 'numeric',
                   })}
                 </span>
-                <span className="flex items-center gap-1">
-                  <LayoutGrid className="h-4 w-4" />
+                <span className="flex items-center gap-1.5">
+                  <LayoutGrid className="h-4 w-4 opacity-70" />
                   {setData.card_count} cards
                 </span>
               </div>
-              <p className="mt-3 text-zinc-600 max-w-2xl">{setData.description}</p>
+              <p className="mt-4 text-[14px] text-zinc-300 max-w-3xl leading-relaxed">{setData.description}</p>
             </div>
           </div>
 
           {/* Search Bar */}
-          <div className="mt-6">
+          <div className="mt-6 pt-6 border-t border-white/10">
             <div className="relative max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
               <input
                 type="text"
-                placeholder="Search cards..."
+                placeholder="Search cards by name..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className={cn(
-                  'w-full pl-10 pr-4 py-2.5 rounded-lg',
-                  'bg-zinc-100 border border-transparent',
-                  'text-zinc-900 placeholder:text-zinc-500',
-                  'focus:outline-none focus:border-blue-500 focus:bg-white',
-                  'transition-colors duration-150'
+                  'w-full pl-10 pr-4 py-2.5 rounded-xl text-[14px]',
+                  'bg-white/5 border border-white/10',
+                  'text-white placeholder:text-zinc-500',
+                  'focus:outline-none focus:border-[#2dd4bf] focus:bg-white/10 focus:ring-1 focus:ring-[#2dd4bf]/50',
+                  'transition-all duration-200'
                 )}
               />
             </div>
@@ -271,7 +271,7 @@ export function SetPageClient({
           <div className="flex-1 min-w-0">
             {/* Sort Controls */}
             <div className="flex items-center justify-between mb-6">
-              <p className="text-sm text-zinc-500">
+              <p className="text-sm text-zinc-400">
                 {filteredCards.length} {filteredCards.length === 1 ? 'card' : 'cards'}
                 {debouncedQuery && ` matching "${debouncedQuery}"`}
               </p>
@@ -279,7 +279,7 @@ export function SetPageClient({
                 <label className="flex items-center gap-2 cursor-pointer group">
                   <div className={cn(
                     "w-4 h-4 rounded border flex items-center justify-center transition-colors",
-                    showVerifiedOnly ? "bg-yellow-400 border-yellow-400 text-black" : "bg-white border-zinc-300 group-hover:border-yellow-400"
+                    showVerifiedOnly ? "bg-yellow-400 border-yellow-400 text-black" : "bg-white/5 border-white/20 group-hover:border-yellow-400"
                   )}>
                     {showVerifiedOnly && (
                       <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -287,7 +287,7 @@ export function SetPageClient({
                       </svg>
                     )}
                   </div>
-                  <span className="text-sm text-zinc-600 group-hover:text-zinc-900 font-medium">Verified Only</span>
+                  <span className="text-[13px] text-zinc-400 group-hover:text-white font-medium transition-colors">Verified Only</span>
                   <input 
                     type="checkbox" 
                     className="hidden" 
@@ -295,16 +295,16 @@ export function SetPageClient({
                     onChange={(e) => setShowVerifiedOnly(e.target.checked)} 
                   />
                 </label>
-                <div className="w-px h-4 bg-zinc-200" />
-                <span className="text-sm text-zinc-500">Sort by:</span>
+                <div className="w-px h-4 bg-white/10" />
+                <span className="text-[13px] text-zinc-400">Sort by:</span>
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as 'number' | 'price' | 'name')}
                   className={cn(
-                    'px-3 py-1.5 rounded-lg text-sm',
-                    'bg-white border border-zinc-200',
-                    'text-zinc-900',
-                    'focus:outline-none focus:ring-2 focus:ring-blue-500'
+                    'px-3 py-1.5 rounded-lg text-[13px] font-medium',
+                    'bg-[#0b1329]/80 border border-white/10',
+                    'text-white',
+                    'focus:outline-none focus:ring-1 focus:ring-[#2dd4bf]/50'
                   )}
                 >
                   <option value="number">Card Number</option>
@@ -356,22 +356,22 @@ export function SetPageClient({
           </div>
 
           {/* Sidebar */}
-          <div className="lg:w-80 flex-shrink-0">
+          <div className="lg:w-[320px] flex-shrink-0">
             {/* Mobile Accordion Toggle */}
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
               className={cn(
                 'lg:hidden w-full flex items-center justify-between',
-                'px-4 py-3 rounded-lg',
-                'bg-white border border-zinc-200',
-                'text-zinc-900 font-medium'
+                'px-4 py-3 rounded-xl mb-4',
+                'bg-[#0b1329]/80 border border-white/10 backdrop-blur-sm',
+                'text-white font-medium text-[14px]'
               )}
             >
               Set Info & Related Sets
               {isSidebarOpen ? (
-                <ChevronUp className="h-4 w-4" />
+                <ChevronUp className="h-4 w-4 text-zinc-400" />
               ) : (
-                <ChevronDown className="h-4 w-4" />
+                <ChevronDown className="h-4 w-4 text-zinc-400" />
               )}
             </button>
 
@@ -383,22 +383,22 @@ export function SetPageClient({
             >
               {/* Collection Progress (if logged in) */}
               {isLoggedIn && (
-                <div className="bg-white rounded-lg border border-zinc-200 p-4">
-                  <h3 className="font-semibold text-zinc-900 mb-3">Your Collection</h3>
+                <div className="bg-[#0b1329]/80 backdrop-blur-sm rounded-2xl border border-white/10 p-5">
+                  <h3 className="font-semibold text-white mb-3 text-[14px]">Your Collection</h3>
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-zinc-500">Cards Owned</span>
-                      <span className="font-medium text-zinc-900">
+                    <div className="flex items-center justify-between text-[13px]">
+                      <span className="text-zinc-400">Cards Owned</span>
+                      <span className="font-bold text-white">
                         {ownedCount} / {totalCount}
                       </span>
                     </div>
-                    <div className="h-2 bg-zinc-100 rounded-full overflow-hidden">
+                    <div className="h-2 bg-white/5 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                        className="h-full bg-[#2dd4bf] rounded-full transition-all duration-300"
                         style={{ width: `${(ownedCount / totalCount) * 100}%` }}
                       />
                     </div>
-                    <p className="text-xs text-zinc-500">
+                    <p className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
                       {Math.round((ownedCount / totalCount) * 100)}% complete
                     </p>
                   </div>
@@ -406,32 +406,38 @@ export function SetPageClient({
               )}
 
               {/* Set Stats */}
-              <div className="bg-white rounded-lg border border-zinc-200 p-4">
-                <h3 className="font-semibold text-zinc-900 mb-3">Set Stats</h3>
-                <dl className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <dt className="text-zinc-500">Total Cards</dt>
-                    <dd className="font-medium text-zinc-900">{setData.card_count}</dd>
+              <div className="bg-[#0b1329]/80 backdrop-blur-sm rounded-2xl border border-white/10 p-5">
+                <h3 className="font-semibold text-white mb-4 text-[14px]">Set Stats</h3>
+                <dl className="space-y-3 text-[13px]">
+                  <div className="flex justify-between items-center">
+                    <dt className="text-zinc-400">Total Cards</dt>
+                    <dd className="font-bold text-white tabular-nums">{setData.card_count}</dd>
                   </div>
-                  <div className="flex justify-between">
-                    <dt className="text-zinc-500">Release Date</dt>
-                    <dd className="font-medium text-zinc-900">
+                  <div className="flex justify-between items-center">
+                    <dt className="text-zinc-400">Release Date</dt>
+                    <dd className="font-bold text-white">
                       {new Date(setData.release_date).toLocaleDateString('en-US', {
                         year: 'numeric',
                         month: 'short',
                       })}
                     </dd>
                   </div>
-                  <div className="flex justify-between">
-                    <dt className="text-zinc-500">Avg. Raw Price</dt>
-                    <dd className="font-medium text-zinc-900">
+                  <div className="flex justify-between items-center">
+                    <dt className="text-zinc-400">Avg. Raw Price</dt>
+                    <dd className="font-bold text-[#2dd4bf] tabular-nums">
                       ${setData.avg_price.toFixed(0)}
                     </dd>
                   </div>
                   {setData.trending && (
-                    <div className="flex justify-between">
-                      <dt className="text-zinc-500">Status</dt>
-                      <dd className="font-medium text-emerald-600">Trending</dd>
+                    <div className="flex justify-between items-center">
+                      <dt className="text-zinc-400">Status</dt>
+                      <dd className="font-bold text-orange-400 flex items-center gap-1.5">
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
+                        </span>
+                        Trending
+                      </dd>
                     </div>
                   )}
                 </dl>
@@ -439,21 +445,21 @@ export function SetPageClient({
 
               {/* Related Sets */}
               {relatedSets.length > 0 && (
-                <div className="bg-white rounded-lg border border-zinc-200 p-4">
-                  <h3 className="font-semibold text-zinc-900 mb-3">Related Sets</h3>
-                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                <div className="bg-[#0b1329]/80 backdrop-blur-sm rounded-2xl border border-white/10 p-5">
+                  <h3 className="font-semibold text-white mb-3 text-[14px]">Related Sets</h3>
+                  <div className="space-y-1.5 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                     {relatedSets.map((related) => (
                       <Link
                         key={related.id}
                         href={`/${related.gameSlug}/${related.slug}`}
                         className={cn(
-                          'block px-3 py-2 rounded-lg',
-                          'hover:bg-zinc-50',
-                          'transition-colors duration-150'
+                          'block px-3 py-2.5 rounded-xl border border-transparent',
+                          'hover:bg-white/5 hover:border-white/10',
+                          'transition-all duration-200 group'
                         )}
                       >
-                        <p className="font-medium text-zinc-900 text-sm">{related.name}</p>
-                        <p className="text-xs text-zinc-500">
+                        <p className="font-semibold text-zinc-300 group-hover:text-white text-[13px] transition-colors">{related.name}</p>
+                        <p className="text-[11px] font-medium text-zinc-500 mt-0.5 uppercase tracking-wider">
                           {related.card_count} cards &middot;{' '}
                           {new Date(related.release_date).getFullYear()}
                         </p>

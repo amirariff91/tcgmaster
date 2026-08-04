@@ -125,9 +125,9 @@ export function CollectrChart({ priceHistory, gradeInfos, marketUrls = {}, class
       
       if (!bestInfo) {
         const historyGraded = priceHistory.filter(h => h.grade !== 'raw');
-        const bestHistory = historyGraded.find(h => h.grade === '10') || historyGraded[0];
+        const bestHistory = historyGraded.find(h => h.grade === '10' || h.grade?.replace(/^[a-zA-Z]+-?/, '') === '10') || historyGraded[0];
         if (bestHistory) {
-           bestInfo = { grade: bestHistory.grade, grading_company: bestHistory.grading_company_id || 'psa', price: 0, population: null };
+           bestInfo = { grade: bestHistory.grade?.replace(/^[a-zA-Z]+-?/, ''), grading_company: bestHistory.grading_company_id || 'psa', price: 0, population: null };
         }
       }
       
@@ -139,13 +139,31 @@ export function CollectrChart({ priceHistory, gradeInfos, marketUrls = {}, class
   const filteredByGrade = React.useMemo(() => {
     if (activeGrade === 'raw') return priceHistory.filter(h => h.grade === 'raw');
     
-    return priceHistory.filter(h => {
+    let filtered = priceHistory.filter(h => {
        const hCompany = h.grading_company_id || 'psa';
-       const matchGrade = h.grade === activeGrade;
+       const normalizedDbGrade = h.grade?.replace(/^[a-zA-Z]+-?/, '') || '';
+       const matchGrade = h.grade === activeGrade || normalizedDbGrade === activeGrade;
        const matchCompany = hCompany.toLowerCase() === (activeCompany || 'psa').toLowerCase();
        return matchGrade && matchCompany;
     });
-  }, [priceHistory, activeGrade, activeCompany]);
+
+    if (filtered.length === 0) {
+      const info = gradeInfos?.find(g => g.grade === activeGrade && (g.grading_company || 'psa').toLowerCase() === (activeCompany || 'psa').toLowerCase());
+      if (info && (info as any).sources) {
+        const sources = (info as any).sources as Record<string, number>;
+        const now = new Date().toISOString();
+        filtered = Object.entries(sources).map(([source, price]) => ({
+          grade: activeGrade,
+          grading_company_id: activeCompany || 'psa',
+          price: price,
+          source: source,
+          recorded_at: now,
+        }));
+      }
+    }
+    
+    return filtered;
+  }, [priceHistory, activeGrade, activeCompany, gradeInfos]);
 
   const { chartData, activeSources, minPrice, maxPrice, latestPricesList } = React.useMemo(() => {
     const now = new Date();
@@ -168,6 +186,14 @@ export function CollectrChart({ priceHistory, gradeInfos, marketUrls = {}, class
 
     // Find the baseline price for each source right before the cutoff date
     const lastKnownPrices: Record<string, number> = {};
+    
+    // Pre-seed lastKnownPrices with the absolute latest known price per source
+    activeSourcesArr.forEach(src => {
+      const latestForSrc = sortedHistory.slice().reverse().find(p => (p.source || 'default') === src);
+      if (latestForSrc) lastKnownPrices[src] = latestForSrc.price;
+    });
+
+    // Override with the last point before cutoff (for accurate at-the-boundary seeding)
     sortedHistory.forEach(point => {
       if (new Date(point.recorded_at) < cutoff) {
         lastKnownPrices[point.source || 'default'] = point.price;
@@ -237,6 +263,27 @@ export function CollectrChart({ priceHistory, gradeInfos, marketUrls = {}, class
 
     return { chartData: chartDataArr, activeSources: activeSourcesArr, minPrice: min === Infinity ? 0 : min, maxPrice: max === -Infinity ? 100 : max, latestPricesList };
   }, [filteredByGrade, timeRange]);
+
+  // Compute a permanent list of RAW prices for the "Compared Sources" section below the chart
+  const rawLatestPricesList = React.useMemo(() => {
+    const rawHistory = priceHistory.filter(h => h.grade === 'raw');
+    const sortedRawHistory = [...rawHistory].sort((a, b) => new Date(a.recorded_at).getTime() - new Date(b.recorded_at).getTime());
+    
+    // Find unique sources in raw data
+    const rawSources = new Set<string>();
+    rawHistory.forEach(p => rawSources.add(p.source || 'default'));
+    
+    return Array.from(rawSources).map(source => {
+      const latestPoint = sortedRawHistory.slice().reverse().find(p => p.source === source);
+      return {
+        source,
+        price: latestPoint?.price || 0,
+        date: latestPoint?.recorded_at || new Date().toISOString(),
+        kind: SOURCE_KIND[source] || 'market',
+      };
+    }).sort((a, b) => a.price - b.price);
+  }, [priceHistory]);
+
 
   return (
     <div className={cn("flex flex-col space-y-6 w-full", className)}>
@@ -390,7 +437,7 @@ export function CollectrChart({ priceHistory, gradeInfos, marketUrls = {}, class
               {Object.entries(gradedByCompany).map(([company, grades]) => (
                   <div key={company} className="flex flex-col min-w-max">
                       <h3 className="text-[13px] font-bold text-white mb-2 ml-1">{company}</h3>
-                      <div className="flex gap-[1px] bg-[#222] p-[1px] rounded-lg border border-[#333]">
+                      <div className="flex gap-[1px] bg-[#0b1329]/80 border border-white/10 p-1 rounded-2xl backdrop-blur-sm">
                           {grades.map(g => {
                               const isSelected = activeGrade === g.grade && (activeCompany || 'PSA').toUpperCase() === company.toUpperCase();
                               return (
@@ -401,8 +448,8 @@ export function CollectrChart({ priceHistory, gradeInfos, marketUrls = {}, class
                                           setActiveCompany(company.toLowerCase());
                                       }}
                                       className={cn(
-                                          "w-[76px] h-[76px] flex flex-col items-center justify-center transition-all",
-                                          isSelected ? "bg-[#2dd4bf]/20 text-[#2dd4bf] shadow-inner" : "bg-transparent text-zinc-400 hover:bg-white/5"
+                                          "w-[76px] h-[76px] flex flex-col items-center justify-center transition-all rounded-xl",
+                                          isSelected ? "bg-[#2dd4bf]/25 text-[#2dd4bf] shadow-[0_0_12px_rgba(45,212,191,0.2)]" : "bg-transparent text-zinc-400 hover:bg-white/5"
                                       )}
                                   >
                                       <span className="text-[15px] font-bold mb-1">{g.grade}</span>
@@ -427,13 +474,13 @@ export function CollectrChart({ priceHistory, gradeInfos, marketUrls = {}, class
     </div>
 
     {/* Compared Sources */}
-    {latestPricesList.length > 0 && (
+    {rawLatestPricesList.length > 0 && (
       <div className="bg-[#0b1329]/80 backdrop-blur-sm rounded-2xl border border-white/10 overflow-hidden shadow-sm">
         <div className="bg-white/5 px-5 py-3 border-b border-white/10">
           <h3 className="text-sm font-bold text-white uppercase tracking-wider">Compared Sources</h3>
         </div>
         <div className="divide-y divide-white/10">
-          {latestPricesList.map((item) => {
+          {rawLatestPricesList.map((item) => {
             const s = item.source.toLowerCase();
             const logo = MARKET_LOGOS.find(m => s.includes(m.match))?.logo ?? null;
             const needsWhitePlate = !s.includes('snkrdunk');

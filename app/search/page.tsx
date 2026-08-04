@@ -207,7 +207,11 @@ function SearchResults() {
           sessionStorage.setItem('search_results', JSON.stringify(mappedCards));
         } else {
           setResults(prev => {
-            const updated = [...prev, ...mappedCards];
+            const existingIds = new Set(prev.map(c => c.id));
+            const newCards = mappedCards.filter(c => !existingIds.has(c.id));
+            if (newCards.length === 0) return prev;
+            
+            const updated = [...prev, ...newCards];
             sessionStorage.setItem('search_results', JSON.stringify(updated));
             return updated;
           });
