@@ -66,16 +66,18 @@ export const fetchCard = async (card: WorkerCard, mappings: SourceMapping[]): Pr
       });
       console.log(`[English OP] PriceCharting: $${priceChartingResult.price}`);
 
-      if (priceChartingResult.gradedPrice) {
-        observations.push({
-          source: 'pricecharting',
-          grade: normalizeGrade('psa10'),
-          priceUsd: priceChartingResult.gradedPrice,
-          priceNative: priceChartingResult.gradedPrice,
-          currency: SOURCE_CURRENCY.pricecharting,
-          evidence: priceChartingResult.evidence,
-        });
-        console.log(`[English OP] PriceCharting PSA 10: $${priceChartingResult.gradedPrice}`);
+      if (priceChartingResult.gradedPrices) {
+        for (const [gradeKey, gradedPriceValue] of Object.entries(priceChartingResult.gradedPrices)) {
+          observations.push({
+            source: 'pricecharting',
+            grade: normalizeGrade(gradeKey),
+            priceUsd: gradedPriceValue,
+            priceNative: gradedPriceValue,
+            currency: SOURCE_CURRENCY.pricecharting,
+            evidence: priceChartingResult.evidence,
+          });
+          console.log(`[English OP] PriceCharting ${gradeKey.toUpperCase()}: $${gradedPriceValue}`);
+        }
       }
     }
   }

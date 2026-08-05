@@ -53,16 +53,18 @@ export const fetchCard = async (card: WorkerCard, mappings: SourceMapping[]): Pr
       });
       console.log(`[Japanese OP] PriceCharting: $${priceChartingResult.price}`);
 
-      if (priceChartingResult.gradedPrice) {
-        observations.push({
-          source: 'pricecharting',
-          grade: normalizeGrade('psa10'),
-          priceUsd: priceChartingResult.gradedPrice,
-          priceNative: priceChartingResult.gradedPrice,
-          currency: SOURCE_CURRENCY.pricecharting,
-          evidence: priceChartingResult.evidence,
-        });
-        console.log(`[Japanese OP] PriceCharting PSA 10: $${priceChartingResult.gradedPrice}`);
+      if (priceChartingResult.gradedPrices) {
+        for (const [gradeKey, gradedPriceValue] of Object.entries(priceChartingResult.gradedPrices)) {
+          observations.push({
+            source: 'pricecharting',
+            grade: normalizeGrade(gradeKey),
+            priceUsd: gradedPriceValue,
+            priceNative: gradedPriceValue,
+            currency: SOURCE_CURRENCY.pricecharting,
+            evidence: priceChartingResult.evidence,
+          });
+          console.log(`[Japanese OP] PriceCharting ${gradeKey.toUpperCase()}: $${gradedPriceValue}`);
+        }
       }
     }
   }
@@ -74,26 +76,30 @@ export const fetchCard = async (card: WorkerCard, mappings: SourceMapping[]): Pr
     console.log(`[Japanese OP] Fetching from SnkrDunk anchor ${snkrdunkMapping.externalUrl}...`);
     const snkrdunkResult = await fetchSnkrdunkPrice(snkrdunkMapping.externalUrl);
     if (snkrdunkResult !== null) {
-      observations.push({
-        source: 'snkrdunk',
-        grade: normalizeGrade('raw'),
-        priceUsd: snkrdunkResult.price,
-        priceNative: snkrdunkResult.price,
-        currency: SOURCE_CURRENCY.snkrdunk,
-        evidence: snkrdunkResult.evidence,
-      });
-      console.log(`[Japanese OP] SnkrDunk: $${snkrdunkResult.price}`);
-
-      if (snkrdunkResult.gradedPrice) {
+      if (snkrdunkResult.price > 0) {
         observations.push({
           source: 'snkrdunk',
-          grade: normalizeGrade('psa10'),
-          priceUsd: snkrdunkResult.gradedPrice,
-          priceNative: snkrdunkResult.gradedPrice,
+          grade: normalizeGrade('raw'),
+          priceUsd: snkrdunkResult.price,
+          priceNative: snkrdunkResult.price,
           currency: SOURCE_CURRENCY.snkrdunk,
           evidence: snkrdunkResult.evidence,
         });
-        console.log(`[Japanese OP] SnkrDunk PSA 10: $${snkrdunkResult.gradedPrice}`);
+        console.log(`[Japanese OP] SnkrDunk: $${snkrdunkResult.price}`);
+      }
+
+      if (snkrdunkResult.gradedPrices) {
+        for (const [gradeKey, gradedPriceValue] of Object.entries(snkrdunkResult.gradedPrices)) {
+          observations.push({
+            source: 'snkrdunk',
+            grade: normalizeGrade(gradeKey),
+            priceUsd: gradedPriceValue,
+            priceNative: gradedPriceValue,
+            currency: SOURCE_CURRENCY.snkrdunk,
+            evidence: snkrdunkResult.evidence,
+          });
+          console.log(`[Japanese OP] SnkrDunk ${gradeKey.toUpperCase()}: $${gradedPriceValue}`);
+        }
       }
     }
   }

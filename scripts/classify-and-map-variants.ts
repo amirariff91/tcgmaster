@@ -81,10 +81,10 @@ async function scrapeSnkrdunkLinks(baseNumber: string) {
     const $ = cheerio.load(html);
     
     const results: { name: string; url: string }[] = [];
-    $('.product__item-textarea').each((_, el) => {
-      const name = $(el).find('.product__item-name').text().trim();
-      const link = $(el).closest('a').attr('href');
-      if (link) {
+    $('a[href*="trading-cards"]').each((_, el) => {
+      const name = $(el).find('.tile__name').text().trim();
+      const link = $(el).attr('href');
+      if (link && name) {
         results.push({
           name,
           url: link.startsWith('http') ? link : 'https://snkrdunk.com' + link
@@ -157,50 +157,43 @@ function resolveCardMappings(card: any, tcgProducts: any[], yyLinks: any[], sdLi
   // 2. Yuyutei URL Mapping (filtering by setCode to prevent PRB mismatching)
   const yySetLinks = yyLinks.filter(l => l.url.includes(`/${setCode}/`));
   if (yySetLinks.length > 0) {
-    let match = null;
-    if (suffix === 'p1') {
-      match = yySetLinks.find(l => l.name.includes('パラレル') && !l.name.includes('スーパー') && !l.name.includes('スペシャル') && !l.name.includes('手配書'));
-    } else if (suffix === 'p2') {
-      match = yySetLinks.find(l => l.name.includes('スーパーパラレル') || l.name.includes('コミック'));
-      if (!match) {
-        match = yySetLinks.find(l => l.name.includes('パラレル') && !l.name.includes('スペシャル'));
+    if (!suffix) {
+      const match = yySetLinks.find(l => !l.name.includes('パラレル') && !l.name.includes('(PRB)') && !l.name.includes('スペシャル') && !l.name.includes('手配書') && !l.name.includes('コミック'));
+      if (match) yyUrl = match.url;
+    } else {
+      const validYyVariants = yySetLinks.filter(l => {
+        const name = l.name;
+        return name.includes('パラレル') || name.includes('スペシャル') || name.includes('手配書') || name.includes('コミック') || name.includes('シークレット');
+      });
+      if (validYyVariants.length === 1) {
+        yyUrl = validYyVariants[0].url;
       }
-    } else if (suffix === 'p3' || suffix === 'p4' || suffix === 'p5' || suffix === 'p6' || suffix === 'p7' || suffix === 'p8') {
-      match = yySetLinks.find(l => l.name.includes('スペシャル') || l.name.includes('手配書'));
-      if (match?.name.includes('手配書')) {
-        variantType = 'Wanted Poster';
-      }
-    } else if (suffix.startsWith('r')) {
-      match = yySetLinks.find(l => l.name.includes('(PRB)'));
-    } else if (!suffix) {
-      match = yySetLinks.find(l => !l.name.includes('パラレル') && !l.name.includes('(PRB)'));
     }
-    
-    if (match) yyUrl = match.url;
   }
 
   // 3. Snkrdunk URL Mapping
   if (sdLinks.length > 0) {
-    let match = null;
-    if (suffix === 'p1') {
-      match = sdLinks.find(l => l.name.toLowerCase().includes('parallel') && !l.name.toLowerCase().includes('super') && !l.name.toLowerCase().includes('special') && !l.name.toLowerCase().includes('wanted'));
-    } else if (suffix === 'p2') {
-      match = sdLinks.find(l => l.name.toLowerCase().includes('super') || l.name.toLowerCase().includes('manga'));
-      if (!match) {
-        match = sdLinks.find(l => l.name.toLowerCase().includes('parallel') && !l.name.toLowerCase().includes('special'));
+    if (!suffix) {
+      const match = sdLinks.find(l => {
+        const name = l.name.toLowerCase();
+        return !name.includes('parallel') && !name.includes('prb') && !name.includes('special') && !name.includes('wanted') && !name.includes('manga');
+      });
+      if (match) sdUrl = match.url;
+    } else {
+      const VARIANT_KEYWORDS = [
+        'alternate art', 'manga', 'parallel', 'super parallel', 'sp', 'special', 
+        'wanted', 'serialized', 'serial number', 'serial prize', 'anniversary', 
+        'top 8', 'flagship', 'winner', 'championship', 'tournament', 'premium', 
+        'スーパーパラレル'
+      ];
+      const validSdVariants = sdLinks.filter(l => {
+        const name = l.name.toLowerCase();
+        return VARIANT_KEYWORDS.some(kw => name.includes(kw));
+      });
+      if (validSdVariants.length === 1) {
+        sdUrl = validSdVariants[0].url;
       }
-    } else if (suffix === 'p3' || suffix === 'p4' || suffix === 'p5' || suffix === 'p6' || suffix === 'p7' || suffix === 'p8') {
-      match = sdLinks.find(l => l.name.toLowerCase().includes('special') || l.name.toLowerCase().includes('wanted'));
-      if (match?.name.toLowerCase().includes('wanted')) {
-        variantType = 'Wanted Poster';
-      }
-    } else if (suffix.startsWith('r')) {
-      match = sdLinks.find(l => l.name.toLowerCase().includes('prb') || l.name.toLowerCase().includes('reprint'));
-    } else if (!suffix) {
-      match = sdLinks.find(l => !l.name.toLowerCase().includes('parallel') && !l.name.toLowerCase().includes('prb'));
     }
-    
-    if (match) sdUrl = match.url;
   }
 
   // Handle Serialized cards explicitly
@@ -253,6 +246,11 @@ async function run() {
     }
     
     if (isHighValue && isJp) {
+      if (card.snkrdunk_url && card.yuyutei_url) {
+        console.log(`[${count}/${allCards.length}] HIGH VALUE (JP): Skipping ${card.slug} (Already Mapped)...`);
+        continue;
+      }
+      
       console.log(`[${count}/${allCards.length}] HIGH VALUE (JP): Processing ${card.slug} (${card.name} / ${card.number})...`);
       yyLinks = await scrapeYuyuteiLinks(card.number);
       sdLinks = await scrapeSnkrdunkLinks(card.number);

@@ -7,7 +7,7 @@ import type { MatchEvidence } from './identity';
 // Return an object that can contain both raw and graded prices
 export interface SnkrdunkPriceResult {
   price: number;
-  gradedPrice?: number;
+  gradedPrices?: Record<string, number>;
   url: string;
   evidence: MatchEvidence;
 }
@@ -38,37 +38,59 @@ export async function fetchSnkrdunkPrice(query: string, setName?: string): Promi
       const html = await page.content();
       const $ = cheerio.load(html);
       
-      // Look for PSA 10 price in size lists
-      let gradedPrice: number | undefined;
+      // Look for graded prices in size lists
+      const gradedPrices: Record<string, number> = {};
       $('.size-modal__item, .product-detail__size, .size-list__item, li').each((_, el) => {
          const text = $(el).text().trim().replace(/\s+/g, ' ');
-         if (text.includes('PSA 10') && text.includes('US $')) {
-            const match = text.match(/US\s*\$([0-9.,]+)/);
-            if (match) {
-               const p = parseFloat(match[1].replace(/,/g, ''));
-               if (!isNaN(p) && p > 0) gradedPrice = p;
-            }
+         if (!text.includes('US $')) return;
+         
+         const match = text.match(/US\s*\$([0-9.,]+)/);
+         if (!match) return;
+         const p = parseFloat(match[1].replace(/,/g, ''));
+         if (isNaN(p) || p <= 0) return;
+         
+         // Dynamically parse grades (e.g. "PSA 10", "BGS 9.5", "ARS 10+", "CGC 10")
+         let gradeKey: string | null = null;
+         const lowerText = text.toLowerCase();
+         if (lowerText.includes('psa 10')) gradeKey = 'psa10';
+         else if (lowerText.includes('psa 9')) gradeKey = 'psa9';
+         else if (lowerText.includes('psa 8')) gradeKey = 'psa8';
+         else if (lowerText.includes('bgs 10')) gradeKey = 'bgs10';
+         else if (lowerText.includes('bgs 9.5')) gradeKey = 'bgs95';
+         else if (lowerText.includes('bgs 9')) gradeKey = 'bgs9';
+         else if (lowerText.includes('cgc 10')) gradeKey = 'cgc10';
+         else if (lowerText.includes('cgc 9.5')) gradeKey = 'cgc95';
+         else if (lowerText.includes('cgc 9')) gradeKey = 'cgc9';
+         else if (lowerText.includes('ars 10+')) gradeKey = 'ars10plus';
+         else if (lowerText.includes('ars 10')) gradeKey = 'ars10';
+         else if (lowerText.includes('ars 9')) gradeKey = 'ars9';
+         
+         if (gradeKey && !gradedPrices[gradeKey]) {
+           gradedPrices[gradeKey] = p;
          }
       });
       
       const priceText = $('.product-detail__textarea').text() || $('body').text();
       const match = priceText.match(/US\s*\$([0-9.,]+)/);
+      let price: number | undefined;
       if (match) {
-        const price = parseFloat(match[1].replace(/,/g, ''));
-        if (!isNaN(price) && price > 0) {
-          const externalTitle = $('h1').first().text().trim()
-            || $('.product-detail__name, .product-name, .product-title').first().text().trim();
-          return {
-            price,
-            gradedPrice,
-            url: rawQuery,
-            evidence: {
-              externalUrl: rawQuery,
-              externalTitle,
-              matchedBy: 'cached-url',
-            },
-          };
-        }
+        const p = parseFloat(match[1].replace(/,/g, ''));
+        if (!isNaN(p) && p > 0) price = p;
+      }
+      
+      if (price !== undefined || Object.keys(gradedPrices).length > 0) {
+        const externalTitle = $('h1').first().text().trim()
+          || $('.product-detail__name, .product-name, .product-title').first().text().trim();
+        return {
+          price: price || 0, // Fallback to 0 if only graded prices exist, since price is required in SnkrdunkPriceResult
+          ...(Object.keys(gradedPrices).length > 0 ? { gradedPrices } : {}),
+          url: rawQuery,
+          evidence: {
+            externalUrl: rawQuery,
+            externalTitle,
+            matchedBy: 'cached-url',
+          },
+        };
       }
       return null;
     }

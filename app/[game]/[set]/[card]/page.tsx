@@ -358,17 +358,32 @@ export default async function CardDetailPage({ params }: PageProps) {
   const winningSource = currentPrices?.headline_source;
   const rawPrice = !headlineGrade || headlineGrade === 'raw' ? featuredPrice : null;
 
-  const populationReports = cardData?.population_reports || [];
+  const COMPANY_UUIDS_TO_SLUG: Record<string, string> = {
+    '74c51627-cc4b-4a82-a1c0-52b3975b47b7': 'psa',
+    '7ffb12c6-eb42-4f9e-ad37-a9a3b6f007b8': 'bgs',
+    'dce6169f-8958-4229-861b-686a4644c984': 'cgc',
+    'da09e2df-2464-40f2-ae0e-0296253d811f': 'tag'
+  };
+
+  const populationReports = (cardData?.population_reports || []).map(pop => ({
+    ...pop,
+    grading_company_id: pop.grading_company_id ? (COMPANY_UUIDS_TO_SLUG[pop.grading_company_id] || pop.grading_company_id) : 'psa'
+  }));
   const population: Record<string, number> = {};
   let totalPop = 0;
   for (const pop of populationReports) {
-    const company = (pop.grading_company_id ?? 'psa').toLowerCase().replace(/[^a-z]/g, '');
+    const company = pop.grading_company_id.toLowerCase().replace(/[^a-z]/g, '');
     population[`${company}-${pop.grade}`] = pop.count;
     totalPop += pop.count;
   }
   const psa10Pop = population['psa-10'] || 0;
 
-  const priceHistoryData = (cardData?.price_history || []).filter((h) => h.source !== 'ppt-api');
+  const priceHistoryData = (cardData?.price_history || [])
+    .filter((h) => h.source !== 'ppt-api')
+    .map(h => ({
+      ...h,
+      grading_company_id: h.grading_company_id ? (COMPANY_UUIDS_TO_SLUG[h.grading_company_id] || h.grading_company_id) : null
+    }));
 
   const relevantHistory = priceHistoryData.filter(h => h.grade === activeGradeForChart || h.grade === `psa${activeGradeForChart}`);
 
@@ -417,13 +432,18 @@ export default async function CardDetailPage({ params }: PageProps) {
     { grade: '9' as const, grading_company: 'tag' as const, price: gradedPrices.tag9?.average || 0, sources: gradedPrices.tag9?.sources, confidence: 'high' as const, last_sale_date: null, population: population['tag-9'] || null },
     { grade: '8' as const, grading_company: 'tag' as const, price: gradedPrices.tag8?.average || 0, sources: gradedPrices.tag8?.sources, confidence: 'high' as const, last_sale_date: null, population: population['tag-8'] || null },
     { grade: '7' as const, grading_company: 'tag' as const, price: gradedPrices.tag7?.average || 0, sources: gradedPrices.tag7?.sources, confidence: 'high' as const, last_sale_date: null, population: population['tag-7'] || null },
+    // ARS
+    { grade: '10+' as const, grading_company: 'ars' as const, price: gradedPrices.ars10plus?.average || 0, sources: gradedPrices.ars10plus?.sources, confidence: 'medium' as const, last_sale_date: null, population: population['ars-10plus'] || null },
+    { grade: '10' as const, grading_company: 'ars' as const, price: gradedPrices.ars10?.average || 0, sources: gradedPrices.ars10?.sources, confidence: 'medium' as const, last_sale_date: null, population: population['ars-10'] || null },
+    { grade: '9' as const, grading_company: 'ars' as const, price: gradedPrices.ars9?.average || 0, sources: gradedPrices.ars9?.sources, confidence: 'high' as const, last_sale_date: null, population: population['ars-9'] || null },
+    { grade: '8' as const, grading_company: 'ars' as const, price: gradedPrices.ars8?.average || 0, sources: gradedPrices.ars8?.sources, confidence: 'high' as const, last_sale_date: null, population: population['ars-8'] || null },
   ].filter(e => e.price > 0);
 
-  const availableGrades = [
-    { grade: 'raw' as const, grading_company: null, hasData: rawPrice !== null },
-    { grade: '9' as const, grading_company: 'psa' as const, hasData: !!gradedPrices.psa9?.average },
-    { grade: '10' as const, grading_company: 'psa' as const, hasData: !!gradedPrices.psa10?.average },
-  ].filter(g => g.hasData);
+  const availableGrades = priceLadderEntries.map(c => ({
+    grade: c.grade,
+    grading_company: c.grading_company,
+    hasData: true
+  }));
   
   const latestPricesList = Object.entries(sourcePrices)
     .flatMap(([source, data]) => {

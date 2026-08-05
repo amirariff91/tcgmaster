@@ -86,7 +86,7 @@ export function CollectrChart({ priceHistory, gradeInfos, marketUrls = {}, class
 
   const [activeGrade, setActiveGrade] = React.useState<string>(defaultGradeInfo?.grade || 'none');
   const [activeCompany, setActiveCompany] = React.useState<string | null>(defaultGradeInfo?.grading_company || null);
-  const [timeRange, setTimeRange] = React.useState<TimeRange>('1W');
+  const [timeRange, setTimeRange] = React.useState<TimeRange>('3M');
 
   // Compute PSA 10 Gem Rate dynamically from population counts
   const gemRate = React.useMemo(() => {
