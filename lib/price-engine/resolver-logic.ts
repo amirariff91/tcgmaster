@@ -74,6 +74,38 @@ export function classifyCandidate({
     };
   }
 
+  const isVariantCard = card.slug.includes('_p') && card.slug.toLowerCase().endsWith('-ja');
+  const isBaseCard = !card.slug.includes('_p') && card.slug.toLowerCase().endsWith('-ja');
+
+  const VARIANT_KEYWORDS = [
+    'alternate art', 'manga', 'parallel', 'super parallel', 'sp', 'special',
+    'wanted', 'serialized', 'serial number', 'serial prize', 'anniversary',
+    'top 8', 'flagship', 'winner', 'championship', 'tournament', 'premium',
+    'スーパーパラレル'
+  ];
+
+  if (isVariantCard) {
+    const title = (evidence.externalTitle ?? '').toLowerCase();
+    const url = (evidence.externalUrl ?? '').toLowerCase();
+    const combinedText = `${title} ${url}`;
+
+    const hasVariantKeyword = VARIANT_KEYWORDS.some(kw => combinedText.includes(kw));
+    if (!hasVariantKeyword) {
+      return { action: 'skip', reason: 'variant-keyword-missing' };
+    }
+  }
+
+  if (isBaseCard) {
+    const title = (evidence.externalTitle ?? '').toLowerCase();
+    const url = (evidence.externalUrl ?? '').toLowerCase();
+    const combinedText = `${title} ${url}`;
+
+    const hasVariantKeyword = VARIANT_KEYWORDS.some(kw => combinedText.includes(kw));
+    if (hasVariantKeyword) {
+      return { action: 'reject', reason: 'base-card-cannot-have-variant-keyword' };
+    }
+  }
+
   if (source === 'pricecharting') {
     const pathname = evidence.externalUrl ? priceChartingPath(evidence.externalUrl) : null;
     const isJapaneseCard = card.slug.toLowerCase().endsWith('-ja');
@@ -144,8 +176,21 @@ export function selectPriceChartingCandidate({
     return { candidate, classification };
   });
 
-  const accepted = classified.find(({ classification }) => classification.action === 'accept');
-  if (accepted) {
+  const acceptedList = classified.filter(({ classification }) => classification.action === 'accept');
+
+  if (acceptedList.length > 1) {
+    const isVariantCard = card.slug.includes('_p') && card.slug.toLowerCase().endsWith('-ja');
+    if (isVariantCard) {
+      return {
+        action: 'nomatch',
+        reason: 'ambiguous-variant',
+        unknownQualifierReasons: [],
+      };
+    }
+  }
+
+  if (acceptedList.length === 1) {
+    const accepted = acceptedList[0];
     return {
       action: 'accept',
       reason: accepted.classification.reason,

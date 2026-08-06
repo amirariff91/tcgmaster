@@ -291,7 +291,6 @@ export async function persistObservations(
     && observation.evidence.inStock !== false
     && !hasSetDrift(observation, mappingsBySource.get(observation.source))
   ));
-
   for (const [index, observation] of obs.entries()) {
     const mapping = mappingsBySource.get(observation.source);
     if (hasSetDrift(observation, mapping)) {

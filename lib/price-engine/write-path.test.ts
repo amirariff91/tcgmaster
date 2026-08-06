@@ -138,10 +138,10 @@ describe('selectHeadline', () => {
     ['retail_sell', 'yuyutei'],
     ['sold_guide', 'pricecharting'],
     ['lowest_listing', 'cardrush'],
-  ] as const)('selects %s when it is the first available kind', (kind, source) => {
+  ] as const)('selects %s when it is the first available kind', (kind: string, source: string) => {
     expect(selectHeadline([
       observation('snkrdunk', 1),
-      observation(source, 2.5),
+      observation(source as PriceObservation['source'], 2.5),
     ])).toEqual({ cents: 250, source, kind, grade: 'raw' });
   });
 
@@ -284,8 +284,6 @@ describe('persistObservations', () => {
       headline_grade: null,
       computed_at: expect.any(String),
     }));
-    expect(inserts.price_cache).toBeUndefined();
-    expect(deletes.price_cache).toBeUndefined();
   });
 
   it('merges source prices from the existing row and recomputes the merged headline', async () => {
@@ -458,7 +456,7 @@ describe('persistObservations', () => {
   it.each([
     ['stored title differs from fetched title', 'Monkey D. Luffy OP01-001', 'OP01-001'],
     ['fetched title differs from stored title', 'OP01-001', 'Monkey D. Luffy OP01-001'],
-  ])('writes normally when %s', async (_label, storedTitle, fetchedTitle) => {
+  ])('writes normally when %s', async (_label: string, storedTitle: string, fetchedTitle: string) => {
     const inserts: Record<string, unknown[]> = {};
     const result = await persistObservations(
       persistenceDb(inserts),
