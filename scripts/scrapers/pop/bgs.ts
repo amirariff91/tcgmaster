@@ -85,13 +85,14 @@ export async function scrapeBgs(card: PopulationCard, supabase: PopulationDataba
        for (const [grade, count] of Object.entries(gradeCounts)) {
            if (count > 0) {
                totalPop += count;
-               await supabase.from('population_reports').upsert({
+               const { error: popErr } = await supabase.from('population_reports').upsert({
                    card_id: card.id,
                    grading_company_id: BGS_COMPANY_ID,
                    grade: grade,
-                   population_count: count,
-                   updated_at: new Date().toISOString()
+                   count: count,
+                   scraped_at: new Date().toISOString()
                }, { onConflict: 'card_id,grading_company_id,grade' });
+               if (popErr) { console.error(`  ✗ population_reports upsert failed: ${popErr.message}`); return false; }
            }
        }
        console.log(`  ✓ Inserted BGS population data (Total Pop: ${totalPop})`);

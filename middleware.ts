@@ -20,6 +20,7 @@ export const config = {
     '/alerts/:path*',
     '/achievements/:path*',
     '/settings/:path*',
+    '/admin/:path*',
     '/login',
     '/signup',
     '/auth/:path*',

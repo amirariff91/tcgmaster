@@ -128,11 +128,11 @@ async function run() {
 
   while (true) {
     try {
-      // Find cards missing illustrator info (priority: Japanese One Piece first)
+      // Find cards missing artist info (priority: Japanese One Piece first)
       const { data: cards, error } = await supabase
         .from('cards')
-        .select('id, name, slug, image_url, local_image_url, illustrator')
-        .is('illustrator', null)
+        .select('id, name, slug, image_url, local_image_url, artist')
+        .is('artist', null)
         .like('slug', 'op-%-ja')
         .limit(1);
 
@@ -141,8 +141,8 @@ async function run() {
       if (!targetCard) {
         const { data: generalCards } = await supabase
           .from('cards')
-          .select('id, name, slug, image_url, local_image_url, illustrator')
-          .is('illustrator', null)
+          .select('id, name, slug, image_url, local_image_url, artist')
+          .is('artist', null)
           .limit(1);
         targetCard = generalCards?.[0];
       }
@@ -155,7 +155,7 @@ async function run() {
 
       const targetImageUrl = targetCard.local_image_url || targetCard.image_url;
       if (!targetImageUrl) {
-        await supabase.from('cards').update({ illustrator: 'Unknown' }).eq('id', targetCard.id);
+        await supabase.from('cards').update({ artist: 'Unknown' }).eq('id', targetCard.id);
         continue;
       }
 
@@ -165,13 +165,13 @@ async function run() {
       if (artist) {
         await supabase
           .from('cards')
-          .update({ illustrator: artist, updated_at: new Date().toISOString() })
+          .update({ artist: artist, updated_at: new Date().toISOString() })
           .eq('id', targetCard.id);
         console.log(`  ✓ Successfully extracted artist for ${targetCard.slug}: "${artist}"`);
       } else {
         await supabase
           .from('cards')
-          .update({ illustrator: 'Unknown', updated_at: new Date().toISOString() })
+          .update({ artist: 'Unknown', updated_at: new Date().toISOString() })
           .eq('id', targetCard.id);
         console.log(`  ! Extraction failed for ${targetCard.slug}. Set to "Unknown".`);
       }

@@ -284,6 +284,10 @@ describe('persistObservations', () => {
       headline_grade: null,
       computed_at: expect.any(String),
     }));
+    // Regression guard: price_cache was dropped by 20260728190000_drop_price_cache.sql.
+    // The write path must never resurrect it.
+    expect(inserts.price_cache).toBeUndefined();
+    expect(deletes.price_cache).toBeUndefined();
   });
 
   it('merges source prices from the existing row and recomputes the merged headline', async () => {

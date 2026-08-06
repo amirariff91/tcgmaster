@@ -294,21 +294,25 @@ async function verifyCard(card: SourceCard): Promise<boolean> {
     await redis.set(statusKey, JSON.stringify(status));
     let currentNeedsRefresh = false;
 
+    // price_history is append-only: 20260728110100_price_history_append_only.sql
+    // REVOKEs DELETE from service_role, so purging here silently fails and leaves
+    // the URL nulled anyway. Detach the bad source and let the next price-engine
+    // pass supersede the stale rows via compensating observations instead.
     if (status.snkrdunk === 'rejected') {
       if (!isTestMode) {
-        console.log(`  Purging old Snkrdunk price history for ${card.slug}...`);
-        await supabase.from('price_history').delete().eq('card_id', card.id).eq('source', 'snkrdunk');
-        await supabase.from('cards').update({ snkrdunk_url: null }).eq('id', card.id);
-        currentNeedsRefresh = true;
+        console.log(`  Detaching rejected Snkrdunk source for ${card.slug} (history retained, append-only)...`);
+        const { error } = await supabase.from('cards').update({ snkrdunk_url: null }).eq('id', card.id);
+        if (error) console.error(`  ✗ failed to clear snkrdunk_url: ${error.message}`);
+        else currentNeedsRefresh = true;
       }
     }
 
     if (status.yuyutei === 'rejected') {
       if (!isTestMode) {
-        console.log(`  Purging old Yuyutei price history for ${card.slug}...`);
-        await supabase.from('price_history').delete().eq('card_id', card.id).eq('source', 'yuyutei');
-        await supabase.from('cards').update({ yuyutei_url: null }).eq('id', card.id);
-        currentNeedsRefresh = true;
+        console.log(`  Detaching rejected Yuyutei source for ${card.slug} (history retained, append-only)...`);
+        const { error } = await supabase.from('cards').update({ yuyutei_url: null }).eq('id', card.id);
+        if (error) console.error(`  ✗ failed to clear yuyutei_url: ${error.message}`);
+        else currentNeedsRefresh = true;
       }
     }
 

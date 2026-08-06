@@ -1,11 +1,23 @@
 import { NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
+import { createServerClient as createServiceRoleClient } from '@/lib/supabase/client';
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Editing a card's source URLs steers what the price pipeline scrapes, so it
+    // must never be reachable anonymously. `cards` is RLS public-read/no-write,
+    // so the write itself needs the service-role client — which makes the auth
+    // check here the only thing standing in front of it.
+    const authClient = await createClient();
+    const { data: { user }, error: authError } = await authClient.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { id } = await params;
     const body = await request.json() as Record<string, unknown>;
 
@@ -24,7 +36,7 @@ export async function PATCH(
     updates.curation_status = 'pending';
     updates.last_price_fetch = null; // force immediate fetch
 
-    const supabase = await createServerClient();
+    const supabase = createServiceRoleClient();
 
     const { data, error } = await supabase
       .from('cards')
