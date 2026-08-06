@@ -1,7 +1,7 @@
-import { createClient } from '@supabase/supabase-js';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { createScraperClient } from '../../../lib/price-engine/db';
 
 // Import our refactored scraping functions
 import { scrapePsa } from './psa';
@@ -12,9 +12,7 @@ import type { PsaCookie, PopulationCard } from './types';
 
 import 'dotenv/config';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
+const db = createScraperClient();
 
 const SLEEP_MS = 20000;
 
@@ -36,22 +34,22 @@ async function run() {
   }
 
   while (true) {
-    let cards = [];
+    let cards: PopulationCard[] = [];
     try {
       // Fetch a batch of cards
-      const { data, error } = await supabase
-        .from('cards')
-        .select('id, name, slug, number, set_id, sets ( name )')
-        .limit(1000);
-
-      if (!error && data) {
-         // Sort by least recently updated in tracker
-         cards = data.sort((a, b) => {
-            const timeA = tracker[a.id] ? new Date(tracker[a.id]).getTime() : 0;
-            const timeB = tracker[b.id] ? new Date(tracker[b.id]).getTime() : 0;
-            return timeA - timeB;
-         }).slice(0, 1);
-      }
+      const data = await db(
+        `SELECT c.id, c.name, c.slug, c.number,
+                CASE WHEN s.id IS NULL THEN NULL ELSE json_build_object('name', s.name) END AS sets
+         FROM cards c
+         LEFT JOIN sets s ON s.id = c.set_id
+         LIMIT 1000`,
+      ) as PopulationCard[];
+      // Sort by least recently updated in tracker
+      cards = data.sort((a, b) => {
+         const timeA = tracker[a.id] ? new Date(tracker[a.id]).getTime() : 0;
+         const timeB = tracker[b.id] ? new Date(tracker[b.id]).getTime() : 0;
+         return timeA - timeB;
+      }).slice(0, 1);
     } catch (e) {
       console.error('Error fetching cards:', e);
     }
@@ -71,16 +69,16 @@ async function run() {
       // Run them sequentially. They all share the same singleton browser instance!
       // This prevents OOM crashes and reduces concurrent Cloudflare rate limits.
 
-      const psaSuccess = await scrapePsa(card, supabase, cookies);
+      const psaSuccess = await scrapePsa(card, db, cookies);
       await new Promise(r => setTimeout(r, 5000)); // Delay between companies
 
-      const bgsSuccess = await scrapeBgs(card, supabase);
+      const bgsSuccess = await scrapeBgs(card, db);
       await new Promise(r => setTimeout(r, 5000));
 
-      const cgcSuccess = await scrapeCgc(card, supabase);
+      const cgcSuccess = await scrapeCgc(card, db);
       await new Promise(r => setTimeout(r, 5000));
 
-      const tagSuccess = await scrapeTag(card, supabase);
+      const tagSuccess = await scrapeTag(card, db);
 
     } catch (e) {
        console.error(`Master worker loop error:`, e);

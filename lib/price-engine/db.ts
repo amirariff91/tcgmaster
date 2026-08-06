@@ -1,5 +1,9 @@
-import { createClient } from '@supabase/supabase-js';
+import { dbQuery } from '../db/client';
 
-export function createScraperClient() {
-  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!);
+/** The narrow database contract used by price-engine writers and scrapers. */
+export type PgQuery = typeof dbQuery;
+
+/** Keep the old factory name for worker/script entry points while returning pg directly. */
+export function createScraperClient(): PgQuery {
+  return dbQuery;
 }

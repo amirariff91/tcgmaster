@@ -1,4 +1,3 @@
-import { createClient } from '@supabase/supabase-js';
 import * as cheerio from 'cheerio';
 import { getSharedBrowser } from '../../../lib/price-engine/browser';
 import type { PopulationCard, PopulationDatabase, PsaCookie } from './types';
@@ -7,16 +6,12 @@ import path from 'path';
 
 import 'dotenv/config';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
-
 const SLEEP_MS = 15000;
 
 // PSA UUID in the grading_companies table
 const PSA_COMPANY_ID = '74c51627-cc4b-4a82-a1c0-52b3975b47b7';
 
-export async function scrapePsa(card: PopulationCard, supabase: PopulationDatabase, cookies: PsaCookie[]) {
+export async function scrapePsa(card: PopulationCard, db: PopulationDatabase, cookies: PsaCookie[]) {
   const searchQuery = encodeURIComponent(`${card.name} ${card.sets?.name || ''} ${card.number}`);
   console.log(`\n[PSA] Ingesting Population for ${card.slug}...`);
 
@@ -87,14 +82,26 @@ export async function scrapePsa(card: PopulationCard, supabase: PopulationDataba
        for (const [grade, count] of Object.entries(gradeCounts)) {
            if (count > 0) {
                totalPop += count;
-               const { error: popErr } = await supabase.from('population_reports').upsert({
-                   card_id: card.id,
-                   grading_company_id: PSA_COMPANY_ID,
-                   grade: grade,
-                   count: count,
-                   scraped_at: new Date().toISOString()
-               }, { onConflict: 'card_id,grading_company_id,grade' });
-               if (popErr) { console.error(`  ✗ population_reports upsert failed: ${popErr.message}`); return false; }
+               const numericGrade = Number(grade);
+               if (!Number.isFinite(numericGrade)) continue;
+               try {
+                 await db(
+                   `INSERT INTO population_reports (
+                      card_id, grading_company_id, grade, count, total_population, scraped_at, source_url
+                    )
+                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    ON CONFLICT (card_id, grading_company_id, grade) DO UPDATE SET
+                      count = EXCLUDED.count,
+                      total_population = EXCLUDED.total_population,
+                      scraped_at = EXCLUDED.scraped_at,
+                      source_url = EXCLUDED.source_url`,
+                   [card.id, PSA_COMPANY_ID, numericGrade, count, totalPop, new Date().toISOString(), popUrl],
+                 );
+               } catch (popError) {
+                 const message = popError instanceof Error ? popError.message : String(popError);
+                 console.error(`  ✗ population_reports upsert failed: ${message}`);
+                 return false;
+               }
            }
        }
        console.log(`  ✓ Inserted PSA population data (Total Pop: ${totalPop})`);

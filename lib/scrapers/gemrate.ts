@@ -3,10 +3,10 @@
  * Scrapes population reports from GemRate.com
  */
 
-import { createServerClient } from '@/lib/supabase/client';
+import { dbQuery } from '@/lib/db/client';
 import { redis, CACHE_TTL } from '@/lib/redis/client';
 
-// Type definitions for Supabase query results
+// Type definitions for database query results
 interface CardIdRow {
   id: string;
 }
@@ -22,8 +22,8 @@ interface PopulationReportRow {
   total_population: number | null;
   scraped_at: string;
   source_url: string | null;
-  cards: { name: string };
-  grading_companies: { slug: string };
+  card_name: string;
+  grading_company_slug: string;
 }
 
 export interface PopulationData {
@@ -173,17 +173,15 @@ function parseGemRateHtml(
  * Store population report in database
  */
 async function storePopulationReport(report: PopulationReport): Promise<void> {
-  const supabase = createServerClient();
-
   // Find the card in our database
-  const { data: cardData } = await supabase
-    .from('cards')
-    .select('id')
-    .ilike('name', `%${report.cardName}%`)
-    .limit(1)
-    .single();
-
-  const card = cardData as CardIdRow | null;
+  const cardRows = await dbQuery(
+    `SELECT id
+     FROM cards
+     WHERE name ILIKE $1
+     LIMIT 1`,
+    [`%${report.cardName}%`],
+  ) as CardIdRow[];
+  const card = cardRows[0] ?? null;
 
   if (!card) {
     console.warn(`Card not found for population report: ${report.cardName}`);
@@ -191,13 +189,11 @@ async function storePopulationReport(report: PopulationReport): Promise<void> {
   }
 
   // Find grading company
-  const { data: companyData } = await supabase
-    .from('grading_companies')
-    .select('id')
-    .eq('slug', report.gradingCompany)
-    .single();
-
-  const company = companyData as CompanyIdRow | null;
+  const companyRows = await dbQuery(
+    `SELECT id FROM grading_companies WHERE slug = $1 LIMIT 1`,
+    [report.gradingCompany],
+  ) as CompanyIdRow[];
+  const company = companyRows[0] ?? null;
 
   if (!company) {
     return;
@@ -205,20 +201,28 @@ async function storePopulationReport(report: PopulationReport): Promise<void> {
 
   // Upsert population data for each grade
   for (const pop of report.populations) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.from('population_reports') as any)
-      .upsert({
-        card_id: card.id,
-        grading_company_id: company.id,
-        grade: pop.grade,
-        count: pop.count,
-        gem_rate: pop.gemRate,
-        total_population: report.totalPopulation,
-        scraped_at: report.scrapedAt,
-        source_url: report.sourceUrl,
-      }, {
-        onConflict: 'card_id,grading_company_id,grade',
-      });
+    await dbQuery(
+      `INSERT INTO population_reports (
+         card_id, grading_company_id, grade, count, gem_rate, total_population, scraped_at, source_url
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       ON CONFLICT (card_id, grading_company_id, grade) DO UPDATE SET
+         count = EXCLUDED.count,
+         gem_rate = EXCLUDED.gem_rate,
+         total_population = EXCLUDED.total_population,
+         scraped_at = EXCLUDED.scraped_at,
+         source_url = EXCLUDED.source_url`,
+      [
+        card.id,
+        company.id,
+        pop.grade,
+        pop.count,
+        pop.gemRate,
+        report.totalPopulation,
+        report.scrapedAt,
+        report.sourceUrl,
+      ],
+    );
   }
 }
 
@@ -229,45 +233,37 @@ export async function getPopulationFromDb(
   cardId: string,
   gradingCompany?: 'psa' | 'bgs' | 'cgc' | 'sgc'
 ): Promise<PopulationReport | null> {
-  const supabase = createServerClient();
-
-  let query = supabase
-    .from('population_reports')
-    .select(`
-      grade,
-      count,
-      gem_rate,
-      total_population,
-      scraped_at,
-      source_url,
-      cards!inner (name),
-      grading_companies!inner (slug)
-    `)
-    .eq('card_id', cardId);
-
+  const params: unknown[] = [cardId];
+  let companyClause = '';
   if (gradingCompany) {
-    query = query.eq('grading_companies.slug', gradingCompany);
+    params.push(gradingCompany);
+    companyClause = ' AND gc.slug = $2';
   }
 
-  const { data } = await query;
+  const rows = await dbQuery(
+    `SELECT pr.grade, pr.count, pr.gem_rate, pr.total_population,
+            pr.scraped_at, pr.source_url, c.name AS card_name,
+            gc.slug AS grading_company_slug
+     FROM population_reports pr
+     JOIN cards c ON c.id = pr.card_id
+     JOIN grading_companies gc ON gc.id = pr.grading_company_id
+     WHERE pr.card_id = $1${companyClause}
+     ORDER BY pr.grade`,
+    params,
+  ) as PopulationReportRow[];
 
-  if (!data || data.length === 0) {
+  if (rows.length === 0) {
     return null;
   }
 
-  const typedData = data as PopulationReportRow[];
-  const firstRow = typedData[0];
-  const card = Array.isArray(firstRow.cards) ? firstRow.cards[0] : firstRow.cards;
-  const company = Array.isArray(firstRow.grading_companies)
-    ? firstRow.grading_companies[0]
-    : firstRow.grading_companies;
+  const firstRow = rows[0];
 
   return {
-    cardName: card?.name || '',
+    cardName: firstRow.card_name || '',
     setName: '', // Would need to join sets table
-    gradingCompany: company?.slug as 'psa' | 'bgs' | 'cgc' | 'sgc',
+    gradingCompany: firstRow.grading_company_slug as 'psa' | 'bgs' | 'cgc' | 'sgc',
     totalPopulation: firstRow.total_population || 0,
-    populations: typedData.map((row) => ({
+    populations: rows.map((row) => ({
       grade: row.grade,
       count: row.count,
       gemRate: row.gem_rate,

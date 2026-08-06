@@ -1,11 +1,6 @@
 import { inngest } from '../client';
 import * as cheerio from 'cheerio';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SECRET_KEY!
-);
+import { dbQuery } from '@/lib/db/client';
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -43,8 +38,11 @@ export const syncLimitlessTournaments = inngest.createFunction(
 
     // 2. Fetch One Piece Game ID
     const gameId = await step.run('get-game-id', async () => {
-      const { data } = await supabase.from('games').select('id').eq('slug', 'one-piece').single();
-      return data?.id;
+      const rows = await dbQuery(
+        `SELECT id FROM games WHERE slug = $1 LIMIT 1`,
+        ['one-piece'],
+      ) as Array<{ id: string }>;
+      return rows[0]?.id;
     });
 
     if (!gameId) return { message: 'One Piece game not found' };
@@ -52,20 +50,19 @@ export const syncLimitlessTournaments = inngest.createFunction(
     // 3. Process each tournament sequentially to be polite
     for (const t of tournaments.slice(0, 5)) {
       const tournamentId = await step.run(`sync-tournament-${t.url}`, async () => {
-        const { data: existing } = await supabase.from('tournaments').select('id').eq('source_url', t.url).maybeSingle();
-        if (existing) return existing.id; // Already processed
+        const existingRows = await dbQuery(
+          `SELECT id FROM tournaments WHERE source_url = $1 LIMIT 1`,
+          [t.url],
+        ) as Array<{ id: string }>;
+        if (existingRows[0]) return existingRows[0].id; // Already processed
 
-        const { data: inserted, error } = await supabase.from('tournaments').insert({
-          name: t.name,
-          date: t.date,
-          format: t.format,
-          num_players: t.players,
-          source_url: t.url,
-          game_id: gameId
-        }).select('id').single();
-
-        if (error || !inserted) return null;
-        return inserted.id;
+        const insertedRows = await dbQuery(
+          `INSERT INTO tournaments (name, date, format, num_players, source_url, game_id)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           RETURNING id`,
+          [t.name, t.date, t.format, t.players, t.url, gameId],
+        ) as Array<{ id: string }>;
+        return insertedRows[0]?.id ?? null;
       });
 
       if (!tournamentId) continue;
@@ -91,8 +88,11 @@ export const syncLimitlessTournaments = inngest.createFunction(
         });
 
         for (const d of deckUrls) {
-          const { data: existingDeck } = await supabase.from('decks').select('id').eq('source_url', d.deckUrl).maybeSingle();
-          if (existingDeck) continue;
+          const existingDeckRows = await dbQuery(
+            `SELECT id FROM decks WHERE source_url = $1 LIMIT 1`,
+            [d.deckUrl],
+          ) as Array<{ id: string }>;
+          if (existingDeckRows[0]) continue;
 
           await delay(3000);
           const dRes = await fetch(d.deckUrl);
@@ -115,12 +115,13 @@ export const syncLimitlessTournaments = inngest.createFunction(
           // If no cards were found, skip inserting the deck
           if (cards.length === 0) continue;
 
-          const { data: insertedDeck, error: deckErr } = await supabase.from('decks').insert({
-            tournament_id: tournamentId,
-            player_name: d.player,
-            placement: d.placement,
-            source_url: d.deckUrl
-          }).select('id').single();
+          const insertedDeckRows = await dbQuery(
+            `INSERT INTO decks (tournament_id, player_name, placement, source_url)
+             VALUES ($1, $2, $3, $4)
+             RETURNING id`,
+            [tournamentId, d.player, d.placement, d.deckUrl],
+          ) as Array<{ id: string }>;
+          const insertedDeck = insertedDeckRows[0];
 
           if (insertedDeck) {
             let leaderCardId = null;
@@ -128,30 +129,34 @@ export const syncLimitlessTournaments = inngest.createFunction(
             for (const c of cards) {
               const guessSlug = `op-${c.rawId.toLowerCase()}`;
               // Try exactly
-              let { data: matchedCard } = await supabase.from('cards').select('id').eq('slug', guessSlug).maybeSingle();
+              let matchedCard = (await dbQuery(
+                `SELECT id FROM cards WHERE slug = $1 LIMIT 1`,
+                [guessSlug],
+              ) as Array<{ id: string }>)[0] ?? null;
               
               // If not found, try wildcard
               if (!matchedCard) {
-                 const { data: fuzzyCard } = await supabase.from('cards').select('id').ilike('slug', guessSlug + '%').limit(1).maybeSingle();
-                 matchedCard = fuzzyCard;
+                 matchedCard = (await dbQuery(
+                   `SELECT id FROM cards WHERE slug ILIKE $1 LIMIT 1`,
+                   [`${guessSlug}%`],
+                 ) as Array<{ id: string }>)[0] ?? null;
               }
 
-              await supabase.from('deck_cards').insert({
-                deck_id: insertedDeck.id,
-                card_id: matchedCard?.id || null,
-                raw_card_id_string: c.rawId,
-                raw_card_name: c.name,
-                count: c.count
-              });
+              await dbQuery(
+                `INSERT INTO deck_cards (deck_id, card_id, raw_card_id_string, raw_card_name, count)
+                 VALUES ($1, $2, $3, $4, $5)`,
+                [insertedDeck.id, matchedCard?.id ?? null, c.rawId, c.name, c.count],
+              );
 
               if (!leaderCardId && matchedCard) {
                   leaderCardId = matchedCard.id;
               }
             }
 
-            await supabase.from('decks').update({ 
-                leader_card_id: leaderCardId
-            }).eq('id', insertedDeck.id);
+            await dbQuery(
+              `UPDATE decks SET leader_card_id = $1 WHERE id = $2`,
+              [leaderCardId, insertedDeck.id],
+            );
           }
         }
       });

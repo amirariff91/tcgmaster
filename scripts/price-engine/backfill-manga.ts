@@ -1,5 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
+import { createScraperClient } from '../../lib/price-engine/db';
 import { persistObservations } from '../../lib/price-engine/write-path';
 import { fetchCard } from './queue-jp-op';
 import type { SourceMapping } from '../../lib/price-engine/mapping';
@@ -7,7 +7,7 @@ import type { WorkerCard } from '../../lib/price-engine/worker';
 
 dotenv.config({ path: ['.env.local', '.env'] });
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!);
+const db = createScraperClient();
 
 const MANGA_SLUGS = [
   'op-op01-120_p2-ja',
@@ -53,17 +53,18 @@ const MANGA_SLUGS = [
   'op-op16-073_p2-ja'
 ];
 
+type BackfillCard = WorkerCard & {
+  snkrdunk_url?: string | null;
+  pricecharting_url?: string | null;
+};
+
 async function run() {
   console.log(`Starting targeted backfill for ${MANGA_SLUGS.length} Manga cards...`);
 
-  const { data: cards, error } = await supabase.from('cards')
-    .select('*')
-    .in('slug', MANGA_SLUGS);
-
-  if (error || !cards) {
-    console.error("Error fetching cards:", error);
-    process.exit(1);
-  }
+  const cards = await db(
+    `SELECT * FROM cards WHERE slug = ANY($1::text[])`,
+    [MANGA_SLUGS],
+  ) as BackfillCard[];
 
   console.log(`Found ${cards.length} matching cards in DB.`);
 
@@ -96,7 +97,7 @@ async function run() {
       if (result.observations.length > 0) {
         console.log(`[BACKFILL] Successfully fetched ${result.observations.length} price points!`);
         const persisted = await persistObservations(
-          supabase,
+          db,
           workerCard,
           result.observations,
           result.cardUpdates,

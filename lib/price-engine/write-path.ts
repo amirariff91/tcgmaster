@@ -1,4 +1,4 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { PgQuery } from './db';
 import { normalizeGrade, type CanonicalGrade } from '../pricing/grades';
 import { assertIdentity, type MatchEvidence } from './identity';
 import { checkSelfConsistency } from './guards';
@@ -231,8 +231,18 @@ function writeFailure(card: CardRef, operation: string, error: unknown): never {
   throw new Error(`[price-engine] ${card.slug}: ${operation} failed: ${detail}`);
 }
 
-function throwIfError(card: CardRef, operation: string, error: unknown): void {
-  if (error) writeFailure(card, operation, error);
+async function queryDb<T>(
+  db: PgQuery,
+  card: CardRef,
+  operation: string,
+  text: string,
+  params: readonly unknown[] = [],
+): Promise<T[]> {
+  try {
+    return await db(text, params) as T[];
+  } catch (error) {
+    writeFailure(card, operation, error);
+  }
 }
 
 export interface PersistResult {
@@ -272,7 +282,7 @@ function hasSetDrift(
 }
 
 export async function persistObservations(
-  db: SupabaseClient,
+  db: PgQuery,
   card: CardRef,
   obs: PriceObservation[],
   extraUpdates: Record<string, unknown> = {},
@@ -394,21 +404,42 @@ export async function persistObservations(
   }));
 
   if (quarantineRows.length > 0) {
-    const { error } = await db.from('price_quarantine').insert(quarantineRows);
-    throwIfError(card, 'price_quarantine insert', error);
+    await queryDb(
+      db,
+      card,
+      'price_quarantine insert',
+      `INSERT INTO price_quarantine (
+         card_id, source, grade, price, price_native, currency, price_kind, reason, evidence
+       )
+       SELECT card_id, source, grade, price, price_native, currency, price_kind, reason, evidence
+       FROM jsonb_to_recordset($1::jsonb) AS rows(
+         card_id uuid,
+         source price_source,
+         grade text,
+         price numeric,
+         price_native numeric,
+         currency text,
+         price_kind price_kind,
+         reason text,
+         evidence jsonb
+       )`,
+      [JSON.stringify(quarantineRows)],
+    );
   }
 
   if (historyRows.length > 0) {
     const recentCutoff = new Date(now.getTime() - 15 * 60 * 1000).toISOString();
-    const { data: recentRows, error: recentRowsError } = await db
-      .from('price_history')
-      .select('source, grade, price')
-      .eq('card_id', card.id)
-      .gte('recorded_at', recentCutoff);
-    throwIfError(card, 'price_history recent-row select', recentRowsError);
+    const recentRows = await queryDb<{ source: unknown; grade: unknown; price: unknown }>(
+      db,
+      card,
+      'price_history recent-row select',
+      `SELECT source, grade, price
+       FROM price_history
+       WHERE card_id = $1 AND recorded_at >= $2`,
+      [card.id, recentCutoff],
+    );
 
-    const recentKeys = new Set((recentRows ?? []).map((row) => {
-      const recent = row as { source: unknown; grade: unknown; price: unknown };
+    const recentKeys = new Set(recentRows.map((recent) => {
       return [String(recent.source), String(recent.grade), Number(recent.price)].join('\u0000');
     }));
     const unsuppressedHistoryRows = historyRows.filter((row) => (
@@ -419,8 +450,28 @@ export async function persistObservations(
     historyRows = unsuppressedHistoryRows;
 
     if (historyRows.length > 0) {
-      const { error } = await db.from('price_history').insert(historyRows);
-      throwIfError(card, 'price_history insert', error);
+      // price_history is append-only. Corrections are represented by new observations;
+      // this statement intentionally has no UPDATE or DELETE path.
+      await queryDb(
+        db,
+        card,
+        'price_history insert',
+        `INSERT INTO price_history (
+           card_id, price, source, grade, price_native, currency, price_kind, recorded_at
+         )
+         SELECT card_id, price, source, grade, price_native, currency, price_kind, recorded_at
+         FROM jsonb_to_recordset($1::jsonb) AS rows(
+           card_id uuid,
+           price numeric,
+           source price_source,
+           grade text,
+           price_native numeric,
+           currency text,
+           price_kind price_kind,
+           recorded_at timestamptz
+         )`,
+        [JSON.stringify(historyRows)],
+      );
     }
   }
 
@@ -432,14 +483,18 @@ export async function persistObservations(
     }),
   );
 
-  const { data: existingCurrent, error: currentReadError } = await db
-    .from('card_price_current')
-    .select('source_prices, graded_prices')
-    .eq('card_id', card.id)
-    .maybeSingle();
-  throwIfError(card, 'card_price_current select', currentReadError);
+  const currentRows = await queryDb<Pick<CurrentPriceRow, 'source_prices' | 'graded_prices'>>(
+    db,
+    card,
+    'card_price_current select',
+    `SELECT source_prices, graded_prices
+     FROM card_price_current
+     WHERE card_id = $1
+     LIMIT 1`,
+    [card.id],
+  );
 
-  const existingCurrentRow = existingCurrent as Pick<CurrentPriceRow, 'source_prices' | 'graded_prices'> | null;
+  const existingCurrentRow = currentRows[0] ?? null;
   const mergedSourcePrices = {
     ...(existingCurrentRow?.source_prices ?? {}),
     ...freshCurrentRow.source_prices,
@@ -460,19 +515,65 @@ export async function persistObservations(
     headline_grade: headline?.grade ?? null,
   };
 
-  const { error: currentError } = await db
-    .from('card_price_current')
-    .upsert(currentRow, { onConflict: 'card_id' });
-  throwIfError(card, 'card_price_current upsert', currentError);
+  await queryDb(
+    db,
+    card,
+    'card_price_current upsert',
+    `INSERT INTO card_price_current (
+       card_id, source_prices, graded_prices, headline_cents, headline_source,
+       headline_kind, headline_currency, headline_grade, computed_at
+     )
+     VALUES ($1, $2::jsonb, $3::jsonb, $4, $5, $6, $7, $8, $9)
+     ON CONFLICT (card_id) DO UPDATE SET
+       source_prices = EXCLUDED.source_prices,
+       graded_prices = EXCLUDED.graded_prices,
+       headline_cents = EXCLUDED.headline_cents,
+       headline_source = EXCLUDED.headline_source,
+       headline_kind = EXCLUDED.headline_kind,
+       headline_currency = EXCLUDED.headline_currency,
+       headline_grade = EXCLUDED.headline_grade,
+       computed_at = EXCLUDED.computed_at`,
+    [
+      currentRow.card_id,
+      JSON.stringify(currentRow.source_prices),
+      JSON.stringify(currentRow.graded_prices),
+      currentRow.headline_cents,
+      currentRow.headline_source,
+      currentRow.headline_kind,
+      currentRow.headline_currency,
+      currentRow.headline_grade,
+      currentRow.computed_at,
+    ],
+  );
 
-  const { error: cardError } = await db
-    .from('cards')
-    .update({
-      ...scopedExtraUpdates,
-      last_price_fetch: recordedAt,
-    })
-    .eq('id', card.id);
-  throwIfError(card, 'cards update', cardError);
+  const cardUpdates: Record<string, unknown> = {};
+  for (const [column, value] of Object.entries(scopedExtraUpdates)) {
+    if (value === undefined) continue;
+    if (!Object.prototype.hasOwnProperty.call(SOURCE_SCOPED_UPDATE_COLUMNS, column)) continue;
+    cardUpdates[column] = value;
+  }
+  const cardUpdateEntries = Object.entries(cardUpdates);
+  const cardSetClauses = cardUpdateEntries.map(([column], index) => (
+    `${column} = $${index + 2}`
+  ));
+  cardSetClauses.push(`last_price_fetch = $${cardUpdateEntries.length + 2}`);
+  const cardParams = [
+    card.id,
+    ...cardUpdateEntries.map(([, value]) => (
+      typeof value === 'object' && value !== null ? JSON.stringify(value) : value
+    )),
+    recordedAt,
+  ];
+
+  await queryDb(
+    db,
+    card,
+    'cards update',
+    `UPDATE cards
+     SET ${cardSetClauses.join(', ')}
+     WHERE id = $1`,
+    cardParams,
+  );
 
   return {
     written: acceptedObservations.length,

@@ -1,5 +1,5 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
 import type { CookieParam } from 'puppeteer';
+import type { PgQuery } from '../../../lib/price-engine/db';
 
 export interface PopulationCard {
   id: string;
@@ -9,5 +9,5 @@ export interface PopulationCard {
   sets?: { name?: string | null } | null;
 }
 
-export type PopulationDatabase = SupabaseClient;
+export type PopulationDatabase = PgQuery;
 export type PsaCookie = CookieParam;

@@ -1,4 +1,3 @@
-import { createClient } from '@supabase/supabase-js';
 import * as cheerio from 'cheerio';
 import { getSharedBrowser } from '../../../lib/price-engine/browser';
 import type { PopulationCard, PopulationDatabase } from './types';
@@ -7,14 +6,10 @@ import path from 'path';
 
 import 'dotenv/config';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
-
 const SLEEP_MS = 15000;
 const TAG_COMPANY_ID = 'da09e2df-2464-40f2-ae0e-0296253d811f';
 
-export async function scrapeTag(card: PopulationCard, supabase: PopulationDatabase) {
+export async function scrapeTag(card: PopulationCard, db: PopulationDatabase) {
   console.log(`\n[TAG] Ingesting Population for ${card.slug}...`);
 
   try {
@@ -85,14 +80,26 @@ export async function scrapeTag(card: PopulationCard, supabase: PopulationDataba
        for (const [grade, count] of Object.entries(gradeCounts)) {
            if (count > 0) {
                totalPop += count;
-               const { error: popErr } = await supabase.from('population_reports').upsert({
-                   card_id: card.id,
-                   grading_company_id: TAG_COMPANY_ID,
-                   grade: grade,
-                   count: count,
-                   scraped_at: new Date().toISOString()
-               }, { onConflict: 'card_id,grading_company_id,grade' });
-               if (popErr) { console.error(`  ✗ population_reports upsert failed: ${popErr.message}`); return false; }
+               const numericGrade = Number(grade);
+               if (!Number.isFinite(numericGrade)) continue;
+               try {
+                 await db(
+                   `INSERT INTO population_reports (
+                      card_id, grading_company_id, grade, count, total_population, scraped_at, source_url
+                    )
+                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    ON CONFLICT (card_id, grading_company_id, grade) DO UPDATE SET
+                      count = EXCLUDED.count,
+                      total_population = EXCLUDED.total_population,
+                      scraped_at = EXCLUDED.scraped_at,
+                      source_url = EXCLUDED.source_url`,
+                   [card.id, TAG_COMPANY_ID, numericGrade, count, totalPop, new Date().toISOString(), popUrl],
+                 );
+               } catch (popError) {
+                 const message = popError instanceof Error ? popError.message : String(popError);
+                 console.error(`  ✗ population_reports upsert failed: ${message}`);
+                 return false;
+               }
            }
        }
        console.log(`  ✓ Inserted TAG population data (Total Pop: ${totalPop})`);

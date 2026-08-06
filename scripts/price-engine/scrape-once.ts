@@ -34,13 +34,17 @@ async function main(): Promise<void> {
   if (!slug) usage();
 
   const db = createScraperClient();
-  const { data: card, error } = await db
-    .from('cards')
-    .select(CARD_SELECT)
-    .eq('slug', slug)
-    .single();
-
-  if (error) throw new Error(`Failed to load card ${slug}: ${error.message}`);
+  const cards = await db(
+    `SELECT c.id, c.name, c.slug, c.number, c.tcg_player_id, c.print_run_info,
+            c.yuyutei_url, c.cardrush_url,
+            CASE WHEN s.id IS NULL THEN NULL ELSE json_build_object('name', s.name) END AS sets
+     FROM cards c
+     LEFT JOIN sets s ON s.id = c.set_id
+     WHERE c.slug = $1
+     LIMIT 1`,
+    [slug],
+  ) as WorkerCard[];
+  const card = cards[0];
   if (!card) throw new Error(`Card not found: ${slug}`);
 
   const cardRef = card as WorkerCard & CardRef;
