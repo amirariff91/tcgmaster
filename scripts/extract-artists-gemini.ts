@@ -1,10 +1,7 @@
 import 'dotenv/config';
-import { createClient } from '@supabase/supabase-js';
+import { dbQuery } from '../lib/db/client';
 
 const SAFE_MODE = process.env.SAFE_MODE === '1';
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
@@ -37,6 +34,15 @@ const ARTIST_PROMPT = [
   "  - 'Eiichiro Oda' unless it is clearly printed as the illustrator credit itself",
   "If the only text you can see on that edge is the copyright line, return 'Unknown'.",
 ].join('\n');
+
+type ArtistCard = {
+  id: string;
+  name: string;
+  slug: string;
+  image_url: string | null;
+  local_image_url: string | null;
+  artist: string | null;
+};
 
 async function askVisionModel(base64Data: string, mimeType: string): Promise<string> {
   let lastError = '';
@@ -129,22 +135,24 @@ async function run() {
   while (true) {
     try {
       // Find cards missing artist info (priority: Japanese One Piece first)
-      const { data: cards, error } = await supabase
-        .from('cards')
-        .select('id, name, slug, image_url, local_image_url, artist')
-        .is('artist', null)
-        .like('slug', 'op-%-ja')
-        .limit(1);
+      const cards = await dbQuery<ArtistCard>(`
+        SELECT id, name, slug, image_url, local_image_url, artist
+        FROM cards
+        WHERE artist IS NULL
+          AND slug LIKE $1
+        LIMIT 1
+      `, ['op-%-ja']);
 
       let targetCard = cards?.[0];
 
       if (!targetCard) {
-        const { data: generalCards } = await supabase
-          .from('cards')
-          .select('id, name, slug, image_url, local_image_url, artist')
-          .is('artist', null)
-          .limit(1);
-        targetCard = generalCards?.[0];
+        const generalCards = await dbQuery<ArtistCard>(`
+          SELECT id, name, slug, image_url, local_image_url, artist
+          FROM cards
+          WHERE artist IS NULL
+          LIMIT 1
+        `);
+        targetCard = generalCards[0];
       }
 
       if (!targetCard) {
@@ -155,7 +163,10 @@ async function run() {
 
       const targetImageUrl = targetCard.local_image_url || targetCard.image_url;
       if (!targetImageUrl) {
-        await supabase.from('cards').update({ artist: 'Unknown' }).eq('id', targetCard.id);
+        await dbQuery(
+          `UPDATE cards SET artist = $1 WHERE id = $2`,
+          ['Unknown', targetCard.id],
+        );
         continue;
       }
 
@@ -163,16 +174,20 @@ async function run() {
       const artist = await extractArtist(targetImageUrl);
 
       if (artist) {
-        await supabase
-          .from('cards')
-          .update({ artist: artist, updated_at: new Date().toISOString() })
-          .eq('id', targetCard.id);
+        await dbQuery(
+          `UPDATE cards
+           SET artist = $1, updated_at = $2
+           WHERE id = $3`,
+          [artist, new Date().toISOString(), targetCard.id],
+        );
         console.log(`  ✓ Successfully extracted artist for ${targetCard.slug}: "${artist}"`);
       } else {
-        await supabase
-          .from('cards')
-          .update({ artist: 'Unknown', updated_at: new Date().toISOString() })
-          .eq('id', targetCard.id);
+        await dbQuery(
+          `UPDATE cards
+           SET artist = $1, updated_at = $2
+           WHERE id = $3`,
+          ['Unknown', new Date().toISOString(), targetCard.id],
+        );
         console.log(`  ! Extraction failed for ${targetCard.slug}. Set to "Unknown".`);
       }
 

@@ -1,16 +1,6 @@
 import 'dotenv/config';
-import { createClient } from '@supabase/supabase-js';
+import { dbQuery } from '../lib/db/client';
 import { getCardImageUrl } from '../lib/images/service';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseKey) {
-  console.error('Missing Supabase credentials');
-  process.exit(1);
-}
-
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 const BATCH_SIZE = 10;
 const DELAY_BETWEEN_BATCHES_MS = 10000; // 10 seconds to respect rate limits
@@ -23,18 +13,13 @@ async function run() {
   while (true) {
     try {
       // Find cards missing local images
-      const { data: cards, error } = await supabase
-        .from('cards')
-        .select('id, name, image_url')
-        .is('local_image_url', null)
-        .not('image_url', 'is', null)
-        .limit(BATCH_SIZE);
-
-      if (error) {
-        console.error('Error fetching cards needing images:', error);
-        await new Promise(resolve => setTimeout(resolve, DELAY_WHEN_IDLE_MS));
-        continue;
-      }
+      const cards = await dbQuery<{ id: string; name: string; image_url: string }>(`
+        SELECT id, name, image_url
+        FROM cards
+        WHERE local_image_url IS NULL
+          AND image_url IS NOT NULL
+        LIMIT $1
+      `, [BATCH_SIZE]);
 
       if (!cards || cards.length === 0) {
         console.log('No cards need image downloading. Idle sleeping for 1m...');

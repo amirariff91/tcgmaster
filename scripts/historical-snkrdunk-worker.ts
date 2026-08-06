@@ -1,9 +1,5 @@
 import 'dotenv/config';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
+import { dbQuery } from '../lib/db/client';
 
 type JsonRecord = Record<string, unknown>;
 type ListingRecord = JsonRecord & {
@@ -21,6 +17,35 @@ type HistoricalPriceRow = {
 type GradedPrice = {
   average: number;
   sources: Record<string, number>;
+};
+type PriceHistoryInsert = {
+  card_id: string;
+  source: string;
+  grade: string;
+  grading_company_id: string | null;
+  price: number;
+  currency: string;
+  recorded_at: string;
+};
+type HistoricalPriceExistingRow = {
+  recorded_at: string | Date;
+};
+type CurrentPriceRow = {
+  graded_prices: Record<string, Partial<GradedPrice>> | null;
+  source_prices: Record<string, unknown> | null;
+  headline_cents: number | null;
+  headline_source: string | null;
+  headline_kind: string | null;
+  headline_currency: string | null;
+  headline_grade: string | null;
+  computed_at: string | Date | null;
+};
+type QueueCard = {
+  id: string;
+  slug: string;
+  name: string;
+  snkrdunk_url: string;
+  last_price_fetch: string | Date | null;
 };
 
 const HEADERS = {
@@ -82,7 +107,7 @@ async function fetchHistoricalSalesForCard(cardId: string, snkrdunkId: string) {
 
       const soldListings = listings.filter((listing) => listing.isSold === true && Number(listing.priceAmount) > 0);
 
-      const insertRows = soldListings.map((listing) => {
+      const insertRows = soldListings.map((listing): PriceHistoryInsert | null => {
         const recordedAt = decodeUlidTime(listing.listingUID || '').toISOString();
 
         let parsedGrade = 'raw';
@@ -121,36 +146,57 @@ async function fetchHistoricalSalesForCard(cardId: string, snkrdunkId: string) {
           source: 'snkrdunk',
           grade: parsedGrade,
           grading_company_id: finalCompanyId,
-          price: listing.priceAmount,
+          price: Number(listing.priceAmount),
           currency: listing.currency || 'USD',
           recorded_at: recordedAt,
         };
-      }).filter(Boolean);
+      }).filter((row): row is PriceHistoryInsert => row !== null);
 
       if (insertRows.length > 0) {
         const oldest = insertRows.reduce((min, r) => r.recorded_at < min ? r.recorded_at : min, insertRows[0].recorded_at);
         const newest = insertRows.reduce((max, r) => r.recorded_at > max ? r.recorded_at : max, insertRows[0].recorded_at);
 
-        const { data: existingRows } = await supabase
-          .from('price_history')
-          .select('recorded_at')
-          .eq('card_id', cardId)
-          .eq('source', 'snkrdunk')
-          .gte('recorded_at', oldest)
-          .lte('recorded_at', newest);
+        const existingRows = await dbQuery<HistoricalPriceExistingRow>(`
+          SELECT recorded_at
+          FROM price_history
+          WHERE card_id = $1
+            AND source = $2
+            AND recorded_at >= $3
+            AND recorded_at <= $4
+        `, [cardId, 'snkrdunk', oldest, newest]);
 
-        const existingDates = new Set(existingRows?.map(r => r.recorded_at) || []);
+        const existingDates = new Set(existingRows.map((row) => (
+          row.recorded_at instanceof Date
+            ? row.recorded_at.toISOString()
+            : new Date(row.recorded_at).toISOString()
+        )));
         const newRows = insertRows.filter(r => !existingDates.has(r.recorded_at));
 
         if (newRows.length > 0) {
-          const { error } = await supabase
-            .from('price_history')
-            .insert(newRows);
-
-          if (error) {
-            console.error(`  ✗ Error inserting rows:`, error.message);
-          } else {
+          try {
+            await dbQuery(
+              `INSERT INTO price_history (
+                 card_id, source, grade, grading_company_id, price, currency, recorded_at
+               )
+               SELECT card_id, source::price_source, grade, grading_company_id,
+                      price, currency, recorded_at
+               FROM jsonb_to_recordset($1::jsonb) AS rows(
+                 card_id uuid,
+                 source text,
+                 grade text,
+                 grading_company_id uuid,
+                 price numeric,
+                 currency text,
+                 recorded_at timestamptz
+               )`,
+              [JSON.stringify(newRows)],
+            );
             totalSaved += newRows.length;
+          } catch (error) {
+            console.error(
+              `  ✗ Error inserting rows:`,
+              error instanceof Error ? error.message : String(error),
+            );
           }
         }
       }
@@ -165,11 +211,18 @@ async function fetchHistoricalSalesForCard(cardId: string, snkrdunkId: string) {
   }
 
   // Update card_price_current.graded_prices based on the latest price_history
-  const { data: latestPrices, error: historyError } = await supabase
-    .from('price_history')
-    .select('source, grade, price')
-    .eq('card_id', cardId)
-    .order('recorded_at', { ascending: false });
+  let latestPrices: HistoricalPriceRow[] = [];
+  let historyError: unknown = null;
+  try {
+    latestPrices = await dbQuery<HistoricalPriceRow>(`
+      SELECT source, grade, price::double precision AS price
+      FROM price_history
+      WHERE card_id = $1
+      ORDER BY recorded_at DESC
+    `, [cardId]);
+  } catch (error) {
+    historyError = error;
+  }
 
   if (!historyError && latestPrices && latestPrices.length > 0) {
     // Keep only the latest price per (source, grade)
@@ -215,11 +268,14 @@ async function fetchHistoricalSalesForCard(cardId: string, snkrdunkId: string) {
       };
     }
 
-    const { data: existingCurrent } = await supabase
-      .from('card_price_current')
-      .select('graded_prices, source_prices, headline_cents, headline_source, headline_kind, headline_currency, headline_grade, computed_at')
-      .eq('card_id', cardId)
-      .maybeSingle();
+    const currentRows = await dbQuery<CurrentPriceRow>(`
+      SELECT graded_prices, source_prices, headline_cents, headline_source,
+             headline_kind, headline_currency, headline_grade, computed_at
+      FROM card_price_current
+      WHERE card_id = $1
+      LIMIT 1
+    `, [cardId]);
+    const existingCurrent = currentRows[0] ?? null;
 
     const existingGraded = (existingCurrent?.graded_prices || {}) as Record<string, Partial<GradedPrice>>;
     const mergedGraded: Record<string, GradedPrice> = { ...existingGraded } as Record<string, GradedPrice>;
@@ -249,14 +305,43 @@ async function fetchHistoricalSalesForCard(cardId: string, snkrdunkId: string) {
       computed_at: existingCurrent?.computed_at ?? new Date().toISOString(),
     };
 
-    await supabase.from('card_price_current').upsert(currentRow, { onConflict: 'card_id' });
+    await dbQuery(
+      `INSERT INTO card_price_current (
+         card_id, source_prices, graded_prices, headline_cents, headline_source,
+         headline_kind, headline_currency, headline_grade, computed_at
+       )
+       VALUES ($1, $2::jsonb, $3::jsonb, $4, $5, $6, $7, $8, $9)
+       ON CONFLICT (card_id) DO UPDATE SET
+         source_prices = EXCLUDED.source_prices,
+         graded_prices = EXCLUDED.graded_prices,
+         headline_cents = EXCLUDED.headline_cents,
+         headline_source = EXCLUDED.headline_source,
+         headline_kind = EXCLUDED.headline_kind,
+         headline_currency = EXCLUDED.headline_currency,
+         headline_grade = EXCLUDED.headline_grade,
+         computed_at = EXCLUDED.computed_at`,
+      [
+        currentRow.card_id,
+        JSON.stringify(currentRow.source_prices),
+        JSON.stringify(currentRow.graded_prices),
+        currentRow.headline_cents,
+        currentRow.headline_source,
+        currentRow.headline_kind,
+        currentRow.headline_currency,
+        currentRow.headline_grade,
+        currentRow.computed_at,
+      ],
+    );
   }
 
-  await supabase.from('cards').update({
-    historical_fetched: true,
-    last_price_fetch: new Date().toISOString(),
-    curation_status: 'pending',
-  }).eq('id', cardId);
+  await dbQuery(
+    `UPDATE cards
+     SET historical_fetched = TRUE,
+         last_price_fetch = $1,
+         curation_status = $2
+     WHERE id = $3`,
+    [new Date().toISOString(), 'pending', cardId],
+  );
 
   return totalSaved;
 }
@@ -267,15 +352,17 @@ async function run() {
   while (true) {
     try {
       // Continuous 24/7 Rolling Queue: Order by last_price_fetch ASC (Nulls First)
-      const { data: cards, error } = await supabase
-        .from('cards')
-        .select('id, slug, name, snkrdunk_url, last_price_fetch')
-        .not('snkrdunk_url', 'is', null)
-        .like('slug', 'op-%-ja')
-        .order('last_price_fetch', { ascending: true, nullsFirst: true })
-        .limit(50);
-
-      if (error) {
+      let cards: QueueCard[];
+      try {
+        cards = await dbQuery<QueueCard>(`
+          SELECT id, slug, name, snkrdunk_url, last_price_fetch
+          FROM cards
+          WHERE snkrdunk_url IS NOT NULL
+            AND slug LIKE $1
+          ORDER BY last_price_fetch ASC NULLS FIRST
+          LIMIT 50
+        `, ['op-%-ja']);
+      } catch (error) {
         console.error('Error querying cards queue:', error);
         await new Promise(r => setTimeout(r, 30000));
         continue;
@@ -294,7 +381,10 @@ async function run() {
       for (const card of processQueue) {
         const snkrdunkId = extractSnkrdunkId(card.snkrdunk_url);
         if (!snkrdunkId) {
-          await supabase.from('cards').update({ last_price_fetch: new Date().toISOString() }).eq('id', card.id);
+          await dbQuery(
+            `UPDATE cards SET last_price_fetch = $1 WHERE id = $2`,
+            [new Date().toISOString(), card.id],
+          );
           continue;
         }
 

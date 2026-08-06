@@ -1,11 +1,7 @@
 import 'dotenv/config';
-import { createClient } from '@supabase/supabase-js';
+import { dbQuery } from '../lib/db/client';
 import fs from 'fs';
 import path from 'path';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 const OLLAMA_API_KEY = process.env.OLLAMA_API_KEY;
 const OLLAMA_MODEL = process.env.OLLAMA_VISION_MODEL || 'gemma4:31b';
@@ -56,7 +52,7 @@ async function findTcgProductsForNumber(rawNumber: string) {
   const baseNumber = cleanBaseNumber(rawNumber);
   if (!baseNumber) return [];
 
-  const groups = await getGroups();
+  const groups = (await getGroups()) || [];
   const matches: any[] = [];
 
   for (const g of groups) {
@@ -142,35 +138,47 @@ Return ONLY the numeric product ID. If none match or you are unsure, return "Unk
  */
 async function fetchCardsByPhase(phaseFilter: string): Promise<any[]> {
   // Query price_history to order by highest price descending
-  const { data: topPrices } = await supabase
-    .from('price_history')
-    .select('card_id, price')
-    .order('price', { ascending: false })
-    .limit(1000);
+  const topPrices = await dbQuery<{ card_id: string; price: number }>(`
+    SELECT card_id, price::double precision AS price
+    FROM price_history
+    ORDER BY price DESC
+    LIMIT 1000
+  `);
 
   const priceMap = new Map<string, number>();
-  if (topPrices) {
-    for (const p of topPrices) {
-      if (!priceMap.has(p.card_id) || (p.price || 0) > priceMap.get(p.card_id)!) {
-        priceMap.set(p.card_id, p.price || 0);
-      }
+  for (const p of topPrices) {
+    if (!priceMap.has(p.card_id) || p.price > priceMap.get(p.card_id)!) {
+      priceMap.set(p.card_id, p.price || 0);
     }
   }
 
-  let query = supabase
-    .from('cards')
-    .select('id, slug, name, number, image_url, local_image_url');
+  let whereClause = '';
+  const params: string[] = [];
 
   if (phaseFilter === 'jp-one-piece') {
-    query = query.like('slug', 'op-%').like('slug', '%-ja');
+    whereClause = 'WHERE slug LIKE $1 AND slug LIKE $2';
+    params.push('op-%', '%-ja');
   } else if (phaseFilter === 'en-one-piece') {
-    query = query.like('slug', 'op-%').not('slug', 'like', '%-ja');
+    whereClause = 'WHERE slug LIKE $1 AND slug NOT LIKE $2';
+    params.push('op-%', '%-ja');
   } else if (phaseFilter === 'dbfw') {
-    query = query.like('slug', 'dbfw-%');
+    whereClause = 'WHERE slug LIKE $1';
+    params.push('dbfw-%');
   }
 
-  const { data: cards } = await query.limit(500);
-  if (!cards) return [];
+  const cards = await dbQuery<{
+    id: string;
+    slug: string;
+    name: string;
+    number: string;
+    image_url: string | null;
+    local_image_url: string | null;
+  }>(`
+    SELECT id, slug, name, number, image_url, local_image_url
+    FROM cards
+    ${whereClause}
+    LIMIT 500
+  `, params);
 
   // Sort cards by highest price first
   cards.sort((a, b) => {
