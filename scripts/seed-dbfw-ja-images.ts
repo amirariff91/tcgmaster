@@ -37,7 +37,7 @@ async function uploadImage(url: string, path: string): Promise<string | null> {
     }
     const arrayBuffer = await res.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    
+
     return await storeCardImage({ key: path, body: buffer, contentType: 'image/webp', supabase, bucket: 'card-images' });
   } catch (error) {
     console.error('  [X] Exception uploading image:', error);
@@ -52,20 +52,20 @@ async function run() {
     console.log(`\n======================================================`);
     console.log(`Processing Set: ${setInfo.name} (${setInfo.id})`);
     console.log(`======================================================`);
-    
+
     const DBFW_URL = `https://raw.githubusercontent.com/apitcg/dragon-ball-fusion-tcg-data/main/cards/en/${setInfo.id}.json`;
     console.log(`Downloading English JSON data from ${DBFW_URL}...`);
-    
+
     try {
       const res = await fetch(DBFW_URL);
       if (!res.ok) {
         console.error(`Failed to fetch JSON data for ${setInfo.id}: ${res.status}`);
         continue;
       }
-      
+
       const cards = await res.json();
       console.log(`Found ${cards.length} cards in JSON.\n`);
-      
+
       let processed = 0;
       let success = 0;
 
@@ -73,39 +73,39 @@ async function run() {
         processed++;
         const code = card.code || card.id;
         if (!code) continue;
-        
+
         // Japanese slug
         const jaSlug = `dbfw-${code.toLowerCase()}-ja`;
-        
+
         // Check if we have this Japanese card in the database
         const { data: existingCard } = await supabase
           .from('cards')
           .select('id, image_url, local_image_url')
           .eq('slug', jaSlug)
           .single();
-          
+
         if (!existingCard) {
           // Card doesn't exist in DB (e.g. promo not yet scraped), skip
           continue;
         }
 
         // Get the English image URL from the JSON
-        let originalImgUrl = card.images?.large || card.images?.small;
+        const originalImgUrl = card.images?.large || card.images?.small;
         if (!originalImgUrl) {
           console.log(`[${processed}/${cards.length}] ${jaSlug} - No image found in JSON.`);
           continue;
         }
-        
-        // ** THE MAGIC FIX ** 
+
+        // ** THE MAGIC FIX **
         // Replace '/en/' with '/jp/' to fetch the official Japanese image!
         const jpImgUrl = originalImgUrl.replace('/en/', '/jp/');
-        
+
         console.log(`[${processed}/${cards.length}] Uploading: ${jaSlug}`);
         console.log(`  Source: ${jpImgUrl}`);
-        
+
         const storagePath = `dbfw/${setInfo.id}/${jaSlug}.webp`;
         const localImageUrl = await uploadImage(jpImgUrl, storagePath);
-        
+
         if (localImageUrl) {
           // Update the database with the new, high-quality Japanese image
           const { error: updateError } = await supabase
@@ -116,7 +116,7 @@ async function run() {
               updated_at: new Date().toISOString()
             })
             .eq('id', existingCard.id);
-            
+
           if (updateError) {
             console.error(`  [X] Failed to update DB for ${jaSlug}:`, updateError);
           } else {
@@ -124,12 +124,12 @@ async function run() {
             console.log(`  [OK] Saved to DB!`);
           }
         }
-        
+
         await delay(100); // 100ms throttle to prevent overwhelming Supabase
       }
-      
+
       console.log(`\nFinished ${setInfo.id}: successfully uploaded ${success} images.`);
-      
+
     } catch (err) {
       console.error(`Error processing set ${setInfo.id}:`, err);
     }
