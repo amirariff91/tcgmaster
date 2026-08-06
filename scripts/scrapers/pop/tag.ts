@@ -75,11 +75,11 @@ export async function scrapeTag(card: PopulationCard, db: PopulationDatabase) {
           }
        }
     });
+    totalPop = Object.values(gradeCounts).reduce((sum, count) => sum + count, 0);
 
     if (Object.keys(gradeCounts).length > 0) {
        for (const [grade, count] of Object.entries(gradeCounts)) {
            if (count > 0) {
-               totalPop += count;
                const numericGrade = Number(grade);
                if (!Number.isFinite(numericGrade)) continue;
                try {
