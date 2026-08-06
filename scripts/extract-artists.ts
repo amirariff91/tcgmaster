@@ -114,7 +114,7 @@ async function extractArtist(imageUrl: string): Promise<string | null> {
 }
 
 async function run() {
-  console.log(`🤖 Starting Gemini Artist Vision Extraction Worker [SAFE_MODE=${SAFE_MODE}]...`);
+  console.log(`🤖 Starting Artist Vision Extraction Worker (Ollama Cloud) [SAFE_MODE=${SAFE_MODE}]...`);
 
   while (true) {
     try {
@@ -175,7 +175,7 @@ async function run() {
         console.log(`  ! Extraction failed for ${targetCard.slug}. Set to "Unknown".`);
       }
 
-      console.log(`Sleeping ${SLEEP_MS / 1000}s to respect Gemini API rate limits...`);
+      console.log(`Sleeping ${SLEEP_MS / 1000}s to respect Ollama API rate limits...`);
       await new Promise((resolve) => setTimeout(resolve, SLEEP_MS));
     } catch (loopErr: unknown) {
       const message = loopErr instanceof Error ? loopErr.message : String(loopErr);
