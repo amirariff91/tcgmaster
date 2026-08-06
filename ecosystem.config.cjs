@@ -128,7 +128,7 @@ module.exports = {
       error_file: './logs/scraper-resolver-error.log',
       time: true,
     },
-    // Vision Artist Extractor (Ollama Cloud) — EN One Piece first
+    // Vision Artist Extractor (Gemini) — EN One Piece first
     // Runs as idle-loop: waits 5min when backlog is empty
     // Expand to JA OP + DBFW in Phase 2
     // ─────────────────────────────────────────────
@@ -138,10 +138,9 @@ module.exports = {
       args: 'run scripts/extract-artists-gemini.ts',
       env: {
         SAFE_MODE: SAFE_MODE ? '1' : '0',
-        OLLAMA_VISION_MODEL: 'gemma4:31b',
       },
       watch: false,
-      // The script exits(1) without OLLAMA_API_KEY. Don't restart it forever in that
+      // The script exits(1) without GEMINI_API_KEY. Don't restart it forever in that
       // case — the price scrapers are independent and must not be drowned in its logs.
       autorestart: true,
       restart_delay: 10000,  // Longer delay — vision API errors can be transient
@@ -161,7 +160,6 @@ module.exports = {
       args: 'run scripts/generate-variant-mapping.ts',
       env: {
         SAFE_MODE: SAFE_MODE ? '1' : '0',
-        OLLAMA_VISION_MODEL: 'gemma4:31b',
       },
       watch: false,
       autorestart: true,

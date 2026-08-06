@@ -138,7 +138,7 @@ async function run() {
                   // Update card_price_current.graded_prices based on the latest price_history
                const { data: latestPrices, error: historyError } = await supabase
                  .from('price_history')
-                 .select('source, grade, price')
+                 .select('source, grade, price, recorded_at')
                  .eq('card_id', cardId)
                  .order('recorded_at', { ascending: false });
 

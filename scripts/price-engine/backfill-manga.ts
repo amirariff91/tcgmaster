@@ -1,14 +1,9 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import { persistObservations } from '../../lib/price-engine/write-path';
 import { fetchCard } from './queue-jp-op';
 import type { SourceMapping } from '../../lib/price-engine/mapping';
 import type { WorkerCard } from '../../lib/price-engine/worker';
-
-async function getMappingsForCard(db: SupabaseClient, cardId: number) {
-  const { data: mappings } = await db.from('mappings').select('*').eq('card_id', cardId);
-  return mappings || [];
-}
 
 dotenv.config({ path: ['.env.local', '.env'] });
 
