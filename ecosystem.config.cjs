@@ -135,7 +135,7 @@ module.exports = {
     {
       name: 'artist-vision',
       script: 'bun',
-      args: 'run scripts/extract-artists-gemini.ts',
+      args: 'run scripts/extract-artists.ts',
       env: {
         SAFE_MODE: SAFE_MODE ? '1' : '0',
       },

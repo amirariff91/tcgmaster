@@ -3,24 +3,24 @@ import { dbQuery } from '../lib/db/client';
 
 const SAFE_MODE = process.env.SAFE_MODE === '1';
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+// Uses the same Ollama Cloud vision API as lib/price-engine/image-matcher.ts
+// (OLLAMA_API_KEY + OLLAMA_VISION_MODEL, default gemma4:31b). The key is already
+// provisioned in the scrapers env.
+const OLLAMA_API_KEY = process.env.OLLAMA_API_KEY;
+const OLLAMA_MODEL = process.env.OLLAMA_VISION_MODEL || 'gemma4:31b';
+const OLLAMA_URL = process.env.OLLAMA_BASE_URL || 'https://ollama.com';
 
-if (!GEMINI_API_KEY) {
-  console.error("Missing GEMINI_API_KEY.");
-  console.error("Create one at Google AI Studio and set GEMINI_API_KEY as documented in .env.example");
+if (!OLLAMA_API_KEY) {
+  console.error("Missing OLLAMA_API_KEY.");
+  console.error("Set OLLAMA_API_KEY (Ollama Cloud) in the scrapers app env as documented in .env.example");
   process.exit(1);
 }
 
 // Rate limit sleep: 60s normal mode
 const SLEEP_MS = SAFE_MODE ? 120000 : 60000;
 
-// Supported active Google Gemini vision models in priority order
-const MODEL_PRIORITY = [
-  'gemini-flash-latest',
-  'gemini-2.5-flash-lite',
-  'gemini-2.0-flash',
-  'gemini-2.5-flash',
-];
+// Vision model is served by Ollama Cloud (OLLAMA_MODEL, default gemma4:31b).
+// Same API shape as lib/price-engine/image-matcher.ts.
 
 const ARTIST_PROMPT = [
   "This is a One Piece Trading Card Game card. The artist/illustrator name, when present,",
@@ -45,52 +45,36 @@ type ArtistCard = {
 };
 
 async function askVisionModel(base64Data: string, mimeType: string): Promise<string> {
-  let lastError = '';
+  try {
+    const res = await fetch(`${OLLAMA_URL}/api/chat`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OLLAMA_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: OLLAMA_MODEL,
+        stream: false,
+        messages: [{
+          role: 'user',
+          content: ARTIST_PROMPT,
+          images: [base64Data],
+        }],
+      }),
+    });
 
-  for (const modelName of MODEL_PRIORITY) {
-    try {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GEMINI_API_KEY}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [{
-            parts: [
-              { text: ARTIST_PROMPT },
-              {
-                inlineData: {
-                  mimeType: mimeType,
-                  data: base64Data
-                }
-              }
-            ]
-          }]
-        }),
-      });
-
-      if (res.status === 429) {
-        console.warn(`  ! Model ${modelName} hit 429 rate limit. Trying next model...`);
-        lastError = `429 Rate Limit on ${modelName}`;
-        await new Promise(r => setTimeout(r, 2000));
-        continue;
-      }
-
-      if (!res.ok) {
-        const body = await res.text().catch(() => '');
-        lastError = `${res.status} ${res.statusText}: ${body.slice(0, 150)}`;
-        continue;
-      }
-
-      const data = await res.json();
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-      return text.trim() || 'Unknown';
-    } catch (err: unknown) {
-      lastError = err instanceof Error ? err.message : String(err);
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      throw new Error(`${res.status} ${res.statusText}: ${body.slice(0, 150)}`);
     }
-  }
 
-  throw new Error(`All Gemini models failed. Last error: ${lastError}`);
+    const data = await res.json();
+    const text = data?.message?.content ?? '';
+    return text.trim() || 'Unknown';
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Ollama vision failed (${OLLAMA_MODEL}): ${message}`);
+  }
 }
 
 function detectMimeType(contentType: string | null): string {

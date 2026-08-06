@@ -12,8 +12,8 @@
     "test:e2e:ui": "playwright test --ui",
     "scrape:all": "bun run scripts/price-engine/queue-english-op.ts & bun run scripts/price-engine/queue-jp-op.ts & bun run scripts/price-engine/queue-dbfw.ts & bun run scripts/price-engine/queue-english-dbfw.ts & wait",
     "scrape:all:safe": "SAFE_MODE=1 bun run scripts/price-engine/queue-english-op.ts & SAFE_MODE=1 bun run scripts/price-engine/queue-jp-op.ts & SAFE_MODE=1 bun run scripts/price-engine/queue-dbfw.ts & SAFE_MODE=1 bun run scripts/price-engine/queue-english-dbfw.ts & wait",
-    "scrape:artists": "bun run scripts/extract-artists-gemini.ts",
-    "scrape:artists:safe": "SAFE_MODE=1 bun run scripts/extract-artists-gemini.ts",
+    "scrape:artists": "bun run scripts/extract-artists.ts",
+    "scrape:artists:safe": "SAFE_MODE=1 bun run scripts/extract-artists.ts",
     "historical:snkrdunk": "bun run scripts/historical-snkrdunk-worker.ts",
     "historical:pricecharting": "bun run scripts/historical-pc-worker.ts"
   },
