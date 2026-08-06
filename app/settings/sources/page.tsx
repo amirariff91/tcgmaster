@@ -1,4 +1,5 @@
 import { createServerClient } from '@/lib/supabase/server';
+import { getAuthUser } from '@/lib/auth-server';
 import { SourcesTable } from './sources-table';
 import { redirect } from 'next/navigation';
 
@@ -8,8 +9,8 @@ export default async function SourcesDashboardPage() {
   const supabase = await createServerClient();
 
   // Basic sanity check for auth - in a real app you'd check roles
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) {
+  const user = await getAuthUser();
+  if (!user) {
     redirect('/');
   }
 

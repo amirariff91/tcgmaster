@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase/client';
 import { createClient } from '@/lib/supabase/server';
+import { getAuthUser } from '@/lib/auth-server';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -210,8 +210,7 @@ const PUBLIC_COLLECTION_SELECT = `
 export async function GET(request: NextRequest, { params }: RouteParams) {
   const { id } = await params;
   const supabase = await createClient();
-
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   // An owner probe is enough to select the full private projection. Every
   // non-owner, including a signed-in public viewer, uses the safe public path.
@@ -234,12 +233,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     isOwner = Boolean(ownerData);
   }
 
-  if (isOwner) {
+  if (isOwner && user) {
     // Owners retain the full private projection, including cost-basis fields.
     const { data: collectionData, error } = await supabase
       .from('collections')
       .select(OWNER_COLLECTION_SELECT)
       .eq('id', id)
+      .eq('user_id', user.id)
       .single();
 
     const collection = collectionData as CollectionWithItems | null;
@@ -257,6 +257,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   // Option (a): use the server-only service-role client for the public path,
   // with an explicit safe projection. The service role is never exposed to the
   // browser, and the migration also limits direct anon Data API reads.
+  const { createServerClient } = await import('@/lib/supabase/client');
   const publicSupabase = createServerClient();
   const { data: publicCollectionData, error: publicError } = await publicSupabase
     .from('collections')
@@ -281,10 +282,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const { id } = await params;
   const supabase = await createClient();
+  const user = await getAuthUser();
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-  if (authError || !user) {
+  if (!user) {
     return NextResponse.json(
       { error: 'Unauthorized' },
       { status: 401 }
@@ -296,6 +296,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     .from('collections')
     .select('user_id')
     .eq('id', id)
+    .eq('user_id', user.id)
     .single();
 
   const existing = existingData as CollectionOwnerRow | null;
@@ -328,6 +329,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const { data: collection, error } = await (supabase.from('collections') as any)
     .update(updates)
     .eq('id', id)
+    .eq('user_id', user.id)
     .select()
     .single();
 
@@ -345,10 +347,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   const { id } = await params;
   const supabase = await createClient();
+  const user = await getAuthUser();
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-  if (authError || !user) {
+  if (!user) {
     return NextResponse.json(
       { error: 'Unauthorized' },
       { status: 401 }
@@ -360,6 +361,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     .from('collections')
     .select('user_id')
     .eq('id', id)
+    .eq('user_id', user.id)
     .single();
 
   const existingDelete = existingDeleteData as CollectionOwnerRow | null;
@@ -375,7 +377,8 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   const { error } = await supabase
     .from('collections')
     .delete()
-    .eq('id', id);
+    .eq('id', id)
+    .eq('user_id', user.id);
 
   if (error) {
     return NextResponse.json(

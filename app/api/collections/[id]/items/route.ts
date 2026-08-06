@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getAuthUser } from '@/lib/auth-server';
 import { gradeKeyCandidates, lookupGraded, normalizeGrade } from '@/lib/pricing/grades';
 
 interface RouteParams {
@@ -28,10 +29,9 @@ interface CollectionItemRow {
 export async function POST(request: NextRequest, { params }: RouteParams) {
   const { id: collectionId } = await params;
   const supabase = await createClient();
+  const user = await getAuthUser();
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-  if (authError || !user) {
+  if (!user) {
     return NextResponse.json(
       { error: 'Unauthorized' },
       { status: 401 }
@@ -43,6 +43,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     .from('collections')
     .select('user_id')
     .eq('id', collectionId)
+    .eq('user_id', user.id)
     .single();
 
   const collection = collectionData as CollectionRow | null;
@@ -177,7 +178,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   }
 
   // Update collection totals (will be handled by triggers in production)
-  await updateCollectionTotals(supabase, collectionId);
+  await updateCollectionTotals(supabase, collectionId, user.id);
 
   return NextResponse.json({ data: item }, { status: 201 });
 }
@@ -186,10 +187,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   const { id: collectionId } = await params;
   const supabase = await createClient();
+  const user = await getAuthUser();
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-  if (authError || !user) {
+  if (!user) {
     return NextResponse.json(
       { error: 'Unauthorized' },
       { status: 401 }
@@ -201,6 +201,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     .from('collections')
     .select('user_id')
     .eq('id', collectionId)
+    .eq('user_id', user.id)
     .single();
 
   const collectionDelete = collectionDeleteData as CollectionRow | null;
@@ -240,7 +241,8 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   const { error } = await supabase
     .from('collection_items')
     .delete()
-    .eq('id', item_id);
+    .eq('id', item_id)
+    .eq('collection_id', collectionId);
 
   if (error) {
     return NextResponse.json(
@@ -250,13 +252,17 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   }
 
   // Update collection totals
-  await updateCollectionTotals(supabase, collectionId);
+  await updateCollectionTotals(supabase, collectionId, user.id);
 
   return NextResponse.json({ success: true });
 }
 
 // Helper function to update collection totals
-async function updateCollectionTotals(supabase: ReturnType<typeof createClient> extends Promise<infer T> ? T : never, collectionId: string) {
+async function updateCollectionTotals(
+  supabase: ReturnType<typeof createClient> extends Promise<infer T> ? T : never,
+  collectionId: string,
+  userId: string,
+) {
   const { data: itemsData } = await supabase
     .from('collection_items')
     .select('cost_basis, current_value')
@@ -275,6 +281,7 @@ async function updateCollectionTotals(supabase: ReturnType<typeof createClient> 
         total_value: totalValue,
         items_count: items.length,
       })
-      .eq('id', collectionId);
+      .eq('id', collectionId)
+      .eq('user_id', userId);
   }
 }

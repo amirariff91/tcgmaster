@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { User } from '@supabase/supabase-js';
 import { User as UserIcon, Bell, Palette, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCurrencyContext } from '@/lib/currency-context';
@@ -9,7 +8,10 @@ import { type SupportedCurrency, currencyInfo } from '@/lib/currency';
 import { trackSettingsChanged } from '@/lib/analytics';
 
 interface SettingsClientProps {
-  user: User;
+  user: {
+    email: string;
+    createdAt: Date;
+  };
 }
 
 interface NotificationSettings {
@@ -81,8 +83,8 @@ export function SettingsClient({ user }: SettingsClientProps) {
   };
 
   // Format member since date
-  const memberSince = user.created_at
-    ? new Date(user.created_at).toLocaleDateString('en-US', {
+  const memberSince = user.createdAt
+    ? new Date(user.createdAt).toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'long',
       })

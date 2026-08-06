@@ -22,7 +22,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatPrice, formatPriceChange } from '@/lib/utils';
 import { useCollections, useCollection } from '@/hooks/use-collections';
-import { createClient } from '@/lib/supabase/browser';
+import { authClient } from '@/lib/auth-client';
 
 // Map collection type to icon
 function getCollectionIcon(type: string) {
@@ -388,9 +388,8 @@ export default function CollectionPage() {
 
   // Auth check — redirect to /login if not signed in
   React.useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) {
+    authClient.getSession().then(({ data }: { data: { user?: unknown } | null }) => {
+      if (!data?.user) {
         router.replace('/login');
       } else {
         setIsAuthChecked(true);

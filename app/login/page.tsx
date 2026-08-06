@@ -8,12 +8,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { createClient } from '@/lib/supabase/browser';
+import { authClient } from '@/lib/auth-client';
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get('redirectTo') || '/collection';
+  const requestedRedirect = searchParams.get('redirectTo');
+  const redirectTo = requestedRedirect?.startsWith('/') && !requestedRedirect.startsWith('//')
+    ? requestedRedirect
+    : '/collection';
 
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
@@ -21,20 +24,18 @@ function LoginForm() {
   const [error, setError] = React.useState<string | null>(null);
   const [message, setMessage] = React.useState<string | null>(null);
 
-  const supabase = createClient();
-
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { error } = await authClient.signIn.email({
       email,
       password,
     });
 
     if (error) {
-      setError(error.message);
+      setError(error.message || 'Unable to sign in');
       setIsLoading(false);
       return;
     }
@@ -47,15 +48,13 @@ function LoginForm() {
     setIsLoading(true);
     setError(null);
 
-    const { error } = await supabase.auth.signInWithOAuth({
+    const { error } = await authClient.signIn.social({
       provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback?redirectTo=${encodeURIComponent(redirectTo)}`,
-      },
+      callbackURL: redirectTo,
     });
 
     if (error) {
-      setError(error.message);
+      setError(error.message || 'Unable to sign in with Google');
       setIsLoading(false);
     }
   };
@@ -69,15 +68,13 @@ function LoginForm() {
     setIsLoading(true);
     setError(null);
 
-    const { error } = await supabase.auth.signInWithOtp({
+    const { error } = await authClient.signIn.magicLink({
       email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?redirectTo=${encodeURIComponent(redirectTo)}`,
-      },
+      callbackURL: `${window.location.origin}/auth/callback?redirectTo=${encodeURIComponent(redirectTo)}`,
     });
 
     if (error) {
-      setError(error.message);
+      setError(error.message || 'Unable to send a magic link');
       setIsLoading(false);
       return;
     }

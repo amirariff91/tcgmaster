@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { createServerClient } from '@/lib/supabase/client';
+import { getAuthUser } from '@/lib/auth-server';
 import { lookupPSACert, PSACertData } from '@/lib/scrapers/psa';
 import { lookupBGSCert, BGSCertData } from '@/lib/scrapers/bgs';
 
@@ -52,10 +52,9 @@ function extractCertInfo(certData: PSACertData | BGSCertData) {
 export async function POST(request: NextRequest, { params }: RouteParams) {
   const { id: collectionId } = await params;
   const supabase = await createClient();
+  const user = await getAuthUser();
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-  if (authError || !user) {
+  if (!user) {
     return NextResponse.json(
       { error: 'Unauthorized' },
       { status: 401 }
@@ -67,6 +66,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     .from('collections')
     .select('user_id')
     .eq('id', collectionId)
+    .eq('user_id', user.id)
     .single();
 
   const collection = collectionData as CollectionRow | null;
@@ -161,6 +161,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   // Store cert data in cert_history. cert_history is a shared catalog table, not
   // user-owned, so end users hold no write grant on it — write as service_role.
   // Safe: the caller is authenticated and collection ownership is verified above.
+  const { createServerClient } = await import('@/lib/supabase/client');
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (createServerClient().from('cert_history') as any).upsert({
     cert_number,

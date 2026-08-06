@@ -8,10 +8,10 @@ export async function middleware(request: NextRequest) {
 export const config = {
   /*
    * Only the routes that actually need a session: the gated pages `updateSession`
-   * redirects, plus the auth flow itself (where the token refresh must run).
+   * redirects, plus the auth flow itself (where Better Auth handles callbacks).
    *
    * The previous catch-all matched every public catalog page too, so every card,
-   * set, and search view paid a `supabase.auth.getUser()` round-trip and could not
+   * set, and search view paid an auth session round-trip and could not
    * be served from the edge cache.
    */
   matcher: [

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getAuthUser } from '@/lib/auth-server';
 import { deletePriceAlert, toggleAlertActive } from '@/lib/pricing/alerts';
 
 interface RouteParams {
@@ -9,14 +10,9 @@ interface RouteParams {
 // PATCH /api/alerts/[id] - Toggle alert active status
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const { id } = await params;
-  const supabase = await createClient();
+  const user = await getAuthUser();
 
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
+  if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -34,13 +30,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   const { id } = await params;
   const supabase = await createClient();
+  const user = await getAuthUser();
 
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
+  if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

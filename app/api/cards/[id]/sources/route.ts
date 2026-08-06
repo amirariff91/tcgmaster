@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { createServerClient as createServiceRoleClient } from '@/lib/supabase/client';
+import { getAuthUser } from '@/lib/auth-server';
 
 export async function PATCH(
   request: Request,
@@ -11,10 +10,9 @@ export async function PATCH(
     // must never be reachable anonymously. `cards` is RLS public-read/no-write,
     // so the write itself needs the service-role client — which makes the auth
     // check here the only thing standing in front of it.
-    const authClient = await createClient();
-    const { data: { user }, error: authError } = await authClient.auth.getUser();
+    const user = await getAuthUser();
 
-    if (authError || !user) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -36,6 +34,9 @@ export async function PATCH(
     updates.curation_status = 'pending';
     updates.last_price_fetch = null; // force immediate fetch
 
+    // Keep the legacy service-role write lazy so importing the route during a
+    // build does not require the Supabase environment variables.
+    const { createServerClient: createServiceRoleClient } = await import('@/lib/supabase/client');
     const supabase = createServiceRoleClient();
 
     const { data, error } = await supabase
