@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
 import { getAuthUser } from '@/lib/auth-server';
+import { dbQuery } from '@/lib/db/client';
 import { deletePriceAlert, toggleAlertActive } from '@/lib/pricing/alerts';
 
 interface RouteParams {
@@ -29,7 +29,6 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 // DELETE /api/alerts/[id] - Delete a price alert
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   const { id } = await params;
-  const supabase = await createClient();
   const user = await getAuthUser();
 
   if (!user) {
@@ -37,14 +36,21 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   }
 
   // Check if the alert exists and belongs to this user before deleting
-  const { data: existing } = await supabase
-    .from('price_alerts')
-    .select('id')
-    .eq('id', id)
-    .eq('user_id', user.id)
-    .maybeSingle();
+  let existing: { id: string } | undefined;
+  try {
+    const rows = await dbQuery<{ id: string }>(`
+      SELECT id
+      FROM price_alerts
+      WHERE id = $1
+        AND user_id = $2
+      LIMIT 1
+    `, [id, user.id]);
+    existing = rows[0];
+  } catch {
+    existing = undefined;
+  }
 
-  if (existing === null) {
+  if (!existing) {
     return NextResponse.json({ error: 'Alert not found' }, { status: 404 });
   }
 

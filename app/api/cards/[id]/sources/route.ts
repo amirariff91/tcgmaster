@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth-server';
+import { dbQuery } from '@/lib/db/client';
 
 export async function PATCH(
   request: Request,
@@ -34,19 +35,20 @@ export async function PATCH(
     updates.curation_status = 'pending';
     updates.last_price_fetch = null; // force immediate fetch
 
-    // Keep the legacy service-role write lazy so importing the route during a
-    // build does not require the Supabase environment variables.
-    const { createServerClient: createServiceRoleClient } = await import('@/lib/supabase/client');
-    const supabase = createServiceRoleClient();
+    const updateFields = Object.keys(updates);
+    const updateValues = updateFields.map((field) => updates[field]);
+    const setClause = updateFields
+      .map((field, index) => `${field} = $${index + 1}`)
+      .join(', ');
+    const rows = await dbQuery<Record<string, unknown>>(`
+      UPDATE cards
+      SET ${setClause}
+      WHERE id = $${updateValues.length + 1}
+      RETURNING *
+    `, [...updateValues, id]);
+    const data = rows[0];
 
-    const { data, error } = await supabase
-      .from('cards')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw error;
+    if (!data) throw new Error('Card not found');
 
     return NextResponse.json({ data });
   } catch (error: unknown) {

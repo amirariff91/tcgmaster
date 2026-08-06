@@ -4,7 +4,6 @@
  */
 
 import { dbQuery } from '@/lib/db/client';
-import { createServerClient } from '@/lib/supabase/client';
 import { redis, CACHE_KEYS, CACHE_TTL } from '@/lib/redis/client';
 import { parseSearchQuery, scoreCardMatch, ParsedQuery } from './nlp-parser';
 
@@ -443,13 +442,13 @@ async function trackSearchAnalytics(
   parsed: ParsedQuery,
   resultCount: number
 ): Promise<void> {
-  const supabase = createServerClient();
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase.from('search_analytics') as any).insert({
-    search_query: query,
-    result_clicked: resultCount > 0,
-  });
+  await dbQuery(
+    `
+      INSERT INTO search_analytics (search_query, result_clicked)
+      VALUES ($1, $2)
+    `,
+    [query, resultCount > 0],
+  );
 }
 
 /**
@@ -460,13 +459,11 @@ export async function trackSearchClick(
   cardId: string,
   userId?: string
 ): Promise<void> {
-  const supabase = createServerClient();
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase.from('search_analytics') as any).insert({
-    search_query: searchQuery,
-    card_id: cardId,
-    user_id: userId,
-    result_clicked: true,
-  });
+  await dbQuery(
+    `
+      INSERT INTO search_analytics (search_query, card_id, user_id, result_clicked)
+      VALUES ($1, $2, $3, true)
+    `,
+    [searchQuery, cardId, userId ?? null],
+  );
 }

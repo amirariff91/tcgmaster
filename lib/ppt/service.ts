@@ -11,7 +11,6 @@ import {
   withRequestCoalescing,
 } from '@/lib/redis/client';
 import { dbQuery } from '@/lib/db/client';
-import { createServerClient } from '@/lib/supabase/client';
 import type { Tables, TablesInsert } from '@/lib/supabase/database.types';
 import { slugify } from '@/lib/utils';
 
@@ -250,7 +249,6 @@ export async function importSet(
   cardsImported: number;
   errors: string[];
 }> {
-  const supabase = createServerClient();
   const errors: string[] = [];
   let cardsImported = 0;
 
@@ -286,17 +284,31 @@ export async function importSet(
         throw new Error('Pokemon game not found in database');
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase.from('sets') as any).insert({
-        game_id: game.id,
-        name: pptSet.name,
-        slug: slugify(pptSet.name),
-        release_date: pptSet.releaseDate,
-        card_count: pptSet.cardCount,
-        ppt_set_id: pptSetId,
-        tcg_player_group_id: pptSet.tcgPlayerGroupId,
-        priority: options?.priority ?? 0,
-      });
+      await dbQuery(
+        `
+          INSERT INTO sets (
+            game_id,
+            name,
+            slug,
+            release_date,
+            card_count,
+            ppt_set_id,
+            tcg_player_group_id,
+            priority
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        `,
+        [
+          game.id,
+          pptSet.name,
+          slugify(pptSet.name),
+          pptSet.releaseDate,
+          pptSet.cardCount,
+          pptSetId,
+          pptSet.tcgPlayerGroupId ?? null,
+          options?.priority ?? 0,
+        ],
+      );
     }
 
     // Get the set ID
@@ -328,17 +340,56 @@ export async function importSet(
         last_price_fetch: new Date().toISOString(),
       }));
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase.from('cards') as any)
-        .upsert(cardInserts, {
-          onConflict: 'set_id,slug',
-          ignoreDuplicates: false,
-        });
+      try {
+        const cardParams = cardInserts.flatMap((card) => [
+          card.set_id,
+          card.name,
+          card.slug,
+          card.number,
+          card.rarity ?? null,
+          card.artist ?? null,
+          card.tcg_player_id ?? null,
+          card.ppt_card_id ?? null,
+          card.image_url ?? null,
+          card.last_price_fetch ?? null,
+        ]);
+        const cardPlaceholders = cardInserts
+          .map((_, rowIndex) => {
+            const offset = rowIndex * 10;
+            return `(${Array.from({ length: 10 }, (_, columnIndex) => `$${offset + columnIndex + 1}`).join(', ')})`;
+          })
+          .join(', ');
 
-      if (error) {
-        errors.push(`Batch ${i / batchSize}: ${error.message}`);
-      } else {
+        await dbQuery(
+          `
+            INSERT INTO cards (
+              set_id,
+              name,
+              slug,
+              number,
+              rarity,
+              artist,
+              tcg_player_id,
+              ppt_card_id,
+              image_url,
+              last_price_fetch
+            )
+            VALUES ${cardPlaceholders}
+            ON CONFLICT (set_id, slug) DO UPDATE SET
+              name = EXCLUDED.name,
+              number = EXCLUDED.number,
+              rarity = EXCLUDED.rarity,
+              artist = EXCLUDED.artist,
+              tcg_player_id = EXCLUDED.tcg_player_id,
+              ppt_card_id = EXCLUDED.ppt_card_id,
+              image_url = EXCLUDED.image_url,
+              last_price_fetch = EXCLUDED.last_price_fetch
+          `,
+          cardParams,
+        );
         cardsImported += batch.length;
+      } catch (error) {
+        errors.push(`Batch ${i / batchSize}: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
 
       // Also cache prices
@@ -353,13 +404,15 @@ export async function importSet(
     }
 
     // Mark set as imported
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.from('sets') as any)
-      .update({
-        is_imported: true,
-        imported_at: new Date().toISOString(),
-      })
-      .eq('id', set.id);
+    await dbQuery(
+      `
+        UPDATE sets
+        SET is_imported = true,
+            imported_at = $1
+        WHERE id = $2
+      `,
+      [new Date().toISOString(), set.id],
+    );
 
   } catch (error) {
     errors.push(error instanceof Error ? error.message : 'Unknown error');
@@ -375,7 +428,6 @@ export async function syncSets(): Promise<{
   setsUpdated: number;
   errors: string[];
 }> {
-  const supabase = createServerClient();
   const errors: string[] = [];
   let setsUpdated = 0;
 
@@ -410,17 +462,50 @@ export async function syncSets(): Promise<{
       priority: calculateSetPriority(set, index),
     }));
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase.from('sets') as any)
-      .upsert(setInserts, {
-        onConflict: 'game_id,slug',
-      });
+    const setParams = setInserts.flatMap((set) => [
+      set.game_id,
+      set.name,
+      set.slug,
+      set.release_date,
+      set.card_count,
+      set.ppt_set_id,
+      set.tcg_player_group_id ?? null,
+      set.image_url ?? null,
+      set.priority ?? 0,
+    ]);
+    const setPlaceholders = setInserts
+      .map((_, rowIndex) => {
+        const offset = rowIndex * 9;
+        return `(${Array.from({ length: 9 }, (_, columnIndex) => `$${offset + columnIndex + 1}`).join(', ')})`;
+      })
+      .join(', ');
 
-    if (error) {
-      errors.push(error.message);
-    } else {
-      setsUpdated = sets.length;
-    }
+    await dbQuery(
+      `
+        INSERT INTO sets (
+          game_id,
+          name,
+          slug,
+          release_date,
+          card_count,
+          ppt_set_id,
+          tcg_player_group_id,
+          image_url,
+          priority
+        )
+        VALUES ${setPlaceholders}
+        ON CONFLICT (game_id, slug) DO UPDATE SET
+          name = EXCLUDED.name,
+          release_date = EXCLUDED.release_date,
+          card_count = EXCLUDED.card_count,
+          ppt_set_id = EXCLUDED.ppt_set_id,
+          tcg_player_group_id = EXCLUDED.tcg_player_group_id,
+          image_url = EXCLUDED.image_url,
+          priority = EXCLUDED.priority
+      `,
+      setParams,
+    );
+    setsUpdated = sets.length;
 
   } catch (error) {
     errors.push(error instanceof Error ? error.message : 'Unknown error');

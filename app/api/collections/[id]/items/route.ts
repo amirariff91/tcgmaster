@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
 import { getAuthUser } from '@/lib/auth-server';
+import { dbQuery } from '@/lib/db/client';
 import { gradeKeyCandidates, lookupGraded, normalizeGrade } from '@/lib/pricing/grades';
 
 interface RouteParams {
@@ -28,7 +28,6 @@ interface CollectionItemRow {
 // POST /api/collections/[id]/items - Add item to collection
 export async function POST(request: NextRequest, { params }: RouteParams) {
   const { id: collectionId } = await params;
-  const supabase = await createClient();
   const user = await getAuthUser();
 
   if (!user) {
@@ -39,14 +38,19 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   }
 
   // Verify ownership
-  const { data: collectionData } = await supabase
-    .from('collections')
-    .select('user_id')
-    .eq('id', collectionId)
-    .eq('user_id', user.id)
-    .single();
-
-  const collection = collectionData as CollectionRow | null;
+  let collection: CollectionRow | null = null;
+  try {
+    const collectionRows = await dbQuery<CollectionRow>(`
+      SELECT user_id
+      FROM collections
+      WHERE id = $1
+        AND user_id = $2
+      LIMIT 1
+    `, [collectionId, user.id]);
+    collection = collectionRows[0] || null;
+  } catch {
+    collection = null;
+  }
 
   if (!collection || collection.user_id !== user.id) {
     return NextResponse.json(
@@ -82,17 +86,16 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
   if (cost_basis === null && acquisition_date) {
     // Try to get historical price for this card/grade on acquisition date
-    const { data: historicalPriceData } = await supabase
-      .from('price_history')
-      .select('price')
-      .eq('card_id', card_id)
-      .in('grade', gradeKeyCandidates(g))
-      .lte('recorded_at', acquisition_date)
-      .order('recorded_at', { ascending: false })
-      .limit(1)
-      .single();
-
-    const historicalPrice = historicalPriceData as PriceHistoryRow | null;
+    const historicalPriceRows = await dbQuery<PriceHistoryRow>(`
+      SELECT price::float8 AS price
+      FROM price_history
+      WHERE card_id = $1
+        AND grade = ANY($2::text[])
+        AND recorded_at <= $3
+      ORDER BY recorded_at DESC
+      LIMIT 1
+    `, [card_id, gradeKeyCandidates(g), acquisition_date]);
+    const historicalPrice = historicalPriceRows[0] || null;
     if (historicalPrice) {
       finalCostBasis = historicalPrice.price;
       costBasisSource = 'historical_auto';
@@ -101,13 +104,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
   // If still no cost basis, try to get current price
   if (finalCostBasis === null) {
-    const { data: currentPriceData } = await supabase
-      .from('card_price_current')
-      .select('headline_cents, graded_prices')
-      .eq('card_id', card_id)
-      .maybeSingle();
-
-    const currentPrice = currentPriceData as CurrentPriceRow | null;
+    const currentPriceRows = await dbQuery<CurrentPriceRow>(`
+      SELECT headline_cents, graded_prices
+      FROM card_price_current
+      WHERE card_id = $1
+      LIMIT 1
+    `, [card_id]);
+    const currentPrice = currentPriceRows[0] || null;
     if (currentPrice) {
       const rawValue = currentPrice.headline_cents === null
         ? null
@@ -123,53 +126,97 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: item, error } = await (supabase.from('collection_items') as any)
-    .insert({
-      collection_id: collectionId,
-      card_id,
-      variant_id,
-      grade: g,
-      grading_company_id,
-      cert_number,
-      cost_basis: finalCostBasis,
-      cost_basis_source: costBasisSource,
-      acquisition_date,
-      acquisition_type,
-      notes,
-      current_value: finalCostBasis, // Start with cost basis as current value
-    })
-    .select(`
-      id,
-      card_id,
-      variant_id,
-      grade,
-      grading_company_id,
-      cert_number,
-      cost_basis,
-      cost_basis_source,
-      acquisition_date,
-      acquisition_type,
-      notes,
-      current_value,
-      created_at,
-      cards (
-        id,
-        name,
-        slug,
-        number,
-        image_url,
-        local_image_url,
-        sets (
-          id,
-          name,
-          slug
+  let item: Record<string, unknown> | undefined;
+  try {
+    const itemRows = await dbQuery<Record<string, unknown>>(`
+      WITH inserted AS (
+        INSERT INTO collection_items (
+          collection_id,
+          card_id,
+          variant_id,
+          grade,
+          grading_company_id,
+          cert_number,
+          cost_basis,
+          cost_basis_source,
+          acquisition_date,
+          acquisition_type,
+          notes,
+          current_value
         )
+        SELECT $1, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $8
+        WHERE EXISTS (
+          SELECT 1
+          FROM collections
+          WHERE id = $1
+            AND user_id = $2
+        )
+        RETURNING
+          id,
+          card_id,
+          variant_id,
+          grade,
+          grading_company_id,
+          cert_number,
+          cost_basis::float8 AS cost_basis,
+          cost_basis_source,
+          acquisition_date,
+          acquisition_type,
+          notes,
+          current_value::float8 AS current_value,
+          created_at
       )
-    `)
-    .single();
+      SELECT
+        ci.id,
+        ci.card_id,
+        ci.variant_id,
+        ci.grade,
+        ci.grading_company_id,
+        ci.cert_number,
+        ci.cost_basis,
+        ci.cost_basis_source,
+        ci.acquisition_date,
+        ci.acquisition_type,
+        ci.notes,
+        ci.current_value,
+        ci.created_at,
+        json_build_object(
+          'id', c.id,
+          'name', c.name,
+          'slug', c.slug,
+          'number', c.number,
+          'image_url', c.image_url,
+          'local_image_url', c.local_image_url,
+          'sets', json_build_object(
+            'id', s.id,
+            'name', s.name,
+            'slug', s.slug
+          )
+        ) AS cards
+      FROM inserted ci
+      JOIN cards c ON c.id = ci.card_id
+      JOIN sets s ON s.id = c.set_id
+      LIMIT 1
+    `, [
+      collectionId,
+      user.id,
+      card_id,
+      variant_id,
+      g,
+      grading_company_id,
+      cert_number,
+      finalCostBasis,
+      costBasisSource,
+      acquisition_date,
+      acquisition_type,
+      notes,
+    ]);
+    item = itemRows[0];
 
-  if (error) {
+    if (!item) {
+      throw new Error('Collection item insert returned no row');
+    }
+  } catch (error) {
     console.error('Failed to add item:', error);
     return NextResponse.json(
       { error: 'Failed to add item to collection' },
@@ -178,7 +225,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   }
 
   // Update collection totals (will be handled by triggers in production)
-  await updateCollectionTotals(supabase, collectionId, user.id);
+  await updateCollectionTotals(collectionId, user.id);
 
   return NextResponse.json({ data: item }, { status: 201 });
 }
@@ -186,7 +233,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 // DELETE /api/collections/[id]/items - Remove item from collection (by item_id in body)
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   const { id: collectionId } = await params;
-  const supabase = await createClient();
   const user = await getAuthUser();
 
   if (!user) {
@@ -197,14 +243,19 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   }
 
   // Verify ownership
-  const { data: collectionDeleteData } = await supabase
-    .from('collections')
-    .select('user_id')
-    .eq('id', collectionId)
-    .eq('user_id', user.id)
-    .single();
-
-  const collectionDelete = collectionDeleteData as CollectionRow | null;
+  let collectionDelete: CollectionRow | null = null;
+  try {
+    const collectionDeleteRows = await dbQuery<CollectionRow>(`
+      SELECT user_id
+      FROM collections
+      WHERE id = $1
+        AND user_id = $2
+      LIMIT 1
+    `, [collectionId, user.id]);
+    collectionDelete = collectionDeleteRows[0] || null;
+  } catch {
+    collectionDelete = null;
+  }
 
   if (!collectionDelete || collectionDelete.user_id !== user.id) {
     return NextResponse.json(
@@ -224,12 +275,16 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   }
 
   // Verify item belongs to this collection
-  const { data: item } = await supabase
-    .from('collection_items')
-    .select('id')
-    .eq('id', item_id)
-    .eq('collection_id', collectionId)
-    .single();
+  const itemRows = await dbQuery<{ id: string }>(`
+    SELECT ci.id
+    FROM collection_items ci
+    JOIN collections c ON c.id = ci.collection_id
+    WHERE ci.id = $1
+      AND ci.collection_id = $2
+      AND c.user_id = $3
+    LIMIT 1
+  `, [item_id, collectionId, user.id]);
+  const item = itemRows[0] || null;
 
   if (!item) {
     return NextResponse.json(
@@ -238,13 +293,22 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     );
   }
 
-  const { error } = await supabase
-    .from('collection_items')
-    .delete()
-    .eq('id', item_id)
-    .eq('collection_id', collectionId);
-
-  if (error) {
+  try {
+    await dbQuery(
+      `
+        DELETE FROM collection_items ci
+        WHERE ci.id = $1
+          AND ci.collection_id = $2
+          AND EXISTS (
+            SELECT 1
+            FROM collections c
+            WHERE c.id = ci.collection_id
+              AND c.user_id = $3
+          )
+      `,
+      [item_id, collectionId, user.id],
+    );
+  } catch {
     return NextResponse.json(
       { error: 'Failed to remove item' },
       { status: 500 }
@@ -252,36 +316,40 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   }
 
   // Update collection totals
-  await updateCollectionTotals(supabase, collectionId, user.id);
+  await updateCollectionTotals(collectionId, user.id);
 
   return NextResponse.json({ success: true });
 }
 
 // Helper function to update collection totals
 async function updateCollectionTotals(
-  supabase: ReturnType<typeof createClient> extends Promise<infer T> ? T : never,
   collectionId: string,
   userId: string,
 ) {
-  const { data: itemsData } = await supabase
-    .from('collection_items')
-    .select('cost_basis, current_value')
-    .eq('collection_id', collectionId);
+  try {
+    const items = await dbQuery<CollectionItemRow>(`
+      SELECT ci.cost_basis::float8 AS cost_basis, ci.current_value::float8 AS current_value
+      FROM collection_items ci
+      JOIN collections c ON c.id = ci.collection_id
+      WHERE ci.collection_id = $1
+        AND c.user_id = $2
+    `, [collectionId, userId]);
 
-  const items = itemsData as CollectionItemRow[] | null;
-
-  if (items) {
     const totalCostBasis = items.reduce((sum, item) => sum + (item.cost_basis || 0), 0);
     const totalValue = items.reduce((sum, item) => sum + (item.current_value || item.cost_basis || 0), 0);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.from('collections') as any)
-      .update({
-        total_cost_basis: totalCostBasis,
-        total_value: totalValue,
-        items_count: items.length,
-      })
-      .eq('id', collectionId)
-      .eq('user_id', userId);
+    await dbQuery(
+      `
+        UPDATE collections
+        SET total_cost_basis = $1,
+            total_value = $2,
+            items_count = $3
+        WHERE id = $4
+          AND user_id = $5
+      `,
+      [totalCostBasis, totalValue, items.length, collectionId, userId],
+    );
+  } catch (error) {
+    console.error('Failed to update collection totals:', error);
   }
 }

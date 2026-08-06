@@ -1,7 +1,6 @@
 'use client';
 
 import * as React from 'react';
-import { createClient } from '@/lib/supabase/browser';
 import type { Tables } from '@/lib/supabase/database.types';
 
 type Collection = Tables<'collections'>;

@@ -3,7 +3,6 @@
  */
 
 import { dbQuery } from '@/lib/db/client';
-import { createServerClient } from '@/lib/supabase/client';
 import type { Tables } from '@/lib/supabase/database.types';
 import { lookupGraded, normalizeGrade } from '@/lib/pricing/grades';
 
@@ -219,41 +218,32 @@ export async function updatePortfolioValues(userId?: string): Promise<{
   updated: number;
   errors: string[];
 }> {
-  const supabase = createServerClient();
   const errors: string[] = [];
   let updated = 0;
 
   try {
-    let query = supabase
-      .from('collection_items')
-      .select(`
-        id,
-        card_id,
-        grade,
-        grading_company_id,
-        collections!inner (user_id)
-      `);
-
-    if (userId) {
-      query = query.eq('collections.user_id', userId);
-    }
-
-    const { data: items } = await query;
-
-    if (!items) return { updated: 0, errors };
-
-    const typedItems = items as CollectionItemForUpdate[];
+    const typedItems = await dbQuery<CollectionItemForUpdate>(`
+      SELECT
+        ci.id,
+        ci.card_id,
+        ci.grade,
+        ci.grading_company_id,
+        json_build_object('user_id', c.user_id) AS collections
+      FROM collection_items ci
+      JOIN collections c ON c.id = ci.collection_id
+      ${userId ? 'WHERE c.user_id = $1' : ''}
+    `, userId ? [userId] : []);
 
     for (const item of typedItems) {
       try {
         // Get the single current price row for this card.
-        const { data: currentPriceData } = await supabase
-          .from('card_price_current')
-          .select('headline_cents, graded_prices')
-          .eq('card_id', item.card_id)
-          .maybeSingle();
-
-        const currentPrice = currentPriceData as CurrentPriceRow | null;
+        const currentPriceRows = await dbQuery<CurrentPriceRow>(`
+          SELECT headline_cents, graded_prices
+          FROM card_price_current
+          WHERE card_id = $1
+          LIMIT 1
+        `, [item.card_id]);
+        const currentPrice = currentPriceRows[0] || null;
 
         if (!currentPrice) continue;
 
@@ -271,13 +261,29 @@ export async function updatePortfolioValues(userId?: string): Promise<{
         }
 
         if (currentValue !== null) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (supabase.from('collection_items') as any)
-            .update({
-              current_value: currentValue,
-              value_updated_at: new Date().toISOString(),
-            })
-            .eq('id', item.id);
+          const updateParams = [currentValue, new Date().toISOString(), item.id];
+          const updateFilter = userId
+            ? `
+                AND EXISTS (
+                  SELECT 1
+                  FROM collections c
+                  WHERE c.id = ci.collection_id
+                    AND c.user_id = $4
+                )
+              `
+            : '';
+          if (userId) updateParams.push(userId);
+
+          await dbQuery(
+            `
+              UPDATE collection_items ci
+              SET current_value = $1,
+                  value_updated_at = $2
+              WHERE ci.id = $3
+              ${updateFilter}
+            `,
+            updateParams,
+          );
 
           updated++;
         }

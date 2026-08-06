@@ -1,13 +1,23 @@
-import { createServerClient } from '@/lib/supabase/server';
 import { getAuthUser } from '@/lib/auth-server';
+import { dbQuery } from '@/lib/db/client';
 import { SourcesTable } from './sources-table';
 import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
-export default async function SourcesDashboardPage() {
-  const supabase = await createServerClient();
+interface SourceCard {
+  id: string;
+  slug: string;
+  name: string;
+  number: string;
+  snkrdunk_url: string | null;
+  pricecharting_url: string | null;
+  yuyutei_url: string | null;
+  price_cache_ttl: number | null;
+  curation_status: string | null;
+}
 
+export default async function SourcesDashboardPage() {
   // Basic sanity check for auth - in a real app you'd check roles
   const user = await getAuthUser();
   if (!user) {
@@ -15,14 +25,25 @@ export default async function SourcesDashboardPage() {
   }
 
   // Fetch top 200 expensive Japanese OP cards
-  const { data: cards, error } = await supabase
-    .from('cards')
-    .select('id, slug, name, number, snkrdunk_url, pricecharting_url, yuyutei_url, price_cache_ttl, curation_status')
-    .like('slug', 'op-%-ja')
-    .order('price_cache_ttl', { ascending: false, nullsFirst: false })
-    .limit(200);
-
-  if (error || !cards) {
+  let cards: SourceCard[];
+  try {
+    cards = await dbQuery<SourceCard>(`
+      SELECT
+        id,
+        slug,
+        name,
+        number,
+        snkrdunk_url,
+        pricecharting_url,
+        yuyutei_url,
+        price_cache_ttl,
+        curation_status
+      FROM cards
+      WHERE slug LIKE $1
+      ORDER BY price_cache_ttl DESC NULLS LAST
+      LIMIT $2
+    `, ['op-%-ja', 200]);
+  } catch {
     return <div className="p-8 text-red-500">Error loading cards from database.</div>;
   }
 

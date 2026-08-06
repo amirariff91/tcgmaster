@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
 import { getAuthUser } from '@/lib/auth-server';
+import { dbQuery } from '@/lib/db/client';
 import { lookupPSACert, PSACertData } from '@/lib/scrapers/psa';
 import { lookupBGSCert, BGSCertData } from '@/lib/scrapers/bgs';
 
@@ -51,7 +51,6 @@ function extractCertInfo(certData: PSACertData | BGSCertData) {
 // This is the "magic" feature - enter cert number, auto-populate everything
 export async function POST(request: NextRequest, { params }: RouteParams) {
   const { id: collectionId } = await params;
-  const supabase = await createClient();
   const user = await getAuthUser();
 
   if (!user) {
@@ -62,14 +61,19 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   }
 
   // Verify ownership
-  const { data: collectionData } = await supabase
-    .from('collections')
-    .select('user_id')
-    .eq('id', collectionId)
-    .eq('user_id', user.id)
-    .single();
-
-  const collection = collectionData as CollectionRow | null;
+  let collection: CollectionRow | null = null;
+  try {
+    const collectionRows = await dbQuery<CollectionRow>(`
+      SELECT user_id
+      FROM collections
+      WHERE id = $1
+        AND user_id = $2
+      LIMIT 1
+    `, [collectionId, user.id]);
+    collection = collectionRows[0] || null;
+  } catch {
+    collection = null;
+  }
 
   if (!collection || collection.user_id !== user.id) {
     return NextResponse.json(
@@ -95,22 +99,24 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   if (grading_company === 'psa') {
     certData = await lookupPSACert(cert_number);
     // Get PSA grading company ID
-    const { data: gcData } = await supabase
-      .from('grading_companies')
-      .select('id')
-      .eq('slug', 'psa')
-      .single();
-    const gc = gcData as GradingCompanyRow | null;
+    const gcRows = await dbQuery<GradingCompanyRow>(`
+      SELECT id
+      FROM grading_companies
+      WHERE slug = $1
+      LIMIT 1
+    `, ['psa']);
+    const gc = gcRows[0] || null;
     gradingCompanyId = gc?.id || null;
   } else if (grading_company === 'bgs') {
     certData = await lookupBGSCert(cert_number);
     // Get BGS grading company ID
-    const { data: gcData } = await supabase
-      .from('grading_companies')
-      .select('id')
-      .eq('slug', 'bgs')
-      .single();
-    const gc = gcData as GradingCompanyRow | null;
+    const gcRows = await dbQuery<GradingCompanyRow>(`
+      SELECT id
+      FROM grading_companies
+      WHERE slug = $1
+      LIMIT 1
+    `, ['bgs']);
+    const gc = gcRows[0] || null;
     gradingCompanyId = gc?.id || null;
   } else {
     return NextResponse.json(
@@ -135,13 +141,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   // Search for the card by name (fuzzy match)
   const cardName = certInfo.cardDescription;
   if (cardName) {
-    const { data: matchedCardsData } = await supabase
-      .from('cards')
-      .select('id, name, slug')
-      .ilike('name', `%${cardName}%`)
-      .limit(5);
-
-    const matchedCards = matchedCardsData as CardRow[] | null;
+    const matchedCards = await dbQuery<CardRow>(`
+      SELECT id, name, slug
+      FROM cards
+      WHERE name ILIKE $1
+      LIMIT 5
+    `, [`%${cardName}%`]);
 
     if (matchedCards && matchedCards.length > 0) {
       // Take the best match (first result)
@@ -159,43 +164,65 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   }
 
   // Store cert data in cert_history. cert_history is a shared catalog table, not
-  // user-owned, so end users hold no write grant on it — write as service_role.
-  // Safe: the caller is authenticated and collection ownership is verified above.
-  const { createServerClient } = await import('@/lib/supabase/client');
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (createServerClient().from('cert_history') as any).upsert({
+  // user-owned, so end users hold no write grant on it — the authenticated route
+  // writes it directly through the PostgreSQL connection.
+  const verifiedAt = new Date().toISOString();
+  await dbQuery(`
+    INSERT INTO cert_history (
+      cert_number,
+      grading_company_id,
+      card_id,
+      grade,
+      subgrades,
+      cert_date,
+      holder_generation,
+      is_reholder,
+      grade_history,
+      is_verified,
+      last_verified_at,
+      scraped_at
+    )
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $11)
+    ON CONFLICT (cert_number, grading_company_id) DO UPDATE SET
+      card_id = EXCLUDED.card_id,
+      grade = EXCLUDED.grade,
+      subgrades = EXCLUDED.subgrades,
+      cert_date = EXCLUDED.cert_date,
+      holder_generation = EXCLUDED.holder_generation,
+      is_reholder = EXCLUDED.is_reholder,
+      grade_history = EXCLUDED.grade_history,
+      is_verified = EXCLUDED.is_verified,
+      last_verified_at = EXCLUDED.last_verified_at,
+      scraped_at = EXCLUDED.scraped_at
+  `, [
     cert_number,
-    grading_company_id: gradingCompanyId!,
-    card_id: cardId,
-    grade: certInfo.grade,
-    subgrades: certInfo.subgrades || null,
-    cert_date: certInfo.certDate || null,
-    holder_generation: certInfo.holderGeneration || certInfo.holderType || null,
-    is_reholder: certInfo.isReholder || false,
-    grade_history: [],
-    is_verified: certData.isValid,
-    last_verified_at: new Date().toISOString(),
-    scraped_at: new Date().toISOString(),
-  }, {
-    onConflict: 'cert_number,grading_company_id',
-  });
+    gradingCompanyId,
+    cardId,
+    certInfo.grade,
+    certInfo.subgrades ? JSON.stringify(certInfo.subgrades) : null,
+    certInfo.certDate || null,
+    certInfo.holderGeneration || certInfo.holderType || null,
+    certInfo.isReholder || false,
+    JSON.stringify([]),
+    certData.isValid,
+    verifiedAt,
+  ]);
 
   // Get historical price at cert date for cost basis
   let costBasis: number | null = null;
   let costBasisSource = 'user_entered';
 
   if (cardId && certInfo.certDate) {
-    const { data: historicalPriceData } = await supabase
-      .from('price_history')
-      .select('price')
-      .eq('card_id', cardId)
-      .eq('grade', certInfo.grade.toString())
-      .lte('recorded_at', certInfo.certDate)
-      .order('recorded_at', { ascending: false })
-      .limit(1)
-      .single();
-
-    const historicalPrice = historicalPriceData as PriceHistoryRow | null;
+    const historicalPriceRows = await dbQuery<PriceHistoryRow>(`
+      SELECT price::float8 AS price
+      FROM price_history
+      WHERE card_id = $1
+        AND grade = $2
+        AND recorded_at <= $3
+      ORDER BY recorded_at DESC
+      LIMIT 1
+    `, [cardId, certInfo.grade.toString(), certInfo.certDate]);
+    const historicalPrice = historicalPriceRows[0] || null;
 
     if (historicalPrice) {
       costBasis = historicalPrice.price;
@@ -205,13 +232,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
   // If no historical price, try current price
   if (costBasis === null && cardId) {
-    const { data: currentPriceData } = await supabase
-      .from('card_price_current')
-      .select('graded_prices')
-      .eq('card_id', cardId)
-      .maybeSingle();
-
-    const currentPrice = currentPriceData as CurrentPriceRow | null;
+    const currentPriceRows = await dbQuery<CurrentPriceRow>(`
+      SELECT graded_prices
+      FROM card_price_current
+      WHERE card_id = $1
+      LIMIT 1
+    `, [cardId]);
+    const currentPrice = currentPriceRows[0] || null;
 
     if (currentPrice) {
       const gradedPrices = currentPrice.graded_prices;
@@ -224,48 +251,87 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   }
 
   // Create collection item
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: item, error } = await (supabase.from('collection_items') as any)
-    .insert({
-      collection_id: collectionId,
-      card_id: cardId,
-      grade: certInfo.grade.toString(),
-      grading_company_id: gradingCompanyId,
-      cert_number,
-      cost_basis: costBasis,
-      cost_basis_source: costBasisSource,
-      acquisition_date: certInfo.certDate,
-      acquisition_type: 'purchase',
-      current_value: costBasis,
-    })
-    .select(`
-      id,
-      card_id,
-      grade,
-      grading_company_id,
-      cert_number,
-      cost_basis,
-      cost_basis_source,
-      acquisition_date,
-      current_value,
-      created_at,
-      cards (
-        id,
-        name,
-        slug,
-        number,
-        image_url,
-        local_image_url,
-        sets (
-          id,
-          name,
-          slug
+  let item: Record<string, unknown> | undefined;
+  try {
+    const itemRows = await dbQuery<Record<string, unknown>>(`
+      WITH inserted AS (
+        INSERT INTO collection_items (
+          collection_id,
+          card_id,
+          grade,
+          grading_company_id,
+          cert_number,
+          cost_basis,
+          cost_basis_source,
+          acquisition_date,
+          acquisition_type,
+          current_value
         )
+        SELECT $1, $3, $4, $5, $6, $7, $8, $9, $10, $7
+        WHERE EXISTS (
+          SELECT 1
+          FROM collections
+          WHERE id = $1
+            AND user_id = $2
+        )
+        RETURNING
+          id,
+          card_id,
+          grade,
+          grading_company_id,
+          cert_number,
+          cost_basis::float8 AS cost_basis,
+          cost_basis_source,
+          acquisition_date,
+          current_value::float8 AS current_value,
+          created_at
       )
-    `)
-    .single();
+      SELECT
+        ci.id,
+        ci.card_id,
+        ci.grade,
+        ci.grading_company_id,
+        ci.cert_number,
+        ci.cost_basis,
+        ci.cost_basis_source,
+        ci.acquisition_date,
+        ci.current_value,
+        ci.created_at,
+        json_build_object(
+          'id', c.id,
+          'name', c.name,
+          'slug', c.slug,
+          'number', c.number,
+          'image_url', c.image_url,
+          'local_image_url', c.local_image_url,
+          'sets', json_build_object(
+            'id', s.id,
+            'name', s.name,
+            'slug', s.slug
+          )
+        ) AS cards
+      FROM inserted ci
+      JOIN cards c ON c.id = ci.card_id
+      JOIN sets s ON s.id = c.set_id
+      LIMIT 1
+    `, [
+      collectionId,
+      user.id,
+      cardId,
+      certInfo.grade.toString(),
+      gradingCompanyId,
+      cert_number,
+      costBasis,
+      costBasisSource,
+      certInfo.certDate,
+      'purchase',
+    ]);
+    item = itemRows[0];
 
-  if (error) {
+    if (!item) {
+      throw new Error('Collection item insert returned no row');
+    }
+  } catch (error) {
     console.error('Failed to add item from cert:', error);
     return NextResponse.json(
       { error: 'Failed to add item to collection' },

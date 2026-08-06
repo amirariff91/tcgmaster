@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
 import { getAuthUser } from '@/lib/auth-server';
+import { dbQuery } from '@/lib/db/client';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -103,148 +103,172 @@ interface GradingCompanyData {
   slug: string;
 }
 
-const OWNER_COLLECTION_SELECT = `
-  id,
-  user_id,
-  name,
-  type,
-  description,
-  is_public,
-  anonymous_share,
-  share_token,
-  total_value,
-  total_cost_basis,
-  items_count,
-  created_at,
-  updated_at,
-  collection_items (
-    id,
-    card_id,
-    variant_id,
-    grade,
-    grading_company_id,
-    cert_number,
-    cost_basis,
-    cost_basis_source,
-    fees,
-    acquisition_date,
-    acquisition_type,
-    acquisition_source,
-    notes,
-    current_value,
-    created_at,
-    cards (
-      id,
-      name,
-      slug,
-      number,
-      rarity,
-      image_url,
-      local_image_url,
-      sets (
-        id,
-        name,
-        slug,
-        games (
-          id,
-          name,
-          slug
-        )
-      )
-    ),
-    grading_companies (
-      id,
-      name,
-      slug
-    )
-  )
+const OWNER_COLLECTION_QUERY = `
+  SELECT
+    col.id,
+    col.user_id,
+    col.name,
+    col.type,
+    col.description,
+    col.is_public,
+    col.anonymous_share,
+    col.share_token,
+    col.total_value::float8 AS total_value,
+    col.total_cost_basis::float8 AS total_cost_basis,
+    col.items_count,
+    col.created_at,
+    col.updated_at,
+    COALESCE((
+      SELECT json_agg(json_build_object(
+        'id', ci.id,
+        'card_id', ci.card_id,
+        'variant_id', ci.variant_id,
+        'grade', ci.grade,
+        'grading_company_id', ci.grading_company_id,
+        'cert_number', ci.cert_number,
+        'cost_basis', ci.cost_basis::float8,
+        'cost_basis_source', ci.cost_basis_source,
+        'fees', ci.fees::float8,
+        'acquisition_date', ci.acquisition_date,
+        'acquisition_type', ci.acquisition_type,
+        'acquisition_source', ci.acquisition_source,
+        'notes', ci.notes,
+        'current_value', ci.current_value::float8,
+        'created_at', ci.created_at,
+        'cards', CASE WHEN c.id IS NULL THEN NULL ELSE json_build_object(
+          'id', c.id,
+          'name', c.name,
+          'slug', c.slug,
+          'number', c.number,
+          'rarity', c.rarity,
+          'image_url', c.image_url,
+          'local_image_url', c.local_image_url,
+          'sets', CASE WHEN s.id IS NULL THEN NULL ELSE json_build_object(
+            'id', s.id,
+            'name', s.name,
+            'slug', s.slug,
+            'games', CASE WHEN g.id IS NULL THEN NULL ELSE json_build_object(
+              'id', g.id,
+              'name', g.name,
+              'slug', g.slug
+            ) END
+          ) END
+        ) END,
+        'grading_companies', CASE WHEN gc.id IS NULL THEN NULL ELSE json_build_object(
+          'id', gc.id,
+          'name', gc.name,
+          'slug', gc.slug
+        ) END
+      ) ORDER BY ci.created_at, ci.id)
+      FROM collection_items ci
+      LEFT JOIN cards c ON c.id = ci.card_id
+      LEFT JOIN sets s ON s.id = c.set_id
+      LEFT JOIN games g ON g.id = s.game_id
+      LEFT JOIN grading_companies gc ON gc.id = ci.grading_company_id
+      WHERE ci.collection_id = col.id
+    ), '[]'::json) AS collection_items
+  FROM collections col
+  WHERE col.id = $1
+    AND col.user_id = $2
+  LIMIT 1
 `;
 
-const PUBLIC_COLLECTION_SELECT = `
-  id,
-  name,
-  type,
-  description,
-  is_public,
-  total_value,
-  items_count,
-  created_at,
-  updated_at,
-  collection_items (
-    id,
-    card_id,
-    variant_id,
-    grade,
-    grading_company_id,
-    cert_number,
-    current_value,
-    created_at,
-    cards (
-      id,
-      name,
-      slug,
-      number,
-      rarity,
-      image_url,
-      local_image_url,
-      sets (
-        id,
-        name,
-        slug,
-        games (
-          id,
-          name,
-          slug
-        )
-      )
-    ),
-    grading_companies (
-      id,
-      name,
-      slug
-    )
-  )
+const PUBLIC_COLLECTION_QUERY = `
+  SELECT
+    col.id,
+    col.name,
+    col.type,
+    col.description,
+    col.is_public,
+    col.total_value::float8 AS total_value,
+    col.items_count,
+    col.created_at,
+    col.updated_at,
+    COALESCE((
+      SELECT json_agg(json_build_object(
+        'id', ci.id,
+        'card_id', ci.card_id,
+        'variant_id', ci.variant_id,
+        'grade', ci.grade,
+        'grading_company_id', ci.grading_company_id,
+        'cert_number', ci.cert_number,
+        'current_value', ci.current_value::float8,
+        'created_at', ci.created_at,
+        'cards', CASE WHEN c.id IS NULL THEN NULL ELSE json_build_object(
+          'id', c.id,
+          'name', c.name,
+          'slug', c.slug,
+          'number', c.number,
+          'rarity', c.rarity,
+          'image_url', c.image_url,
+          'local_image_url', c.local_image_url,
+          'sets', CASE WHEN s.id IS NULL THEN NULL ELSE json_build_object(
+            'id', s.id,
+            'name', s.name,
+            'slug', s.slug,
+            'games', CASE WHEN g.id IS NULL THEN NULL ELSE json_build_object(
+              'id', g.id,
+              'name', g.name,
+              'slug', g.slug
+            ) END
+          ) END
+        ) END,
+        'grading_companies', CASE WHEN gc.id IS NULL THEN NULL ELSE json_build_object(
+          'id', gc.id,
+          'name', gc.name,
+          'slug', gc.slug
+        ) END
+      ) ORDER BY ci.created_at, ci.id)
+      FROM collection_items ci
+      LEFT JOIN cards c ON c.id = ci.card_id
+      LEFT JOIN sets s ON s.id = c.set_id
+      LEFT JOIN games g ON g.id = s.game_id
+      LEFT JOIN grading_companies gc ON gc.id = ci.grading_company_id
+      WHERE ci.collection_id = col.id
+    ), '[]'::json) AS collection_items
+  FROM collections col
+  WHERE col.id = $1
+    AND col.is_public = true
+  LIMIT 1
 `;
 
 // GET /api/collections/[id] - Get a specific collection with items
 export async function GET(request: NextRequest, { params }: RouteParams) {
   const { id } = await params;
-  const supabase = await createClient();
   const user = await getAuthUser();
 
   // An owner probe is enough to select the full private projection. Every
   // non-owner, including a signed-in public viewer, uses the safe public path.
   let isOwner = false;
   if (user) {
-    const { data: ownerData, error: ownerError } = await supabase
-      .from('collections')
-      .select('id')
-      .eq('id', id)
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    if (ownerError) {
+    try {
+      const ownerRows = await dbQuery<{ id: string }>(`
+        SELECT id
+        FROM collections
+        WHERE id = $1
+          AND user_id = $2
+        LIMIT 1
+      `, [id, user.id]);
+      isOwner = ownerRows.length > 0;
+    } catch {
       return NextResponse.json(
         { error: 'Collection not found' },
         { status: 404 }
       );
     }
-
-    isOwner = Boolean(ownerData);
   }
 
   if (isOwner && user) {
     // Owners retain the full private projection, including cost-basis fields.
-    const { data: collectionData, error } = await supabase
-      .from('collections')
-      .select(OWNER_COLLECTION_SELECT)
-      .eq('id', id)
-      .eq('user_id', user.id)
-      .single();
+    let collection: CollectionWithItems | null = null;
+    try {
+      const rows = await dbQuery<CollectionWithItems>(OWNER_COLLECTION_QUERY, [id, user.id]);
+      collection = rows[0] || null;
+    } catch {
+      collection = null;
+    }
 
-    const collection = collectionData as CollectionWithItems | null;
-
-    if (error || !collection) {
+    if (!collection) {
       return NextResponse.json(
         { error: 'Collection not found' },
         { status: 404 }
@@ -254,21 +278,15 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ data: collection });
   }
 
-  // Option (a): use the server-only service-role client for the public path,
-  // with an explicit safe projection. The service role is never exposed to the
-  // browser, and the migration also limits direct anon Data API reads.
-  const { createServerClient } = await import('@/lib/supabase/client');
-  const publicSupabase = createServerClient();
-  const { data: publicCollectionData, error: publicError } = await publicSupabase
-    .from('collections')
-    .select(PUBLIC_COLLECTION_SELECT)
-    .eq('id', id)
-    .eq('is_public', true)
-    .single();
+  let publicCollection: PublicCollectionWithItems | null = null;
+  try {
+    const rows = await dbQuery<PublicCollectionWithItems>(PUBLIC_COLLECTION_QUERY, [id]);
+    publicCollection = rows[0] || null;
+  } catch {
+    publicCollection = null;
+  }
 
-  const publicCollection = publicCollectionData as PublicCollectionWithItems | null;
-
-  if (publicError || !publicCollection) {
+  if (!publicCollection) {
     return NextResponse.json(
       { error: 'Collection not found' },
       { status: 404 }
@@ -281,7 +299,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 // PATCH /api/collections/[id] - Update a collection
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const { id } = await params;
-  const supabase = await createClient();
   const user = await getAuthUser();
 
   if (!user) {
@@ -292,14 +309,19 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   }
 
   // Verify ownership
-  const { data: existingData } = await supabase
-    .from('collections')
-    .select('user_id')
-    .eq('id', id)
-    .eq('user_id', user.id)
-    .single();
-
-  const existing = existingData as CollectionOwnerRow | null;
+  let existing: CollectionOwnerRow | null = null;
+  try {
+    const existingRows = await dbQuery<CollectionOwnerRow>(`
+      SELECT user_id
+      FROM collections
+      WHERE id = $1
+        AND user_id = $2
+      LIMIT 1
+    `, [id, user.id]);
+    existing = existingRows[0] || null;
+  } catch {
+    existing = null;
+  }
 
   if (!existing || existing.user_id !== user.id) {
     return NextResponse.json(
@@ -325,28 +347,51 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     );
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: collection, error } = await (supabase.from('collections') as any)
-    .update(updates)
-    .eq('id', id)
-    .eq('user_id', user.id)
-    .select()
-    .single();
+  const updateFields = Object.keys(updates);
+  const updateValues = updateFields.map((field) => updates[field]);
+  const setClause = updateFields
+    .map((field, index) => `${field} = $${index + 1}`)
+    .join(', ');
 
-  if (error) {
+  try {
+    const rows = await dbQuery<CollectionWithItems>(`
+      UPDATE collections
+      SET ${setClause}
+      WHERE id = $${updateValues.length + 1}
+        AND user_id = $${updateValues.length + 2}
+      RETURNING
+        id,
+        user_id,
+        name,
+        type,
+        description,
+        is_public,
+        anonymous_share,
+        share_token,
+        total_value::float8 AS total_value,
+        total_cost_basis::float8 AS total_cost_basis,
+        items_count,
+        created_at,
+        updated_at
+    `, [...updateValues, id, user.id]);
+    const collection = rows[0];
+
+    if (!collection) {
+      throw new Error('Collection update returned no row');
+    }
+
+    return NextResponse.json({ data: collection });
+  } catch {
     return NextResponse.json(
       { error: 'Failed to update collection' },
       { status: 500 }
     );
   }
-
-  return NextResponse.json({ data: collection });
 }
 
 // DELETE /api/collections/[id] - Delete a collection
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   const { id } = await params;
-  const supabase = await createClient();
   const user = await getAuthUser();
 
   if (!user) {
@@ -357,14 +402,19 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   }
 
   // Verify ownership
-  const { data: existingDeleteData } = await supabase
-    .from('collections')
-    .select('user_id')
-    .eq('id', id)
-    .eq('user_id', user.id)
-    .single();
-
-  const existingDelete = existingDeleteData as CollectionOwnerRow | null;
+  let existingDelete: CollectionOwnerRow | null = null;
+  try {
+    const existingDeleteRows = await dbQuery<CollectionOwnerRow>(`
+      SELECT user_id
+      FROM collections
+      WHERE id = $1
+        AND user_id = $2
+      LIMIT 1
+    `, [id, user.id]);
+    existingDelete = existingDeleteRows[0] || null;
+  } catch {
+    existingDelete = null;
+  }
 
   if (!existingDelete || existingDelete.user_id !== user.id) {
     return NextResponse.json(
@@ -374,13 +424,12 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   }
 
   // Delete collection (cascade will delete items)
-  const { error } = await supabase
-    .from('collections')
-    .delete()
-    .eq('id', id)
-    .eq('user_id', user.id);
-
-  if (error) {
+  try {
+    await dbQuery(
+      `DELETE FROM collections WHERE id = $1 AND user_id = $2`,
+      [id, user.id],
+    );
+  } catch {
     return NextResponse.json(
       { error: 'Failed to delete collection' },
       { status: 500 }

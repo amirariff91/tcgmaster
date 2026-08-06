@@ -4,7 +4,6 @@
  */
 
 import { dbQuery } from '@/lib/db/client';
-import { createServerClient } from '@/lib/supabase/client';
 import { redis } from '@/lib/redis/client';
 
 // Type definitions for Postgres query results
@@ -462,7 +461,6 @@ export async function updateAllTrendingScores(): Promise<{
   updated: number;
   errors: string[];
 }> {
-  const supabase = createServerClient();
   const errors: string[] = [];
   let eligible = 0;
   let processed = 0;
@@ -573,15 +571,44 @@ export async function updateAllTrendingScores(): Promise<{
               };
             });
 
-            // Generated database types predate the confirmed nullable columns.
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const { error: upsertError } = await (supabase.from('trending_scores') as any)
-              .upsert(scoreRows, { onConflict: 'card_id' });
+            const scoreParams = scoreRows.flatMap((row) => [
+              row.card_id,
+              row.price_change_24h,
+              row.volume_24h,
+              row.search_count_24h,
+              row.social_mentions_24h,
+              row.combined_score,
+              row.calculated_at,
+            ]);
+            const scorePlaceholders = scoreRows
+              .map((_, rowIndex) => {
+                const offset = rowIndex * 7;
+                return `(${Array.from({ length: 7 }, (_, columnIndex) => `$${offset + columnIndex + 1}`).join(', ')})`;
+              })
+              .join(', ');
 
-            if (upsertError) {
-              errors.push(`Batch ${absoluteBatchIndex} upsert: ${upsertError.message}`);
-              return { processed: batch.length, updated: 0 };
-            }
+            await dbQuery(
+              `
+                INSERT INTO trending_scores (
+                  card_id,
+                  price_change_24h,
+                  volume_24h,
+                  search_count_24h,
+                  social_mentions_24h,
+                  combined_score,
+                  calculated_at
+                )
+                VALUES ${scorePlaceholders}
+                ON CONFLICT (card_id) DO UPDATE SET
+                  price_change_24h = EXCLUDED.price_change_24h,
+                  volume_24h = EXCLUDED.volume_24h,
+                  search_count_24h = EXCLUDED.search_count_24h,
+                  social_mentions_24h = EXCLUDED.social_mentions_24h,
+                  combined_score = EXCLUDED.combined_score,
+                  calculated_at = EXCLUDED.calculated_at
+              `,
+              scoreParams,
+            );
 
             return { processed: batch.length, updated: batch.length };
           } catch (error) {
