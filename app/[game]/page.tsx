@@ -80,7 +80,7 @@ function getHeadlinePrice(headlineCents: unknown): number | null {
 
 async function getAllSets(gameId: string): Promise<SetRow[]> {
   return dbQuery<SetRow>(`
-    SELECT id, name, slug, release_date, card_count
+    SELECT id, name, slug, release_date::text AS release_date, card_count
     FROM sets
     WHERE game_id = $1
     ORDER BY priority DESC NULLS LAST, name, id
