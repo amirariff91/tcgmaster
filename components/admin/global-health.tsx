@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { dbQuery } from '@/lib/db/client';
 import { Database, Trophy, Sparkles, Image as ImageIcon, BarChart3 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import fs from 'fs';
@@ -7,30 +7,60 @@ import path from 'path';
 const STALE_PRICE_CUTOFF = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
 export async function GlobalPlatformHealth() {
-  const supabase = await createClient();
+  type HealthRow = {
+    total_cards: number;
+    current_prices: number;
+    cards_with_artist: number;
+    cards_with_unknown_artist: number;
+    total_tourneys: number;
+    total_decks: number;
+    stale_prices_count: number;
+    latest_tourney_created_at: string | null;
+    total_en_variants: number;
+  };
 
-  const { count: totalCards } = await supabase.from('cards').select('*', { count: 'estimated', head: true });
-  const { count: currentPrices } = await supabase.from('card_price_current').select('*', { count: 'estimated', head: true });
-  const { count: cardsWithArtist } = await supabase.from('cards').select('*', { count: 'estimated', head: true }).not('artist', 'is', null).neq('artist', 'Unknown');
-  const { count: cardsWithUnknownArtist } = await supabase.from('cards').select('*', { count: 'estimated', head: true }).eq('artist', 'Unknown');
-  const { count: totalTourneys } = await supabase.from('tournaments').select('*', { count: 'estimated', head: true });
-  const { count: totalDecks } = await supabase.from('decks').select('*', { count: 'estimated', head: true });
+  let health: HealthRow = {
+    total_cards: 0,
+    current_prices: 0,
+    cards_with_artist: 0,
+    cards_with_unknown_artist: 0,
+    total_tourneys: 0,
+    total_decks: 0,
+    stale_prices_count: 0,
+    latest_tourney_created_at: null,
+    total_en_variants: 0,
+  };
 
-  const { count: stalePricesCount } = await supabase.from('card_price_current')
-    .select('*', { count: 'estimated', head: true })
-    .lt('computed_at', STALE_PRICE_CUTOFF);
+  try {
+    health = (await dbQuery<HealthRow>(`
+      SELECT
+        (SELECT COUNT(*)::int FROM cards) AS total_cards,
+        (SELECT COUNT(*)::int FROM card_price_current) AS current_prices,
+        (SELECT COUNT(*)::int FROM cards WHERE artist IS NOT NULL AND artist <> 'Unknown') AS cards_with_artist,
+        (SELECT COUNT(*)::int FROM cards WHERE artist = 'Unknown') AS cards_with_unknown_artist,
+        (SELECT COUNT(*)::int FROM tournaments) AS total_tourneys,
+        (SELECT COUNT(*)::int FROM decks) AS total_decks,
+        (SELECT COUNT(*)::int FROM card_price_current WHERE computed_at < $1) AS stale_prices_count,
+        (SELECT created_at FROM tournaments ORDER BY created_at DESC LIMIT 1) AS latest_tourney_created_at,
+        (SELECT COUNT(*)::int FROM cards WHERE slug LIKE 'op-%_%' AND slug NOT LIKE '%-ja') AS total_en_variants
+    `, [STALE_PRICE_CUTOFF]))[0] || health;
+  } catch (error) {
+    console.error('Failed to load platform health:', error);
+  }
 
-  const { data: latestTourney } = await supabase.from('tournaments').select('created_at').order('created_at', { ascending: false }).limit(1).single();
-  const latestTourneyDate = latestTourney?.created_at ? new Date(latestTourney.created_at) : null;
+  const totalCards = health.total_cards;
+  const currentPrices = health.current_prices;
+  const cardsWithArtist = health.cards_with_artist;
+  const cardsWithUnknownArtist = health.cards_with_unknown_artist;
+  const totalTourneys = health.total_tourneys;
+  const totalDecks = health.total_decks;
+  const stalePricesCount = health.stale_prices_count;
+  const latestTourneyDate = health.latest_tourney_created_at ? new Date(health.latest_tourney_created_at) : null;
 
   const priceCoverage = totalCards && totalCards > 0 ? Math.round(((currentPrices || 0) / totalCards) * 100) : 0;
   const artistCoverage = totalCards && totalCards > 0 ? Math.round(((cardsWithArtist || 0) / totalCards) * 100) : 0;
 
-  const { count: totalEnVariants } = await supabase
-    .from('cards')
-    .select('*', { count: 'estimated', head: true })
-    .like('slug', 'op-%_%')
-    .not('slug', 'like', '%-ja');
+  const totalEnVariants = health.total_en_variants;
 
   let mappedVariantsCount = 0;
   let skippedVariantsCount = 0;

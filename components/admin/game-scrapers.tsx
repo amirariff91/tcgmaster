@@ -1,80 +1,79 @@
-import { createClient } from '@/lib/supabase/server';
+import { dbQuery } from '@/lib/db/client';
 import { Bot } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 export async function GameScrapers() {
-  const supabase = await createClient();
+  type DiagnosticRow = {
+    id: string;
+    name: string;
+    slug: string;
+    total_cards: number;
+    snkrdunk_configured: number;
+    yuyutei_configured: number;
+    cardrush_configured: number;
+    tcgplayer_configured: number;
+    heartbeats: Array<{ source: string; date: string | null; isHealthy: boolean }>;
+  };
 
-  const { data: gamesData } = await supabase.from('games').select('id, name, slug');
-  const games = gamesData as { id: string; name: string; slug: string }[] | null;
+  let diagnostics: DiagnosticRow[] = [];
+  try {
+    diagnostics = await dbQuery<DiagnosticRow>(`
+      SELECT
+        g.id,
+        g.name,
+        g.slug,
+        COUNT(c.id)::int AS total_cards,
+        COUNT(c.id) FILTER (WHERE c.snkrdunk_url IS NOT NULL)::int AS snkrdunk_configured,
+        COUNT(c.id) FILTER (WHERE c.yuyutei_url IS NOT NULL)::int AS yuyutei_configured,
+        COUNT(c.id) FILTER (WHERE c.cardrush_url IS NOT NULL)::int AS cardrush_configured,
+        COUNT(c.id) FILTER (WHERE c.tcg_player_id IS NOT NULL)::int AS tcgplayer_configured,
+        COALESCE((
+          SELECT json_agg(json_build_object(
+            'source', sources.source_name,
+            'date', latest.recorded_at,
+            'isHealthy', COALESCE(latest.recorded_at >= NOW() - INTERVAL '24 hours', false)
+          ) ORDER BY sources.source_name)
+          FROM (VALUES
+            ('snkrdunk'::text),
+            ('yuyutei'::text),
+            ('tcgplayer'::text),
+            ('cardrush'::text)
+          ) AS sources(source_name)
+          LEFT JOIN LATERAL (
+            SELECT ph.recorded_at
+            FROM price_history ph
+            WHERE ph.source::text = sources.source_name
+            ORDER BY ph.recorded_at DESC NULLS LAST
+            LIMIT 1
+          ) latest ON true
+        ), '[]'::json) AS heartbeats
+      FROM games g
+      LEFT JOIN sets s ON s.game_id = g.id
+      LEFT JOIN cards c ON c.set_id = s.id
+      GROUP BY g.id, g.name, g.slug
+      ORDER BY g.name
+    `);
+  } catch (error) {
+    console.error('Failed to load scraper diagnostics:', error);
+  }
 
-  const gameDiagnostics = games ? await Promise.all(games.map(async (game) => {
-    const { count: gameTotalCards } = await supabase
-      .from('cards')
-      .select('*, sets!inner(game_id)', { count: 'estimated', head: true })
-      .eq('sets.game_id', game.id);
-
-    // Configured Cards per game
-    const { count: snkrdunkConfigured } = await supabase
-      .from('cards')
-      .select('*, sets!inner(game_id)', { count: 'estimated', head: true })
-      .eq('sets.game_id', game.id)
-      .not('snkrdunk_url', 'is', null);
-
-    const { count: yuyuteiConfigured } = await supabase
-      .from('cards')
-      .select('*, sets!inner(game_id)', { count: 'estimated', head: true })
-      .eq('sets.game_id', game.id)
-      .not('yuyutei_url', 'is', null);
-
-    const { count: cardrushConfigured } = await supabase
-      .from('cards')
-      .select('*, sets!inner(game_id)', { count: 'estimated', head: true })
-      .eq('sets.game_id', game.id)
-      .not('cardrush_url', 'is', null);
-
-    const { count: tcgPlayerConfigured } = await supabase
-      .from('cards')
-      .select('*, sets!inner(game_id)', { count: 'estimated', head: true })
-      .eq('sets.game_id', game.id)
-      .not('tcg_player_id', 'is', null);
-
-    // Fast Single-Record Heartbeat Check (No Join)
-    const sources = ['snkrdunk', 'yuyutei', 'tcgplayer', 'cardrush'] as const;
-    const heartbeats = await Promise.all(sources.map(async (source) => {
-      const { data: latestRecord } = await supabase
-        .from('price_history')
-        .select('recorded_at')
-        .eq('source', source)
-        .order('recorded_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      const dateStr = (latestRecord as { recorded_at: string } | null)?.recorded_at || null;
-      const date = dateStr ? new Date(dateStr) : null;
-      const isHealthy = date ? (new Date().getTime() - date.getTime()) < 1000 * 60 * 60 * 24 : false; // < 24h
-
-      return {
-        source,
-        date,
-        isHealthy,
-      };
-    }));
-
-    return {
-      id: game.id,
-      name: game.name,
-      slug: game.slug,
-      totalCards: gameTotalCards || 0,
-      config: {
-        snkrdunk: snkrdunkConfigured || 0,
-        yuyutei: yuyuteiConfigured || 0,
-        cardrush: cardrushConfigured || 0,
-        tcgplayer: tcgPlayerConfigured || 0,
-      },
-      heartbeats
-    };
-  })) : [];
+  const gameDiagnostics = diagnostics.map((game) => ({
+    id: game.id,
+    name: game.name,
+    slug: game.slug,
+    totalCards: game.total_cards || 0,
+    config: {
+      snkrdunk: game.snkrdunk_configured || 0,
+      yuyutei: game.yuyutei_configured || 0,
+      cardrush: game.cardrush_configured || 0,
+      tcgplayer: game.tcgplayer_configured || 0,
+    },
+    heartbeats: (game.heartbeats || []).map((heartbeat) => ({
+      source: heartbeat.source,
+      date: heartbeat.date ? new Date(heartbeat.date) : null,
+      isHealthy: heartbeat.isHealthy,
+    })),
+  }));
 
   return (
     <div className="space-y-12">

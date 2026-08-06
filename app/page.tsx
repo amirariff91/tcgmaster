@@ -4,8 +4,7 @@ import { HeroCardsAnimation } from '@/components/home/hero-cards-animation';
 import { MarketMovers, type MarketMover } from '@/components/home/market-movers';
 import { CategoryCards, type Category } from '@/components/home/category-cards';
 import { CardsMarquee } from '@/components/home/cards-marquee';
-// Cookie-free anon client keeps this route statically renderable (see card page).
-import { createPublicClient } from '@/lib/supabase/client';
+import { dbQuery } from '@/lib/db/client';
 
 // Mock data (same as before)
 const marketMovers: { gainers: MarketMover[]; losers: MarketMover[] } = {
@@ -32,18 +31,37 @@ const categories: Category[] = [
 export const revalidate = 3600;
 
 export default async function HomePage() {
-  const supabase = createPublicClient();
-
   // Database-level scan for all high-end hits across the entire table
-  const { data: rawCards } = await supabase
-    .from('cards')
-    .select('id, name, image_url, local_image_url, slug, rarity')
-    .not('image_url', 'is', null)
-    .or('rarity.ilike.%sp%,rarity.ilike.%sec%,rarity.ilike.%scr%,name.ilike.%manga%,name.ilike.%tournament%,name.ilike.%wanted%')
-    .limit(500);
+  let rawCards: Array<{
+    id: string;
+    name: string;
+    image_url: string | null;
+    local_image_url: string | null;
+    slug: string;
+    rarity: string | null;
+  }> = [];
+
+  try {
+    rawCards = await dbQuery(`
+      SELECT id, name, image_url, local_image_url, slug, rarity
+      FROM cards
+      WHERE image_url IS NOT NULL
+        AND (
+          rarity ILIKE $1
+          OR rarity ILIKE $2
+          OR rarity ILIKE $3
+          OR name ILIKE $4
+          OR name ILIKE $5
+          OR name ILIKE $6
+        )
+      LIMIT 500
+    `, ['%sp%', '%sec%', '%scr%', '%manga%', '%tournament%', '%wanted%']) as typeof rawCards;
+  } catch (error) {
+    console.error('Failed to load home cards:', error);
+  }
 
   // In-memory filter to strictly enforce the OP and DBFW rules
-  const filteredCards = (rawCards || []).filter((card: any) => {
+  const filteredCards = rawCards.filter((card) => {
     const slug = card.slug || '';
     const rarity = (card.rarity || '').toLowerCase();
     const name = (card.name || '').toLowerCase();

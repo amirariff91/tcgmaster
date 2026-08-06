@@ -10,10 +10,7 @@ import { CollectrChart } from '@/components/charts/collectr-chart';
 import { PriceFreshness } from '@/components/card/price-freshness';
 import { formatPrice, formatNumber, getRarityDisplay, formatDate, formatDisplayNumber, formatSetName, splitCardName } from '@/lib/utils';
 import { getCardWithPrices } from '@/lib/ppt/service';
-// Public catalog data only, so use the cookie-free anon client. Reading cookies()
-// (which lib/supabase/server does) opts the route into dynamic rendering and
-// silently defeats `revalidate` — that is why card pages served no-store.
-import { createServerClient, createPublicClient } from '@/lib/supabase/client';
+import { dbQuery } from '@/lib/db/client';
 import { calculatePriceChange24h } from '@/lib/pricing/trending';
 import { latestRecordedAt, priceKindLabel, type PriceKind } from '@/lib/pricing/price-labels';
 
@@ -111,102 +108,120 @@ interface CardData {
 }
 
 async function getCardData(gameSlug: string, setSlug: string, cardSlug: string): Promise<CardData | null> {
-  const supabase = createServerClient();
-
-  const { data: card, error } = await supabase
-    .from('cards')
-    .select(`
-      id,
-      name,
-      slug,
-      number,
-      rarity,
-      artist,
-      description,
-      image_url,
-      local_image_url,
-      tcg_player_id,
-      price_cache_ttl,
-      print_run_info,
-      tcgplayer_url,
-      snkrdunk_url,
-      yuyutei_url,
-      cardrush_url,
-      sets!inner (
-        id,
-        name,
-        slug,
-        release_date,
-        card_count,
-        games!inner (
-          id,
-          name,
-          slug,
-          display_name
+  const rows = await dbQuery(`
+    SELECT
+      c.id,
+      c.name,
+      c.slug,
+      c.number,
+      c.rarity,
+      c.artist,
+      c.description,
+      c.image_url,
+      c.local_image_url,
+      c.tcg_player_id,
+      c.price_cache_ttl,
+      c.print_run_info,
+      c.tcgplayer_url,
+      c.snkrdunk_url,
+      c.yuyutei_url,
+      c.cardrush_url,
+      json_build_object(
+        'id', s.id,
+        'name', s.name,
+        'slug', s.slug,
+        'release_date', s.release_date,
+        'card_count', s.card_count,
+        'games', json_build_object(
+          'id', g.id,
+          'name', g.name,
+          'slug', g.slug,
+          'display_name', g.display_name
         )
-      ),
-      card_variants (
-        id,
-        variant_type,
-        name,
-        slug
-      ),
-      card_price_current (
-        source_prices,
-        graded_prices,
-        headline_cents,
-        headline_source,
-        headline_kind,
-        headline_currency,
-        headline_grade
-      ),
-      price_history (
-        id,
-        card_id,
-        variant_id,
-        grading_company_id,
-        grade,
-        price,
-        recorded_at,
-        source
-      ),
-      card_source_mapping (
-        source,
-        external_url
-      ),
-      population_reports (
-        grade,
-        count,
-        grading_company_id
-      )
-    `)
-    .eq('slug', cardSlug)
-    .eq('sets.slug', setSlug)
-    .eq('sets.games.slug', gameSlug)
-    .single();
+      ) AS sets,
+      COALESCE((
+        SELECT json_agg(json_build_object(
+          'id', cv.id,
+          'variant_type', cv.variant_type,
+          'name', cv.name,
+          'slug', cv.slug
+        ) ORDER BY cv.id)
+        FROM card_variants cv
+        WHERE cv.card_id = c.id
+      ), '[]'::json) AS card_variants,
+      (
+        SELECT json_build_object(
+          'source_prices', cp.source_prices,
+          'graded_prices', cp.graded_prices,
+          'headline_cents', cp.headline_cents,
+          'headline_source', cp.headline_source,
+          'headline_kind', cp.headline_kind,
+          'headline_currency', cp.headline_currency,
+          'headline_grade', cp.headline_grade
+        )
+        FROM card_price_current cp
+        WHERE cp.card_id = c.id
+      ) AS card_price_current,
+      COALESCE((
+        SELECT json_agg(json_build_object(
+          'id', ph.id,
+          'card_id', ph.card_id,
+          'variant_id', ph.variant_id,
+          'grading_company_id', ph.grading_company_id,
+          'grade', ph.grade,
+          'price', ph.price::float8,
+          'recorded_at', ph.recorded_at,
+          'source', ph.source
+        ) ORDER BY ph.recorded_at)
+        FROM price_history ph
+        WHERE ph.card_id = c.id
+      ), '[]'::json) AS price_history,
+      COALESCE((
+        SELECT json_agg(json_build_object(
+          'source', csm.source,
+          'external_url', csm.external_url
+        ) ORDER BY csm.source)
+        FROM card_source_mapping csm
+        WHERE csm.card_id = c.id
+      ), '[]'::json) AS card_source_mapping,
+      COALESCE((
+        SELECT json_agg(json_build_object(
+          'grade', pr.grade,
+          'count', pr.count,
+          'grading_company_id', pr.grading_company_id
+        ) ORDER BY pr.grade)
+        FROM population_reports pr
+        WHERE pr.card_id = c.id
+      ), '[]'::json) AS population_reports
+    FROM cards c
+    JOIN sets s ON s.id = c.set_id
+    JOIN games g ON g.id = s.game_id
+    WHERE c.slug = $1
+      AND s.slug = $2
+      AND g.slug = $3
+    LIMIT 1
+  `, [cardSlug, setSlug, gameSlug]) as CardData[];
 
-  if (error || !card) {
-    return null;
-  }
-
-  return card as unknown as CardData;
+  return rows[0] || null;
 }
 
 // A handful of siblings from the same set, so the card page is not a dead end.
 async function getRelatedCards(setId: string, excludeCardId: string): Promise<RelatedCard[]> {
-  const supabase = createPublicClient();
+  try {
+    const rows = await dbQuery<RelatedCard>(`
+      SELECT id, slug, name, number, rarity, image_url, local_image_url, price_cache_ttl
+      FROM cards
+      WHERE set_id = $1
+        AND id <> $2
+      ORDER BY price_cache_ttl DESC NULLS LAST
+      LIMIT 6
+    `, [setId, excludeCardId]);
 
-  const { data } = await supabase
-    .from('cards')
-    .select('id, slug, name, number, rarity, image_url, local_image_url, price_cache_ttl')
-    .eq('set_id', setId)
-    .neq('id', excludeCardId)
-    // price_cache_ttl holds the featured price in cents, so this surfaces the
-    // set's most valuable cards rather than an arbitrary slice.
-    .order('price_cache_ttl', { ascending: false, nullsFirst: false })
-    .limit(6);
-
-  return (data ?? []) as unknown as RelatedCard[];
+    return rows;
+  } catch (e) {
+    console.error('Failed to fetch related cards:', e);
+    return [];
+  }
 }
 
 // Retired `one-piece-<code>` slugs (deduped 2026-07-22, merged into `op-<code>`) resolve
@@ -218,18 +233,19 @@ async function resolveRetiredOnePieceSlug(
   if (!cardSlug.startsWith('one-piece-')) return null;
   const winnerSlug = `op-${cardSlug.slice('one-piece-'.length).toLowerCase()}`;
 
-  const supabase = createPublicClient();
-  const { data } = await supabase
-    .from('cards')
-    .select('slug, sets!inner ( slug, games!inner ( slug ) )')
-    .eq('slug', winnerSlug)
-    .eq('sets.games.slug', gameSlug)
-    .single();
+  const rows = await dbQuery<{ slug: string; set_slug: string }>(`
+    SELECT c.slug, s.slug AS set_slug
+    FROM cards c
+    JOIN sets s ON s.id = c.set_id
+    JOIN games g ON g.id = s.game_id
+    WHERE c.slug = $1
+      AND g.slug = $2
+    LIMIT 1
+  `, [winnerSlug, gameSlug]);
 
-  if (!data) return null;
-  const setSlug = (data as { sets?: { slug?: string } }).sets?.slug;
-  if (!setSlug) return null;
-  return `/${gameSlug}/${setSlug}/${winnerSlug}`;
+  const row = rows[0];
+  if (!row?.set_slug) return null;
+  return `/${gameSlug}/${row.set_slug}/${winnerSlug}`;
 }
 
 interface PageProps {
@@ -263,7 +279,13 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { game, set, card: cardSlug } = await params;
-  const cardData = await getCardData(game, set, cardSlug);
+  let cardData: CardData | null = null;
+  try {
+    cardData = await getCardData(game, set, cardSlug);
+  } catch (error) {
+    // Metadata is best-effort so a build-time DB outage does not fail the route.
+    console.error('Failed to load card metadata:', error);
+  }
 
   const cardName = cardData?.name || cardSlug;
   const setName = cardData?.sets?.name || set;
@@ -287,10 +309,20 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function CardDetailPage({ params }: PageProps) {
   const { game, set, card: cardSlug } = await params;
-  const cardData = await getCardData(game, set, cardSlug);
+  let cardData: CardData | null = null;
+  try {
+    cardData = await getCardData(game, set, cardSlug);
+  } catch (error) {
+    console.error('Failed to load card:', error);
+  }
 
   if (!cardData) {
-    const retired = await resolveRetiredOnePieceSlug(game, cardSlug);
+    let retired: string | null = null;
+    try {
+      retired = await resolveRetiredOnePieceSlug(game, cardSlug);
+    } catch (error) {
+      console.error('Failed to resolve retired card slug:', error);
+    }
     if (retired) permanentRedirect(retired);
     notFound();
   }

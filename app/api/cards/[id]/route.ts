@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createPublicClient } from '@/lib/supabase/client';
+import { dbQuery } from '@/lib/db/client';
 import { getCardWithPrices, getStaleCardPrices } from '@/lib/ppt/service';
-import { getPopulationFromDb } from '@/lib/scrapers/gemrate';
+
+interface PopulationReport {
+  cardName: string;
+  setName: string;
+  gradingCompany: 'psa' | 'bgs' | 'cgc' | 'sgc';
+  totalPopulation: number;
+  populations: Array<{ grade: number; count: number; gemRate: number | null }>;
+  scrapedAt: string;
+  sourceUrl: string;
+}
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -62,6 +71,55 @@ interface CurrentPriceData {
 
 type RawPrices = Record<string, number | null>;
 
+async function getPopulationFromPostgres(
+  cardId: string,
+  gradingCompany: PopulationReport['gradingCompany'],
+): Promise<PopulationReport | null> {
+  const rows = await dbQuery<{
+    grade: number;
+    count: number;
+    gem_rate: number | null;
+    total_population: number | null;
+    scraped_at: string | null;
+    source_url: string | null;
+    card_name: string;
+    company_slug: PopulationReport['gradingCompany'];
+  }>(`
+    SELECT
+      pr.grade,
+      pr.count,
+      pr.gem_rate,
+      pr.total_population,
+      pr.scraped_at,
+      pr.source_url,
+      c.name AS card_name,
+      gc.slug AS company_slug
+    FROM population_reports pr
+    JOIN cards c ON c.id = pr.card_id
+    JOIN grading_companies gc ON gc.id = pr.grading_company_id
+    WHERE pr.card_id = $1
+      AND gc.slug = $2
+    ORDER BY pr.grade
+  `, [cardId, gradingCompany]);
+
+  const first = rows[0];
+  if (!first) return null;
+
+  return {
+    cardName: first.card_name,
+    setName: '',
+    gradingCompany: first.company_slug,
+    totalPopulation: first.total_population ?? 0,
+    populations: rows.map((row) => ({
+      grade: row.grade,
+      count: row.count,
+      gemRate: row.gem_rate,
+    })),
+    scrapedAt: first.scraped_at ?? '',
+    sourceUrl: first.source_url ?? '',
+  };
+}
+
 function getNumericRawPrices(sourcePrices: Record<string, unknown> | null | undefined): RawPrices {
   const rawPrices: RawPrices = {};
 
@@ -79,70 +137,78 @@ function getNumericRawPrices(sourcePrices: Record<string, unknown> | null | unde
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   const { id } = await params;
-  const supabase = createPublicClient();
 
   // Determine if id is a UUID or a tcg_player_id
   const isUUID = id.includes('-') && id.length === 36;
 
-  // Fetch card from database
-  const query = supabase
-    .from('cards')
-    .select(`
-      id,
-      name,
-      slug,
-      number,
-      rarity,
-      artist,
-      description,
-      image_url,
-      local_image_url,
-      tcg_player_id,
-      lore,
-      print_run_info,
-      last_price_fetch,
-      sets!inner (
-        id,
-        name,
-        slug,
-        release_date,
-        card_count,
-        games!inner (
-          id,
-          name,
-          slug,
-          display_name
-        )
-      ),
-      card_variants (
-        id,
-        variant_type,
-        name,
-        slug
-      ),
-      card_price_current (
-        source_prices,
-        graded_prices,
-        headline_cents,
-        headline_source,
-        headline_kind,
-        headline_currency,
-        headline_grade,
-        computed_at
-      )
-    `);
+  let card: CardData | null = null;
+  try {
+    const rows = await dbQuery<CardData>(`
+      SELECT
+        c.id,
+        c.name,
+        c.slug,
+        c.number,
+        c.rarity,
+        c.artist,
+        c.description,
+        c.image_url,
+        c.local_image_url,
+        c.tcg_player_id,
+        c.lore,
+        c.print_run_info,
+        c.last_price_fetch,
+        json_build_object(
+          'id', s.id,
+          'name', s.name,
+          'slug', s.slug,
+          'release_date', s.release_date,
+          'card_count', s.card_count,
+          'games', json_build_object(
+            'id', g.id,
+            'name', g.name,
+            'slug', g.slug,
+            'display_name', g.display_name
+          )
+        ) AS sets,
+        COALESCE((
+          SELECT json_agg(json_build_object(
+            'id', cv.id,
+            'variant_type', cv.variant_type,
+            'name', cv.name,
+            'slug', cv.slug
+          ) ORDER BY cv.id)
+          FROM card_variants cv
+          WHERE cv.card_id = c.id
+        ), '[]'::json) AS card_variants,
+        (
+          SELECT json_build_object(
+            'source_prices', cp.source_prices,
+            'graded_prices', cp.graded_prices,
+            'headline_cents', cp.headline_cents,
+            'headline_source', cp.headline_source,
+            'headline_kind', cp.headline_kind,
+            'headline_currency', cp.headline_currency,
+            'headline_grade', cp.headline_grade,
+            'computed_at', cp.computed_at
+          )
+          FROM card_price_current cp
+          WHERE cp.card_id = c.id
+        ) AS card_price_current
+      FROM cards c
+      JOIN sets s ON s.id = c.set_id
+      JOIN games g ON g.id = s.game_id
+      WHERE ${isUUID ? 'c.id' : 'c.tcg_player_id'} = $1
+      LIMIT 1
+    `, [id]);
 
-  if (isUUID) {
-    query.eq('id', id);
-  } else {
-    query.eq('tcg_player_id', id);
+    card = rows[0] || null;
+  } catch (error) {
+    console.error('Error fetching card:', error);
+    return NextResponse.json({ error: 'Failed to fetch card' }, { status: 500 });
   }
 
-  const { data: cardData, error } = await query.single();
-
-  const card = cardData as CardData | null;
-
-  if (error || !card) {
+  if (!card) {
     return NextResponse.json(
       { error: 'Card not found' },
       { status: 404 }
@@ -150,7 +216,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   }
 
   // Get population data
-  const population = await getPopulationFromDb(card.id, 'psa');
+  const population = await getPopulationFromPostgres(card.id, 'psa');
 
   // The current-price row is keyed by card_id; there is no legacy expiry row to unwrap.
   const currentPrice = card.card_price_current;
@@ -188,7 +254,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         usingDatabasePrices = false;
         fromCache = freshData.fromCache;
       }
-    } catch (err) {
+    } catch {
       // Fall back to stale data
       const staleData = await getStaleCardPrices(card.tcg_player_id);
       if (staleData) {

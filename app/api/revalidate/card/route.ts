@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
-import { createPublicClient } from '@/lib/supabase/client';
+import { dbQuery } from '@/lib/db/client';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,30 +44,22 @@ export async function POST(request: Request) {
       );
     }
 
-    // Public catalog data, so the anon client is enough — RLS grants unconditional
-    // SELECT on cards/sets/games (006_enable_rls_catalog.sql). Same query shape as
-    // the page this purges.
-    const supabase = createPublicClient();
-    const { data, error } = await supabase
-      .from('cards')
-      .select('slug, sets!inner ( slug, games!inner ( slug ) )')
-      .eq('id', cardId)
-      .single();
+    const rows = await dbQuery<{ card_slug: string; set_slug: string; game_slug: string }>(`
+      SELECT
+        c.slug AS card_slug,
+        s.slug AS set_slug,
+        g.slug AS game_slug
+      FROM cards c
+      JOIN sets s ON s.id = c.set_id
+      JOIN games g ON g.id = s.game_id
+      WHERE c.id = $1
+      LIMIT 1
+    `, [cardId]);
 
-    // A query failure is not a missing card. Reporting a transient Supabase outage
-    // as 404 would send whoever reads the scraper log hunting for a data problem,
-    // and the caller does not retry — so the purge is lost either way, but the
-    // status code should at least say which failure it was.
-    if (error && error.code !== 'PGRST116') {
-      console.error(`[revalidate/card] lookup failed for ${cardId}:`, error);
-      return NextResponse.json({ revalidated: false, error: 'Lookup failed' }, { status: 500 });
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const row = data as any;
-    const cardSlug = row?.slug as string | undefined;
-    const setSlug = row?.sets?.slug as string | undefined;
-    const gameSlug = row?.sets?.games?.slug as string | undefined;
+    const row = rows[0];
+    const cardSlug = row?.card_slug;
+    const setSlug = row?.set_slug;
+    const gameSlug = row?.game_slug;
 
     if (!cardSlug || !setSlug || !gameSlug) {
       return NextResponse.json({ revalidated: false, error: 'Card not found' }, { status: 404 });

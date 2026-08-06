@@ -1,6 +1,5 @@
 import { Metadata } from 'next';
-// Cookie-free anon client keeps this route statically renderable (see card page).
-import { createPublicClient } from '@/lib/supabase/client';
+import { dbQuery } from '@/lib/db/client';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Trophy, ChevronRight, Loader2 } from 'lucide-react';
@@ -65,15 +64,37 @@ type GlobalDeckRow = {
 };
 
 export default async function GlobalDecksHub() {
-  const supabase = createPublicClient();
-
   // 1. Fetch all active games
-  const { data: gamesData } = await supabase
-    .from('games')
-    .select('*')
-    .eq('is_active', true);
+  let games: GameRow[] = [];
+  let allDecks: GlobalDeckRow[] = [];
 
-  const games = (gamesData ?? []) as unknown as GameRow[];
+  try {
+    games = await dbQuery<GameRow>(`
+      SELECT id, slug, display_name
+      FROM games
+      WHERE is_active = true
+    `);
+
+    // JOIN the tournament/game relation and rebuild the nested embed shape.
+    allDecks = await dbQuery<GlobalDeckRow>(`
+      SELECT
+        d.leader_card_id,
+        json_build_object(
+          'name', c.name,
+          'image_url', c.image_url,
+          'local_image_url', c.local_image_url
+        ) AS cards,
+        json_build_object(
+          'games', json_build_object('id', g.id, 'slug', g.slug)
+        ) AS tournaments
+      FROM decks d
+      LEFT JOIN cards c ON c.id = d.leader_card_id
+      JOIN tournaments t ON t.id = d.tournament_id
+      JOIN games g ON g.id = t.game_id
+    `);
+  } catch (error) {
+    console.error('Failed to load global deck data:', error);
+  }
 
   // Enforce strict order: One Piece (left), DBFW (middle), Pokemon (right)
   const order = ['one-piece', 'dbfw', 'pokemon'];
@@ -86,14 +107,7 @@ export default async function GlobalDecksHub() {
     return idxA - idxB;
   });
 
-  // 2. Fetch all winning decks with their leader cards and tournaments/games info
-  const { data: decksData } = await supabase
-    .from('decks')
-    .select('*, cards(*), tournaments!inner(games!inner(*))');
-
-  const allDecks = (decksData ?? []) as unknown as GlobalDeckRow[];
-
-  // 3. Aggregate Data in JS
+  // 2. Aggregate Data in JS
   const groupedData: Record<string, Record<string, ArchetypeData>> = {};
 
   for (const deck of allDecks) {

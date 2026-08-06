@@ -1,6 +1,5 @@
 import { Metadata } from 'next';
-// Cookie-free anon client keeps this route statically renderable (see card page).
-import { createPublicClient } from '@/lib/supabase/client';
+import { dbQuery } from '@/lib/db/client';
 import { FormattedPrice } from '@/components/ui/formatted-price';
 import { Trophy, ChevronLeft, ExternalLink, Copy, ShoppingCart } from 'lucide-react';
 import Link from 'next/link';
@@ -49,30 +48,55 @@ export default async function DeckDetailPage({
   params: Promise<{ game: string; id: string }>;
 }) {
   const { game, id } = await params;
-  const supabase = createPublicClient();
-
-  const { data: deck } = await supabase
-    .from('decks')
-    .select(`
-      *,
-      tournaments(*),
-      leader_card:cards!leader_card_id(*),
-      deck_cards(
-        count,
-        raw_card_name,
-        raw_card_id_string,
-        cards(*)
-      )
-    `)
-    .eq('id', id)
-    .single();
+  let deck: DeckDetail | null = null;
+  try {
+    const rows = await dbQuery(`
+      SELECT
+        d.placement,
+        d.player_name,
+        d.source_url,
+        d.total_price::float8 AS total_price,
+        json_build_object('name', t.name) AS tournaments,
+        (
+          SELECT json_build_object(
+            'name', leader.name,
+            'image_url', leader.image_url,
+            'local_image_url', leader.local_image_url
+          )
+          FROM cards leader
+          WHERE leader.id = d.leader_card_id
+        ) AS leader_card,
+        COALESCE((
+          SELECT json_agg(json_build_object(
+            'count', dc.count,
+            'raw_card_name', dc.raw_card_name,
+            'raw_card_id_string', dc.raw_card_id_string,
+            'cards', CASE WHEN card.id IS NULL THEN NULL ELSE json_build_object(
+              'name', card.name,
+              'image_url', card.image_url,
+              'local_image_url', card.local_image_url
+            ) END
+          ) ORDER BY dc.id)
+          FROM deck_cards dc
+          LEFT JOIN cards card ON card.id = dc.card_id
+          WHERE dc.deck_id = d.id
+        ), '[]'::json) AS deck_cards
+      FROM decks d
+      JOIN tournaments t ON t.id = d.tournament_id
+      WHERE d.id = $1
+      LIMIT 1
+    `, [id]);
+    deck = (rows[0] as DeckDetail | undefined) || null;
+  } catch (error) {
+    console.error('Failed to load deck:', error);
+    return notFound();
+  }
 
   if (!deck) return notFound();
 
   // Group cards by type if available, otherwise just dump them
-  const deckData = deck as unknown as DeckDetail;
-  const leaderCard = deckData.leader_card;
-  const mainDeckCards = deckData.deck_cards ?? [];
+  const leaderCard = deck.leader_card;
+  const mainDeckCards = deck.deck_cards ?? [];
 
   return (
     <div className="min-h-screen bg-[#0b1329] text-white pt-24 pb-20">
@@ -123,7 +147,7 @@ export default async function DeckDetailPage({
             <div className="flex-1 space-y-4">
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-black/40 border border-white/10 text-sm font-medium">
                 <Trophy className="w-4 h-4 text-amber-500" />
-                {deckData.placement} Place at {deckData.tournaments?.name}
+                {deck.placement} Place at {deck.tournaments?.name}
               </div>
               
               <h1 className="text-4xl md:text-5xl font-black italic tracking-tight text-white drop-shadow-lg">
@@ -131,7 +155,7 @@ export default async function DeckDetailPage({
               </h1>
               
               <p className="text-xl text-zinc-300 font-medium flex items-center gap-2">
-                Piloted by <span className="text-emerald-400">{deckData.player_name}</span>
+                Piloted by <span className="text-emerald-400">{deck.player_name}</span>
               </p>
 
               <div className="pt-4 flex flex-wrap gap-4">
@@ -140,7 +164,7 @@ export default async function DeckDetailPage({
                   Export Deck
                 </button>
                 <a 
-                  href={deckData.source_url ?? undefined}
+                  href={deck.source_url ?? undefined}
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 bg-black/40 hover:bg-black/60 border border-white/10 px-6 py-3 rounded-xl font-bold transition-colors"
@@ -154,8 +178,8 @@ export default async function DeckDetailPage({
             {/* Total Price Widget */}
             <div className="shrink-0 bg-black/40 backdrop-blur-md rounded-2xl p-6 border border-white/10 text-center min-w-[200px]">
               <p className="text-zinc-400 text-sm font-bold uppercase tracking-widest mb-2">Total Deck Value</p>
-              {deckData.total_price ? (
-                <FormattedPrice price={deckData.total_price} className="text-4xl font-black text-emerald-400" />
+              {deck.total_price ? (
+                <FormattedPrice price={deck.total_price} className="text-4xl font-black text-emerald-400" />
               ) : (
                 <span className="text-2xl font-bold text-zinc-500">Syncing...</span>
               )}

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createPublicClient } from '@/lib/supabase/client';
+import { dbQuery } from '@/lib/db/client';
 import { redis } from '@/lib/redis/client';
 import { formatSetName } from '@/lib/utils';
 
@@ -20,41 +20,34 @@ export async function GET(request: Request) {
       return NextResponse.json({ data: cached });
     }
 
-    const supabase = createPublicClient();
-    
     // First find the game id
-    const { data: gameData, error: gameError } = await supabase
-      .from('games')
-      .select('id')
-      .eq('slug', game)
-      .single();
+    const gameRows = await dbQuery<{ id: string }>(
+      'SELECT id FROM games WHERE slug = $1 LIMIT 1',
+      [game],
+    );
 
-    if (gameError || !gameData) {
+    if (gameRows.length === 0) {
       return NextResponse.json({ data: [] });
     }
 
     // Then get its sets
-    let query = supabase
-      .from('sets')
-      .select(lang && lang !== 'all' ? 'id, name, slug, card_count, cards!inner (id)' : 'id, name, slug, card_count')
-      .eq('game_id', (gameData as any).id)
-      .gt('card_count', 0)
-      .order('priority', { ascending: false })
-      .order('name');
+    const languageCondition = lang === 'en'
+      ? 'AND EXISTS (SELECT 1 FROM cards c WHERE c.set_id = s.id AND c.slug NOT ILIKE $2)'
+      : lang === 'ja'
+        ? 'AND EXISTS (SELECT 1 FROM cards c WHERE c.set_id = s.id AND c.slug ILIKE $2)'
+        : '';
+    const params = lang === 'en' || lang === 'ja'
+      ? [gameRows[0].id, '%-ja']
+      : [gameRows[0].id];
 
-    if (lang === 'en') {
-      query = query.not('cards.slug', 'ilike', '%-ja').limit(1, { foreignTable: 'cards' });
-    } else if (lang === 'ja') {
-      query = query.ilike('cards.slug', '%-ja').limit(1, { foreignTable: 'cards' });
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-      throw error;
-    }
-
-    let setsList: any[] = data || [];
+    let setsList = await dbQuery<{ id: string; name: string; slug: string; card_count: number | null }>(`
+      SELECT s.id, s.name, s.slug, s.card_count
+      FROM sets s
+      WHERE s.game_id = $1
+        AND s.card_count > 0
+        ${languageCondition}
+      ORDER BY s.priority DESC NULLS LAST, s.name
+    `, params);
 
     const getPrefixScore = (name: string) => {
       if (name.startsWith('OP')) return 1;
@@ -64,14 +57,10 @@ export async function GET(request: Request) {
       return 5;
     };
 
-    setsList = setsList.map(s => {
-      // Remove the joined cards array from the final output payload to save bandwidth
-      const { cards, ...rest } = s;
-      return {
-        ...rest,
+    setsList = setsList.map(s => ({
+        ...s,
         name: formatSetName(s.name)
-      };
-    });
+      }));
 
     if (game === 'one-piece') {
       setsList.sort((a, b) => {

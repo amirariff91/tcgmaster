@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatDate, formatPrice, formatSetName, splitCardName } from '@/lib/utils';
 import { latestRecordedAt } from '@/lib/pricing/price-labels';
 // Cookie-free anon client keeps this route statically renderable (see card page).
-import { createPublicClient } from '@/lib/supabase/client';
+import { dbQuery } from '@/lib/db/client';
 import { Badge } from '@/components/ui/badge';
 
 interface GameData {
@@ -69,8 +69,6 @@ interface GamePageData {
   latest_price_update: string | null;
 }
 
-const PAGE_SIZE = 1000;
-
 function getHeadlinePrice(headlineCents: unknown): number | null {
   if (typeof headlineCents === 'number' && Number.isFinite(headlineCents) && headlineCents > 0) {
     return headlineCents / 100;
@@ -79,83 +77,50 @@ function getHeadlinePrice(headlineCents: unknown): number | null {
   return null;
 }
 
-type SupabaseClient = ReturnType<typeof createPublicClient>;
-
-async function getAllSets(supabase: SupabaseClient, gameId: string): Promise<SetRow[]> {
-  const sets: SetRow[] = [];
-
-  for (let from = 0; ; from += PAGE_SIZE) {
-    const { data, error } = await supabase
-      .from('sets')
-      .select('id, name, slug, release_date, card_count')
-      .eq('game_id', gameId)
-      .order('priority', { ascending: false })
-      .order('name')
-      .order('id')
-      .range(from, from + PAGE_SIZE - 1);
-
-    if (error) throw error;
-
-    const page = (data || []) as SetRow[];
-    sets.push(...page);
-
-    if (page.length < PAGE_SIZE) return sets;
-  }
+async function getAllSets(gameId: string): Promise<SetRow[]> {
+  return dbQuery<SetRow>(`
+    SELECT id, name, slug, release_date, card_count
+    FROM sets
+    WHERE game_id = $1
+    ORDER BY priority DESC NULLS LAST, name, id
+  `, [gameId]);
 }
 
-async function getAllSetPrices(supabase: SupabaseClient, gameId: string): Promise<SetPriceRow[]> {
-  const prices: SetPriceRow[] = [];
-
-  for (let from = 0; ; from += PAGE_SIZE) {
-    const { data, error } = await supabase
-      .from('card_price_current')
-      .select('card_id, headline_cents, cards!inner(set_id, sets!inner(game_id))')
-      .eq('cards.sets.game_id', gameId)
-      .gt('headline_cents', 0)
-      .order('card_id', { ascending: true })
-      .range(from, from + PAGE_SIZE - 1);
-
-    if (error) throw error;
-
-    // Supabase's generated types cannot represent aliased JSON paths and nested rows reliably.
-    const page = (data || []) as unknown as SetPriceRow[];
-    prices.push(...page);
-
-    if (page.length < PAGE_SIZE) return prices;
-  }
+async function getAllSetPrices(gameId: string): Promise<SetPriceRow[]> {
+  return dbQuery<SetPriceRow>(`
+    SELECT
+      p.card_id,
+      p.headline_cents,
+      json_build_object('set_id', c.set_id) AS cards
+    FROM card_price_current p
+    JOIN cards c ON c.id = p.card_id
+    JOIN sets s ON s.id = c.set_id
+    WHERE s.game_id = $1
+      AND p.headline_cents > 0
+    ORDER BY p.card_id
+  `, [gameId]);
 }
 
-async function getAllCurrentPriceRows(supabase: SupabaseClient, gameId: string): Promise<LatestPriceRow[]> {
-  const rows: LatestPriceRow[] = [];
-
-  for (let from = 0; ; from += PAGE_SIZE) {
-    const { data, error } = await supabase
-      .from('card_price_current')
-      .select('card_id, source_prices, cards!inner(sets!inner(game_id))')
-      .eq('cards.sets.game_id', gameId)
-      .order('card_id', { ascending: true })
-      .range(from, from + PAGE_SIZE - 1);
-
-    if (error) throw error;
-
-    const page = (data || []) as unknown as LatestPriceRow[];
-    rows.push(...page);
-
-    if (page.length < PAGE_SIZE) return rows;
-  }
+async function getAllCurrentPriceRows(gameId: string): Promise<LatestPriceRow[]> {
+  return dbQuery<LatestPriceRow>(`
+    SELECT p.card_id, p.source_prices
+    FROM card_price_current p
+    JOIN cards c ON c.id = p.card_id
+    JOIN sets s ON s.id = c.set_id
+    WHERE s.game_id = $1
+    ORDER BY p.card_id
+  `, [gameId]);
 }
 
 async function getGameBySlug(gameSlug: string): Promise<GameData | null> {
-  const supabase = createPublicClient();
-  const { data: game, error } = await supabase
-    .from('games')
-    .select('id, name, slug, display_name')
-    .eq('slug', gameSlug)
-    .maybeSingle();
+  const rows = await dbQuery<GameData>(`
+    SELECT id, name, slug, display_name
+    FROM games
+    WHERE slug = $1
+    LIMIT 1
+  `, [gameSlug]);
 
-  if (error) throw error;
-  if (!game) return null;
-  return game as unknown as GameData;
+  return rows[0] || null;
 }
 
 async function getGamePageData(gameSlug: string): Promise<GamePageData | null> {
@@ -163,41 +128,38 @@ async function getGamePageData(gameSlug: string): Promise<GamePageData | null> {
 
   if (!gameData) return null;
 
-  const supabase = createPublicClient();
-
-  const [sets, cardsCount, topCardsResult, latestPriceRows, setPrices] = await Promise.all([
-    getAllSets(supabase, gameData.id),
-    supabase
-      .from('cards')
-      .select('id, sets!inner(game_id)', { count: 'exact', head: true })
-      .eq('sets.game_id', gameData.id),
-    supabase
-      .from('card_price_current')
-      .select(`
-        card_id,
-        headline_cents,
-        cards!inner (
-          id,
-          name,
-          slug,
-          sets!inner (
-            name,
-            slug,
-            game_id
+  const [sets, cardsCountRows, topPriceRows, latestPriceRows, setPrices] = await Promise.all([
+    getAllSets(gameData.id),
+    dbQuery<{ count: number }>(`
+      SELECT COUNT(*)::int AS count
+      FROM cards c
+      JOIN sets s ON s.id = c.set_id
+      WHERE s.game_id = $1
+    `, [gameData.id]),
+    dbQuery<TopPriceRow>(`
+      SELECT
+        p.card_id,
+        p.headline_cents,
+        json_build_object(
+          'id', c.id,
+          'name', c.name,
+          'slug', c.slug,
+          'sets', json_build_object(
+            'name', s.name,
+            'slug', s.slug
           )
-        )
-      `)
-      .eq('cards.sets.game_id', gameData.id)
-      .gt('headline_cents', 0)
-      .order('headline_cents', { ascending: false })
-      .order('card_id', { ascending: true })
-      .limit(3),
-    getAllCurrentPriceRows(supabase, gameData.id),
-    getAllSetPrices(supabase, gameData.id),
+        ) AS cards
+      FROM card_price_current p
+      JOIN cards c ON c.id = p.card_id
+      JOIN sets s ON s.id = c.set_id
+      WHERE s.game_id = $1
+        AND p.headline_cents > 0
+      ORDER BY p.headline_cents DESC, p.card_id
+      LIMIT 3
+    `, [gameData.id]),
+    getAllCurrentPriceRows(gameData.id),
+    getAllSetPrices(gameData.id),
   ]);
-
-  if (cardsCount.error) throw cardsCount.error;
-  if (topCardsResult.error) throw topCardsResult.error;
 
   const priceTotalsBySet = new Map<string, { count: number; total: number }>();
 
@@ -211,8 +173,6 @@ async function getGamePageData(gameSlug: string): Promise<GamePageData | null> {
     priceTotalsBySet.set(row.cards.set_id, totals);
   }
 
-  // Supabase's generated types cannot represent aliased JSON paths and nested rows reliably.
-  const topPriceRows = (topCardsResult.data || []) as unknown as TopPriceRow[];
   const topCards = topPriceRows.flatMap((row) => {
     const price = getHeadlinePrice(row.headline_cents);
     if (price === null) return [];
@@ -244,7 +204,7 @@ async function getGamePageData(gameSlug: string): Promise<GamePageData | null> {
 
       return { ...set, avg_price };
     }),
-    total_cards: cardsCount.count || 0,
+    total_cards: cardsCountRows[0]?.count || 0,
     total_sets: sets.length,
     top_cards: topCards,
     latest_price_update: latestPriceUpdate,
@@ -259,7 +219,13 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { game } = await params;
-  const gameData = await getGameBySlug(game);
+  let gameData: GameData | null = null;
+  try {
+    gameData = await getGameBySlug(game);
+  } catch (error) {
+    // Metadata is best-effort so a build-time DB outage does not fail the route.
+    console.error('Failed to load game metadata:', error);
+  }
 
   if (!gameData) {
     return { title: 'Not Found' };
@@ -282,7 +248,12 @@ export async function generateStaticParams() {
 
 export default async function GamePage({ params }: PageProps) {
   const { game } = await params;
-  const gamePageData = await getGamePageData(game);
+  let gamePageData: GamePageData | null = null;
+  try {
+    gamePageData = await getGamePageData(game);
+  } catch (error) {
+    console.error('Failed to load game page:', error);
+  }
 
   if (!gamePageData) {
     notFound();

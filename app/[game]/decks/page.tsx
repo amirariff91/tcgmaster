@@ -1,6 +1,5 @@
 import { Metadata } from 'next';
-// Cookie-free anon client keeps this route statically renderable (see card page).
-import { createPublicClient } from '@/lib/supabase/client';
+import { dbQuery } from '@/lib/db/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { FormattedPrice } from '@/components/ui/formatted-price';
 import { Trophy, Calendar, Users, Target } from 'lucide-react';
@@ -50,27 +49,43 @@ export default async function DecksPage({
   params: Promise<{ game: string }>;
 }) {
   const { game } = await params;
-  const supabase = createPublicClient();
+  let deckRows: DeckRow[] = [];
+  let tournamentRows: TournamentRow[] = [];
 
-  // 1. Fetch recent tournaments
-  const { data: tournaments } = await supabase
-    .from('tournaments')
-    .select('*, games!inner(slug)')
-    .eq('games.slug', game)
-    .order('date', { ascending: false })
-    .limit(10);
+  try {
+    // JOINs replace tournaments!inner(games!inner(...)) and cards(...).
+    tournamentRows = await dbQuery<TournamentRow>(`
+      SELECT t.id, t.date, t.name, t.format, t.source_url, t.num_players
+      FROM tournaments t
+      JOIN games g ON g.id = t.game_id
+      WHERE g.slug = $1
+      ORDER BY t.date DESC
+      LIMIT 10
+    `, [game]);
 
-  // 2. Fetch top decks with their leader cards
-  const { data: decks } = await supabase
-    .from('decks')
-    .select('*, tournaments!inner(games!inner(slug)), cards(name, image_url, local_image_url)')
-    .eq('tournaments.games.slug', game)
-    .in('placement', ['1st', '1', '2nd', '2', '3rd', '3', '4th', '4'])
-    .order('created_at', { ascending: false })
-    .limit(24);
-
-  const deckRows = (decks ?? []) as unknown as DeckRow[];
-  const tournamentRows = (tournaments ?? []) as unknown as TournamentRow[];
+    deckRows = await dbQuery<DeckRow>(`
+      SELECT
+        d.id,
+        d.placement,
+        d.player_name,
+        d.total_price::float8 AS total_price,
+        json_build_object(
+          'name', c.name,
+          'image_url', c.image_url,
+          'local_image_url', c.local_image_url
+        ) AS cards
+      FROM decks d
+      JOIN tournaments t ON t.id = d.tournament_id
+      JOIN games g ON g.id = t.game_id
+      LEFT JOIN cards c ON c.id = d.leader_card_id
+      WHERE g.slug = $1
+        AND d.placement = ANY($2::text[])
+      ORDER BY d.created_at DESC
+      LIMIT 24
+    `, [game, ['1st', '1', '2nd', '2', '3rd', '3', '4th', '4']]);
+  } catch (error) {
+    console.error('Failed to load deck page:', error);
+  }
 
   return (
     <div className="min-h-screen bg-[#0b1329] text-white pt-24 pb-20">

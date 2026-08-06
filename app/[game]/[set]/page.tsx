@@ -1,9 +1,9 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getSetBySlug, getRelatedSets, mockSets } from '@/lib/mock-data';
+import { getSetBySlug, getRelatedSets } from '@/lib/mock-data';
 import { SetPageClient } from './set-page-client';
 // Cookie-free anon client keeps this route statically renderable (see card page).
-import { createPublicClient } from '@/lib/supabase/client';
+import { dbQuery } from '@/lib/db/client';
 import { formatSetName } from '@/lib/utils';
 import type { MockSet, MockCard } from '@/lib/mock-data';
 
@@ -14,41 +14,69 @@ interface SetPageProps {
   }>;
 }
 
-// Fetch set + cards from Supabase
+// Fetch set + cards from Postgres
 async function getSetFromDB(gameSlug: string, setSlug: string): Promise<MockSet | null> {
   try {
-    const supabase = createPublicClient();
+    const setRows = await dbQuery(`
+      SELECT
+        s.id,
+        s.name,
+        s.slug,
+        s.release_date,
+        s.card_count,
+        s.image_url,
+        json_build_object(
+          'id', g.id,
+          'name', g.name,
+          'slug', g.slug,
+          'display_name', g.display_name
+        ) AS games
+      FROM sets s
+      JOIN games g ON g.id = s.game_id
+      WHERE s.slug = $1
+        AND g.slug = $2
+      LIMIT 1
+    `, [setSlug, gameSlug]) as Array<{
+      id: string;
+      name: string;
+      slug: string;
+      release_date: string | null;
+      card_count: number | null;
+      image_url: string | null;
+      games: { id: string; name: string; slug: string; display_name: string };
+    }>;
 
-    // Fetch set with game info (use any to avoid Supabase join typing issues)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: setData, error: setError } = await (supabase as any)
-      .from('sets')
-      .select(`
-        id, name, slug, release_date, card_count, image_url,
-        games!inner ( id, name, slug, display_name )
-      `)
-      .eq('slug', setSlug)
-      .eq('games.slug', gameSlug)
-      .single();
-
-    if (setError || !setData) return null;
+    const setData = setRows[0];
+    if (!setData) return null;
 
     const game = setData.games as {
       id: string; name: string; slug: string; display_name: string;
     };
 
-    // Fetch all cards for this set with their single current price row.
-    const { data: cardsData } = await (supabase as any)
-      .from('cards')
-      .select(`
-        id, name, slug, number, rarity, artist, image_url, local_image_url, description,
-        card_price_current ( headline_cents, graded_prices )
-      `)
-      .eq('set_id', setData.id)
-      .order('number');
-
-
-    const cards: MockCard[] = (cardsData || []).map((c: {
+    // JOIN the one-to-one current-price row into the same nested shape.
+    const cardsData = await dbQuery(`
+      SELECT
+        c.id,
+        c.name,
+        c.slug,
+        c.number,
+        c.rarity,
+        c.artist,
+        c.image_url,
+        c.local_image_url,
+        c.description,
+        (
+          SELECT json_build_object(
+            'headline_cents', cp.headline_cents,
+            'graded_prices', cp.graded_prices
+          )
+          FROM card_price_current cp
+          WHERE cp.card_id = c.id
+        ) AS card_price_current
+      FROM cards c
+      WHERE c.set_id = $1
+      ORDER BY c.number
+    `, [setData.id]) as Array<{
       id: string;
       name: string;
       slug: string;
@@ -62,7 +90,9 @@ async function getSetFromDB(gameSlug: string, setSlug: string): Promise<MockSet 
         headline_cents: number | null;
         graded_prices: Record<string, { average: number | null } | null> | null;
       } | null;
-    }) => {
+    }>;
+
+    const cards: MockCard[] = cardsData.map((c) => {
       const currentPrice = c.card_price_current;
       const price = currentPrice?.headline_cents == null
         ? null
@@ -128,13 +158,19 @@ async function getSetFromDB(gameSlug: string, setSlug: string): Promise<MockSet 
   }
 }
 
-// Generate static params from both Supabase slugs (via mock fallback)
+// Only pre-render database-backed routes when the database is reachable.
 export async function generateStaticParams() {
-  const params: { game: string; set: string }[] = [];
-  Object.values(mockSets).forEach((set) => {
-    params.push({ game: set.gameSlug, set: set.slug });
-  });
-  return params;
+  try {
+    return await dbQuery<{ game: string; set: string }>(`
+      SELECT g.slug AS game, s.slug AS set
+      FROM sets s
+      JOIN games g ON g.id = s.game_id
+      ORDER BY g.slug, s.slug
+    `);
+  } catch (e) {
+    console.error('Failed to generate set static params:', e);
+    return [];
+  }
 }
 
 export async function generateMetadata({ params }: SetPageProps): Promise<Metadata> {

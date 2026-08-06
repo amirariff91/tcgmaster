@@ -1,10 +1,9 @@
 import { MetadataRoute } from 'next';
-import { createClient } from '@/lib/supabase/server';
+import { dbQuery } from '@/lib/db/client';
 
 export const revalidate = 3600; // Regenerate every hour
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const supabase = await createClient();
   const base = 'https://tcgmaster.com';
 
   // Static pages
@@ -14,50 +13,61 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${base}/market`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.8 },
   ];
 
-  type GameRef = { slug: string } | null;
   type SetSitemapRow = {
     slug: string;
     created_at: string | null;
-    games: GameRef | GameRef[];
+    game_slug: string;
   };
   type CardSitemapRow = {
     slug: string;
     updated_at: string | null;
-    sets: (Pick<SetSitemapRow, 'slug'> & { games: GameRef | GameRef[] }) | Array<Pick<SetSitemapRow, 'slug'> & { games: GameRef | GameRef[] }> | null;
+    set_slug: string;
+    game_slug: string;
   };
 
-  // Fetch all sets
-  const { data: sets } = await supabase
-    .from('sets')
-    .select('slug, created_at, games(slug)')
-    .order('release_date', { ascending: false });
+  try {
+    // JOINs preserve the same one-to-one nested shape as the old embeds.
+    const sets = await dbQuery<SetSitemapRow>(`
+      SELECT
+        s.slug,
+        s.created_at,
+        g.slug AS game_slug
+      FROM sets s
+      JOIN games g ON g.id = s.game_id
+      ORDER BY s.release_date DESC NULLS LAST
+    `);
 
-  const setPages: MetadataRoute.Sitemap = ((sets || []) as SetSitemapRow[]).map((s) => {
-    const game = Array.isArray(s.games) ? s.games[0] : s.games;
-    return {
-      url: `${base}/${game?.slug || 'pokemon'}/${s.slug}`,
+    const cards = await dbQuery<CardSitemapRow>(`
+      SELECT
+        c.slug,
+        c.updated_at,
+        s.slug AS set_slug,
+        g.slug AS game_slug
+      FROM cards c
+      JOIN sets s ON s.id = c.set_id
+      JOIN games g ON g.id = s.game_id
+      ORDER BY c.name
+    `);
+
+    const setPages: MetadataRoute.Sitemap = sets.map((s) => ({
+      url: `${base}/${s.game_slug || 'pokemon'}/${s.slug}`,
       lastModified: s.created_at ? new Date(s.created_at) : new Date(),
       changeFrequency: 'weekly' as const,
       priority: 0.8,
-    };
-  });
+    }));
 
-  // Fetch all cards (batch — limit to avoid huge response)
-  const { data: cards } = await supabase
-    .from('cards')
-    .select('slug, updated_at, sets(slug, games(slug))')
-    .order('name');
-
-  const cardPages: MetadataRoute.Sitemap = ((cards || []) as CardSitemapRow[]).map((c) => {
-    const set = Array.isArray(c.sets) ? c.sets[0] : c.sets;
-    const game = set && (Array.isArray(set.games) ? set.games[0] : set.games);
-    return {
-      url: `${base}/${game?.slug || 'pokemon'}/${set?.slug || 'unknown'}/${c.slug}`,
+    const cardPages: MetadataRoute.Sitemap = cards.map((c) => ({
+      url: `${base}/${c.game_slug || 'pokemon'}/${c.set_slug || 'unknown'}/${c.slug}`,
       lastModified: c.updated_at ? new Date(c.updated_at) : new Date(),
       changeFrequency: 'daily' as const,
       priority: 0.7,
-    };
-  });
+    }));
 
-  return [...staticPages, ...setPages, ...cardPages];
+    return [...staticPages, ...setPages, ...cardPages];
+  } catch (error) {
+    // Sitemap generation must never make a deployment fail when the DB is absent
+    // or unreachable during the image build.
+    console.error('Failed to generate sitemap:', error);
+    return [];
+  }
 }
