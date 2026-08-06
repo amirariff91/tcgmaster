@@ -3,13 +3,14 @@
  * Combines API client with caching and database operations
  */
 
-import { pptClient, PPTCard, PPTSet, PPTError } from './client';
+import { pptClient, PPTCard, PPTSet } from './client';
 import {
   redis,
   CACHE_KEYS,
   CACHE_TTL,
   withRequestCoalescing,
 } from '@/lib/redis/client';
+import { dbQuery } from '@/lib/db/client';
 import { createServerClient } from '@/lib/supabase/client';
 import type { Tables, TablesInsert } from '@/lib/supabase/database.types';
 import { slugify } from '@/lib/utils';
@@ -260,11 +261,11 @@ export async function importSet(
     });
 
     // Get or create the set in our database
-    const { data: existingSet } = await supabase
-      .from('sets')
-      .select('id')
-      .eq('ppt_set_id', pptSetId)
-      .single();
+    const existingSetRows = await dbQuery<{ id: string }>(
+      'SELECT id FROM sets WHERE ppt_set_id = $1 LIMIT 1',
+      [pptSetId],
+    );
+    const existingSet = existingSetRows[0] || null;
 
     if (!existingSet) {
       // Need to create the set first
@@ -276,13 +277,10 @@ export async function importSet(
       }
 
       // Get the Pokemon game ID
-      const { data: gameData } = await supabase
-        .from('games')
-        .select('id')
-        .eq('slug', 'pokemon')
-        .single();
-
-      const game = gameData as { id: string } | null;
+      const gameRows = await dbQuery<{ id: string }>(
+        "SELECT id FROM games WHERE slug = 'pokemon' LIMIT 1",
+      );
+      const game = gameRows[0] || null;
 
       if (!game) {
         throw new Error('Pokemon game not found in database');
@@ -302,13 +300,11 @@ export async function importSet(
     }
 
     // Get the set ID
-    const { data: setData } = await supabase
-      .from('sets')
-      .select('id')
-      .eq('ppt_set_id', pptSetId)
-      .single();
-
-    const set = setData as { id: string } | null;
+    const setRows = await dbQuery<{ id: string }>(
+      'SELECT id FROM sets WHERE ppt_set_id = $1 LIMIT 1',
+      [pptSetId],
+    );
+    const set = setRows[0] || null;
 
     if (!set) {
       throw new Error('Failed to get set ID');
@@ -391,13 +387,10 @@ export async function syncSets(): Promise<{
     });
 
     // Get the Pokemon game ID
-    const { data: gameData2 } = await supabase
-      .from('games')
-      .select('id')
-      .eq('slug', 'pokemon')
-      .single();
-
-    const game2 = gameData2 as { id: string } | null;
+    const gameRows = await dbQuery<{ id: string }>(
+      "SELECT id FROM games WHERE slug = 'pokemon' LIMIT 1",
+    );
+    const game2 = gameRows[0] || null;
 
     if (!game2) {
       throw new Error('Pokemon game not found');
@@ -491,29 +484,27 @@ export async function getStaleCardPrices(
   lastUpdated: string | null;
   hoursStale: number;
 } | null> {
-  const supabase = createServerClient();
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: cardData } = await (supabase.from('cards') as any)
-    .select('id')
-    .eq('tcg_player_id', tcgPlayerId)
-    .single();
-  const card = cardData as { id: string } | null;
+  const cardRows = await dbQuery<{ id: string }>(
+    'SELECT id FROM cards WHERE tcg_player_id = $1 LIMIT 1',
+    [tcgPlayerId],
+  );
+  const card = cardRows[0] || null;
 
   if (!card) {
     return null;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: currentPriceData } = await (supabase.from('card_price_current') as any)
-    .select('source_prices, graded_prices, computed_at')
-    .eq('card_id', card.id)
-    .maybeSingle();
-  const currentPrice = currentPriceData as {
+  const currentPriceRows = await dbQuery<{
     source_prices: unknown;
     graded_prices: unknown;
     computed_at: string;
-  } | null;
+  }>(`
+    SELECT source_prices, graded_prices, computed_at
+    FROM card_price_current
+    WHERE card_id = $1
+    LIMIT 1
+  `, [card.id]);
+  const currentPrice = currentPriceRows[0] || null;
 
   if (!currentPrice) return null;
 

@@ -3,10 +3,11 @@
  * Implements the combined weighted scoring algorithm
  */
 
+import { dbQuery } from '@/lib/db/client';
 import { createServerClient } from '@/lib/supabase/client';
 import { redis } from '@/lib/redis/client';
 
-// Type definitions for Supabase query results
+// Type definitions for Postgres query results
 interface TrendingScoreRow {
   card_id: string;
   price_change_24h: number | null;
@@ -221,27 +222,19 @@ function chunkCards(cards: CardIdRow[]): CardIdRow[][] {
   return batches;
 }
 
-async function fetchAllEligibleCards(
-  supabase: ReturnType<typeof createServerClient>
-): Promise<CardIdRow[]> {
+async function fetchAllEligibleCards(): Promise<CardIdRow[]> {
   const cards: CardIdRow[] = [];
   let lastId: string | null = null;
 
   for (;;) {
-    let query = supabase
-      .from('cards')
-      .select('id')
-      .not('last_price_fetch', 'is', null)
-      .order('id', { ascending: true })
-      .limit(CARD_PAGE_SIZE);
-
-    if (lastId !== null) query = query.gt('id', lastId);
-
-    const { data, error } = await query;
-
-    if (error) throw new Error(`Failed to fetch eligible cards: ${error.message}`);
-
-    const page = (data || []) as CardIdRow[];
+    const page: CardIdRow[] = await dbQuery<CardIdRow>(`
+      SELECT id
+      FROM cards
+      WHERE last_price_fetch IS NOT NULL
+        AND ($1::uuid IS NULL OR id > $1::uuid)
+      ORDER BY id
+      LIMIT $2
+    `, [lastId, CARD_PAGE_SIZE]);
     cards.push(...page);
     if (page.length < CARD_PAGE_SIZE) break;
     lastId = page[page.length - 1].id;
@@ -251,7 +244,6 @@ async function fetchAllEligibleCards(
 }
 
 async function fetchPriceHistoryForCards(
-  supabase: ReturnType<typeof createServerClient>,
   cardIds: string[],
   snapshotAt: string
 ): Promise<PriceHistoryRow[]> {
@@ -259,21 +251,23 @@ async function fetchPriceHistoryForCards(
   let lastId: string | null = null;
 
   for (;;) {
-    let query = supabase
-      .from('price_history')
-      .select('id, card_id, price, recorded_at, variant_id, grading_company_id, grade, source')
-      .in('card_id', cardIds)
-      .lte('recorded_at', snapshotAt)
-      .order('id', { ascending: true })
-      .limit(QUERY_PAGE_SIZE);
-
-    if (lastId !== null) query = query.gt('id', lastId);
-
-    const { data, error } = await query;
-
-    if (error) throw new Error(error.message);
-
-    const page = (data || []) as PriceHistoryRow[];
+    const page: PriceHistoryRow[] = await dbQuery<PriceHistoryRow>(`
+      SELECT
+        id,
+        card_id,
+        price::float8 AS price,
+        recorded_at,
+        variant_id,
+        grading_company_id,
+        grade,
+        source
+      FROM price_history
+      WHERE card_id = ANY($1::uuid[])
+        AND recorded_at <= $2
+        AND ($3::uuid IS NULL OR id > $3::uuid)
+      ORDER BY id
+      LIMIT $4
+    `, [cardIds, snapshotAt, lastId, QUERY_PAGE_SIZE]);
     rows.push(...page);
     if (page.length < QUERY_PAGE_SIZE) break;
     lastId = page[page.length - 1].id;
@@ -283,7 +277,6 @@ async function fetchPriceHistoryForCards(
 }
 
 async function fetchSearchCountsForCards(
-  supabase: ReturnType<typeof createServerClient>,
   cardIds: string[],
   windowStart: string,
   snapshotAt: string
@@ -292,22 +285,16 @@ async function fetchSearchCountsForCards(
   let lastId: string | null = null;
 
   for (;;) {
-    let query = supabase
-      .from('search_analytics')
-      .select('id, card_id, created_at')
-      .in('card_id', cardIds)
-      .gte('created_at', windowStart)
-      .lte('created_at', snapshotAt)
-      .order('id', { ascending: true })
-      .limit(QUERY_PAGE_SIZE);
-
-    if (lastId !== null) query = query.gt('id', lastId);
-
-    const { data, error } = await query;
-
-    if (error) throw new Error(error.message);
-
-    const page = (data || []) as SearchAnalyticsRow[];
+    const page: SearchAnalyticsRow[] = await dbQuery<SearchAnalyticsRow>(`
+      SELECT id, card_id, created_at
+      FROM search_analytics
+      WHERE card_id = ANY($1::uuid[])
+        AND created_at >= $2
+        AND created_at <= $3
+        AND ($4::uuid IS NULL OR id > $4::uuid)
+      ORDER BY id
+      LIMIT $5
+    `, [cardIds, windowStart, snapshotAt, lastId, QUERY_PAGE_SIZE]);
     rows.push(...page);
     if (page.length < QUERY_PAGE_SIZE) break;
     lastId = page[page.length - 1].id;
@@ -328,47 +315,37 @@ export async function getTrendingCards(
   limit: number = 10,
   game?: string
 ): Promise<TrendingCard[]> {
-  const supabase = createServerClient();
+  try {
+    const rows = await dbQuery<TrendingScoreRow>(`
+      SELECT
+        ts.card_id,
+        ts.price_change_24h::float8 AS price_change_24h,
+        ts.volume_24h::float8 AS volume_24h,
+        ts.search_count_24h,
+        ts.social_mentions_24h,
+        ts.combined_score::float8 AS combined_score,
+        json_build_object(
+          'id', c.id,
+          'name', c.name,
+          'slug', c.slug,
+          'image_url', c.image_url,
+          'local_image_url', c.local_image_url,
+          'sets', json_build_object(
+            'name', s.name,
+            'slug', s.slug,
+            'games', json_build_object('slug', g.slug)
+          )
+        ) AS cards
+      FROM trending_scores ts
+      JOIN cards c ON c.id = ts.card_id
+      JOIN sets s ON s.id = c.set_id
+      JOIN games g ON g.id = s.game_id
+      ${game ? 'WHERE g.slug = $2' : ''}
+      ORDER BY ts.combined_score DESC NULLS LAST
+      LIMIT $1
+    `, game ? [limit, game] : [limit]);
 
-  let query = supabase
-    .from('trending_scores')
-    .select(`
-      card_id,
-      price_change_24h,
-      volume_24h,
-      search_count_24h,
-      social_mentions_24h,
-      combined_score,
-      cards!inner (
-        id,
-        name,
-        slug,
-        image_url,
-        local_image_url,
-        sets!inner (
-          name,
-          slug,
-          games!inner (slug)
-        )
-      )
-    `)
-    .order('combined_score', { ascending: false })
-    .limit(limit);
-
-  if (game) {
-    query = query.eq('cards.sets.games.slug', game);
-  }
-
-  const { data, error } = await query;
-
-  if (error) {
-    console.error('Error fetching trending cards:', error);
-    return [];
-  }
-
-  const typedData = data as TrendingScoreRow[] | null;
-
-  return (typedData || []).map((row) => {
+    return rows.map((row) => {
     const card = Array.isArray(row.cards) ? row.cards[0] : row.cards;
     const set = card?.sets;
     const gameData = set?.games;
@@ -388,7 +365,11 @@ export async function getTrendingCards(
       combinedScore: row.combined_score,
       game: gameData?.slug || 'pokemon',
     };
-  });
+    });
+  } catch (error) {
+    console.error('Error fetching trending cards:', error);
+    return [];
+  }
 }
 
 /**
@@ -400,53 +381,44 @@ export async function getMarketMovers(
   gainers: TrendingCard[];
   losers: TrendingCard[];
 }> {
-  const supabase = createServerClient();
-
-  // Get biggest gainers
-  const { data: gainersData } = await supabase
-    .from('trending_scores')
-    .select(`
-      card_id,
-      price_change_24h,
-      volume_24h,
-      search_count_24h,
-      social_mentions_24h,
-      combined_score,
-      cards!inner (
-        id,
-        name,
-        slug,
-        image_url,
-        local_image_url,
-        sets!inner (name, slug, games!inner (slug))
-      )
-    `)
-    .gt('price_change_24h', 0)
-    .order('price_change_24h', { ascending: false })
-    .limit(limit);
-
-  // Get biggest losers
-  const { data: losersData } = await supabase
-    .from('trending_scores')
-    .select(`
-      card_id,
-      price_change_24h,
-      volume_24h,
-      search_count_24h,
-      social_mentions_24h,
-      combined_score,
-      cards!inner (
-        id,
-        name,
-        slug,
-        image_url,
-        local_image_url,
-        sets!inner (name, slug, games!inner (slug))
-      )
-    `)
-    .lt('price_change_24h', 0)
-    .order('price_change_24h', { ascending: true })
-    .limit(limit);
+  try {
+    const baseQuery = `
+      SELECT
+        ts.card_id,
+        ts.price_change_24h::float8 AS price_change_24h,
+        ts.volume_24h::float8 AS volume_24h,
+        ts.search_count_24h,
+        ts.social_mentions_24h,
+        ts.combined_score::float8 AS combined_score,
+        json_build_object(
+          'id', c.id,
+          'name', c.name,
+          'slug', c.slug,
+          'image_url', c.image_url,
+          'local_image_url', c.local_image_url,
+          'sets', json_build_object(
+            'name', s.name,
+            'slug', s.slug,
+            'games', json_build_object('slug', g.slug)
+          )
+        ) AS cards
+      FROM trending_scores ts
+      JOIN cards c ON c.id = ts.card_id
+      JOIN sets s ON s.id = c.set_id
+      JOIN games g ON g.id = s.game_id
+    `;
+    const [gainersData, losersData] = await Promise.all([
+      dbQuery<TrendingScoreRow>(`${baseQuery}
+        WHERE ts.price_change_24h > 0
+        ORDER BY ts.price_change_24h DESC
+        LIMIT $1
+      `, [limit]),
+      dbQuery<TrendingScoreRow>(`${baseQuery}
+        WHERE ts.price_change_24h < 0
+        ORDER BY ts.price_change_24h ASC
+        LIMIT $1
+      `, [limit]),
+    ]);
 
   const mapToTrending = (row: TrendingScoreRow): TrendingCard => {
     const card = Array.isArray(row.cards) ? row.cards[0] : row.cards;
@@ -470,13 +442,14 @@ export async function getMarketMovers(
     };
   };
 
-  const typedGainers = gainersData as TrendingScoreRow[] | null;
-  const typedLosers = losersData as TrendingScoreRow[] | null;
-
   return {
-    gainers: (typedGainers || []).map(mapToTrending),
-    losers: (typedLosers || []).map(mapToTrending),
+    gainers: gainersData.map(mapToTrending),
+    losers: losersData.map(mapToTrending),
   };
+  } catch (error) {
+    console.error('Error fetching market movers:', error);
+    return { gainers: [], losers: [] };
+  }
 }
 
 /**
@@ -498,7 +471,7 @@ export async function updateAllTrendingScores(): Promise<{
   try {
     // Stable pagination is required here: PostgREST otherwise returns only its
     // first 1,000 rows and silently excludes the rest of the catalog.
-    const cards = await fetchAllEligibleCards(supabase);
+    const cards = await fetchAllEligibleCards();
     eligible = cards.length;
 
     if (cards.length === 0) {
@@ -531,9 +504,8 @@ export async function updateAllTrendingScores(): Promise<{
           const cardIds = batch.map((card) => card.id);
           try {
             const [priceHistoryResult, searchCountsResult] = await Promise.allSettled([
-              fetchPriceHistoryForCards(supabase, cardIds, snapshotAt),
+              fetchPriceHistoryForCards(cardIds, snapshotAt),
               fetchSearchCountsForCards(
-                supabase,
                 cardIds,
                 searchWindowStart,
                 snapshotAt

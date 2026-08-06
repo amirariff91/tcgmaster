@@ -3,11 +3,12 @@
  * Combines NLP parsing with database queries
  */
 
-import { createPublicClient, createServerClient } from '@/lib/supabase/client';
+import { dbQuery } from '@/lib/db/client';
+import { createServerClient } from '@/lib/supabase/client';
 import { redis, CACHE_KEYS, CACHE_TTL } from '@/lib/redis/client';
 import { parseSearchQuery, scoreCardMatch, ParsedQuery } from './nlp-parser';
 
-// Type definitions for Supabase query results
+// Type definitions for Postgres query results
 interface CardSearchRow {
   id: string;
   name: string;
@@ -99,7 +100,6 @@ export async function searchCards(
   query: string,
   options: SearchOptions = {}
 ): Promise<SearchResponse> {
-  const supabase = createPublicClient();
   const page = options.page ?? 1;
   const pageSize = options.pageSize ?? 20;
   const offset = (page - 1) * pageSize;
@@ -134,95 +134,109 @@ export async function searchCards(
     return cached;
   }
 
-  // Helper to build the base query with all filters applied
-  const buildBaseQuery = (head: boolean = false) => {
-    const columns = head
-      ? 'id, sets!inner ( games!inner ( slug ) )'
-      : `
-          id,
-          name,
-          slug,
-          number,
-          rarity,
-          image_url,
-          local_image_url,
-          price_cache_ttl,
-          curation_status,
-          sets!inner (
-            id,
-            name,
-            slug,
-            games!inner (
-              slug
-            )
-          )
-        `;
+  const fromClause = `
+    FROM cards c
+    JOIN sets s ON s.id = c.set_id
+    JOIN games g ON g.id = s.game_id
+  `;
 
-    let dbQuery = supabase.from('cards').select(columns, { count: 'estimated', head });
+  const buildFilters = () => {
+    const clauses = ['TRUE'];
+    const params: unknown[] = [];
+    const addParam = (value: unknown) => {
+      params.push(value);
+      return `$${params.length}`;
+    };
 
-    // Apply Verified Only filter from NLP
     if (parsed.isVerifiedOnly) {
-      dbQuery = dbQuery.eq('curation_status', 'curated');
+      clauses.push(`c.curation_status = ${addParam('curated')}`);
     }
 
-    // Apply text search
     if (parsed.cardName && parsed.cardName.length >= 2) {
-      dbQuery = dbQuery.or(`name.ilike.%${parsed.cardName}%,number.ilike.%${parsed.cardName}%`);
+      const value = addParam(`%${parsed.cardName}%`);
+      clauses.push(`(c.name ILIKE ${value} OR c.number ILIKE ${value})`);
     }
 
-    // Apply set filter
     if (parsed.setName) {
-      dbQuery = dbQuery.ilike('sets.name', `%${parsed.setName}%`);
+      clauses.push(`s.name ILIKE ${addParam(`%${parsed.setName}%`)}`);
     } else if (options.filters?.set) {
-      dbQuery = dbQuery.eq('sets.slug', options.filters.set);
+      clauses.push(`s.slug = ${addParam(options.filters.set)}`);
     }
 
-    // Apply game filter
     if (options.filters?.game) {
-      dbQuery = dbQuery.eq('sets.games.slug', options.filters.game);
+      clauses.push(`g.slug = ${addParam(options.filters.game)}`);
     }
 
-    // Apply rarity filter
     if (parsed.rarity || options.filters?.rarity) {
       const rarity = parsed.rarity || options.filters?.rarity;
-      dbQuery = dbQuery.ilike('rarity', `%${rarity}%`);
+      clauses.push(`c.rarity ILIKE ${addParam(`%${rarity}%`)}`);
     }
 
-    // Apply language filter
     if (options.filters?.lang === 'en') {
-      dbQuery = dbQuery.not('slug', 'like', '%-ja');
+      clauses.push(`c.slug NOT LIKE ${addParam('%-ja')}`);
     } else if (options.filters?.lang === 'ja') {
-      dbQuery = dbQuery.like('slug', '%-ja');
+      clauses.push(`c.slug LIKE ${addParam('%-ja')}`);
     }
 
-    // Filter out cards with no prices when sorting by "Recently Updated"
-    // so that failed scraper attempts don't bubble to the top
     if (options.sort === 'recent') {
-      dbQuery = dbQuery.not('price_cache_ttl', 'is', null);
+      clauses.push('c.price_cache_ttl IS NOT NULL');
     }
 
-    return dbQuery;
+    return { where: clauses.join(' AND '), params };
   };
 
-  // Helper to apply sorting
-  const applySort = (q: ReturnType<typeof buildBaseQuery>) => {
-    if (options.sort === 'price-desc') {
-      return q.order('price_cache_ttl', { ascending: false, nullsFirst: false }).order('id');
-    } else if (options.sort === 'price-asc') {
-      return q.order('price_cache_ttl', { ascending: true, nullsFirst: false }).order('id');
-    } else if (options.sort === 'name-asc') {
-      return q.order('name', { ascending: true }).order('id');
-    } else {
-      return q.order('last_price_fetch', { ascending: false, nullsFirst: false }).order('name').order('id');
-    }
+  const sortClause = options.sort === 'price-desc'
+    ? 'c.price_cache_ttl DESC NULLS LAST, c.id'
+    : options.sort === 'price-asc'
+      ? 'c.price_cache_ttl ASC NULLS LAST, c.id'
+      : options.sort === 'name-asc'
+        ? 'c.name ASC, c.id'
+        : 'c.last_price_fetch DESC NULLS LAST, c.name, c.id';
+
+  const countCards = async (extraWhere = '') => {
+    const filters = buildFilters();
+    const rows = await dbQuery<{ count: number }>(`
+      SELECT COUNT(*)::int AS count
+      ${fromClause}
+      WHERE ${filters.where}${extraWhere ? ` AND ${extraWhere}` : ''}
+    `, filters.params);
+    return rows[0]?.count || 0;
   };
 
-  // 1. Get total count and complete count
-  const { count: totalCount } = await buildBaseQuery(true);
-  const { count: completeCount } = await buildBaseQuery(true).not('image_url', 'is', null);
+  const fetchCards = async (extraWhere: string, limit: number, offset: number) => {
+    const filters = buildFilters();
+    const limitParam = `$${filters.params.push(limit)}`;
+    const offsetParam = `$${filters.params.push(offset)}`;
+    return dbQuery<CardSearchRow>(`
+      SELECT
+        c.id,
+        c.name,
+        c.slug,
+        c.number,
+        c.rarity,
+        c.image_url,
+        c.local_image_url,
+        c.price_cache_ttl,
+        c.curation_status,
+        json_build_object(
+          'id', s.id,
+          'name', s.name,
+          'slug', s.slug,
+          'games', json_build_object('slug', g.slug)
+        ) AS sets
+      ${fromClause}
+      WHERE ${filters.where}${extraWhere ? ` AND ${extraWhere}` : ''}
+      ORDER BY ${sortClause}
+      LIMIT ${limitParam}
+      OFFSET ${offsetParam}
+    `, filters.params);
+  };
 
-  const safeTotalCount = totalCount || 0;
-  const safeCompleteCount = completeCount || 0;
+  // 1. Get total count and complete count.
+  const [safeTotalCount, safeCompleteCount] = await Promise.all([
+    countCards(),
+    countCards('c.image_url IS NOT NULL'),
+  ]);
 
   let completeCards: CardSearchRow[] = [];
   let incompleteCards: CardSearchRow[] = [];
@@ -235,27 +249,9 @@ export async function searchCards(
     const isCustomSort = options.sort && options.sort !== 'relevance';
 
     if (isCustomSort) {
-      let qAll = buildBaseQuery(false);
-      qAll = applySort(qAll);
-      qAll = qAll.range(offset, offset + pageSize - 1);
-
-      const { data, error } = await qAll;
-      if (error) {
-        console.error('Search error (All):', error);
-        throw new Error('Search failed');
-      }
-      completeCards = (data as unknown as CardSearchRow[]) || [];
+      completeCards = await fetchCards('', pageSize, offset);
     } else {
-      let qComplete = buildBaseQuery(false).not('image_url', 'is', null);
-      qComplete = applySort(qComplete);
-      qComplete = qComplete.range(offset, offset + completeFetchSize - 1);
-
-      const { data, error } = await qComplete;
-      if (error) {
-        console.error('Search error (Complete):', error);
-        throw new Error('Search failed');
-      }
-      completeCards = (data as unknown as CardSearchRow[]) || [];
+      completeCards = await fetchCards('c.image_url IS NOT NULL', completeFetchSize, offset);
     }
   }
 
@@ -267,16 +263,7 @@ export async function searchCards(
       const remainingSize = pageSize - completeCards.length;
       const incompleteOffset = Math.max(0, offset - safeCompleteCount);
 
-      let qIncomplete = buildBaseQuery(false).is('image_url', null);
-      qIncomplete = applySort(qIncomplete);
-      qIncomplete = qIncomplete.range(incompleteOffset, incompleteOffset + remainingSize - 1);
-
-      const { data, error } = await qIncomplete;
-      if (error) {
-        console.error('Search error (Incomplete):', error);
-        throw new Error('Search failed');
-      }
-      incompleteCards = (data as unknown as CardSearchRow[]) || [];
+      incompleteCards = await fetchCards('c.image_url IS NULL', remainingSize, incompleteOffset);
     }
   }
 
@@ -348,48 +335,46 @@ export async function getSearchSuggestions(
   sets: Array<{ name: string; slug: string; cardCount: number }>;
   suggestions: string[];
 }> {
-  const supabase = createPublicClient();
-
   if (query.length < 2) {
     return { cards: [], sets: [], suggestions: [] };
   }
 
-  // Search cards
-  const { data: cards } = await supabase
-    .from('cards')
-    .select(`
-      id,
-      name,
-      slug,
-      number,
-      rarity,
-      image_url,
-      local_image_url,
-      sets!inner (
-        name,
-        slug,
-        games!inner (slug)
-      )
-    `)
-    .or(`name.ilike.%${query}%,number.ilike.%${query}%`)
-    .limit(limit);
-
-  // Search sets
-  const { data: sets } = await supabase
-    .from('sets')
-    .select('name, slug, card_count')
-    .ilike('name', `%${query}%`)
-    .limit(4);
+  const searchValue = `%${query}%`;
+  const [cards, sets] = await Promise.all([
+    dbQuery<CardSuggestionRow>(`
+      SELECT
+        c.id,
+        c.name,
+        c.slug,
+        c.number,
+        c.rarity,
+        c.image_url,
+        c.local_image_url,
+        json_build_object(
+          'name', s.name,
+          'slug', s.slug,
+          'games', json_build_object('slug', g.slug)
+        ) AS sets
+      FROM cards c
+      JOIN sets s ON s.id = c.set_id
+      JOIN games g ON g.id = s.game_id
+      WHERE c.name ILIKE $1 OR c.number ILIKE $1
+      LIMIT $2
+    `, [searchValue, limit]),
+    dbQuery<SetRow>(`
+      SELECT name, slug, card_count
+      FROM sets
+      WHERE name ILIKE $1
+      LIMIT 4
+    `, [searchValue]),
+  ]);
 
   // Get NLP suggestions
   const parsed = parseSearchQuery(query);
   const nlpSuggestions = parsed.suggestions;
 
-  const typedCards = cards as CardSuggestionRow[] | null;
-  const typedSets = sets as SetRow[] | null;
-
   return {
-    cards: (typedCards || []).map((card) => {
+    cards: cards.map((card) => {
       const set = Array.isArray(card.sets) ? card.sets[0] : card.sets;
       const game = set?.games;
 
@@ -408,7 +393,7 @@ export async function getSearchSuggestions(
         score: 0,
       };
     }),
-    sets: (typedSets || []).map((set) => ({
+    sets: sets.map((set) => ({
       name: set.name,
       slug: set.slug,
       cardCount: set.card_count || 0,
@@ -423,25 +408,22 @@ export async function getSearchSuggestions(
 export async function getPopularSearches(
   limit: number = 10
 ): Promise<string[]> {
-  const supabase = createPublicClient();
-
-  const { data } = await supabase
-    .from('search_analytics')
-    .select('search_query')
-    .eq('result_clicked', true)
-    .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
-    .order('created_at', { ascending: false })
-    .limit(100);
+  const data = await dbQuery<SearchAnalyticsRow>(`
+    SELECT search_query
+    FROM search_analytics
+    WHERE result_clicked = true
+      AND created_at >= $1
+    ORDER BY created_at DESC
+    LIMIT 100
+  `, [new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()]);
 
   if (!data || data.length === 0) {
     return [];
   }
 
-  const typedData = data as SearchAnalyticsRow[];
-
   // Count occurrences
   const counts = new Map<string, number>();
-  for (const row of typedData) {
+  for (const row of data) {
     const query = row.search_query.toLowerCase().trim();
     counts.set(query, (counts.get(query) || 0) + 1);
   }

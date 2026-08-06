@@ -2,6 +2,7 @@
  * Portfolio Analytics Service
  */
 
+import { dbQuery } from '@/lib/db/client';
 import { createServerClient } from '@/lib/supabase/client';
 import type { Tables } from '@/lib/supabase/database.types';
 import { lookupGraded, normalizeGrade } from '@/lib/pricing/grades';
@@ -95,38 +96,38 @@ export interface PortfolioCard {
  * Get portfolio summary for a user
  */
 export async function getPortfolioSummary(userId: string): Promise<PortfolioSummary | null> {
-  const supabase = createServerClient();
-
-  // Get all collection items with card and pricing data
-  const { data: items, error } = await supabase
-    .from('collection_items')
-    .select(`
-      id,
-      cost_basis,
-      current_value,
-      grade,
-      grading_company_id,
-      cards!inner (
-        id,
-        name,
-        image_url,
-        local_image_url,
-        sets!inner (name)
-      ),
-      collections!inner (
-        user_id,
-        type
-      )
-    `)
-    .eq('collections.user_id', userId)
-    .in('collections.type', ['personal', 'investment']);
-
-  if (error || !items) {
+  let items: CollectionItemRow[];
+  try {
+    // JOIN the collection, card, and set relations into the old embedded shape.
+    items = await dbQuery<CollectionItemRow>(`
+      SELECT
+        ci.id,
+        ci.cost_basis::float8 AS cost_basis,
+        ci.current_value::float8 AS current_value,
+        ci.grade,
+        ci.grading_company_id,
+        json_build_object(
+          'id', c.id,
+          'name', c.name,
+          'image_url', c.image_url,
+          'local_image_url', c.local_image_url,
+          'sets', json_build_object('name', s.name)
+        ) AS cards,
+        json_build_object(
+          'user_id', col.user_id,
+          'type', col.type
+        ) AS collections
+      FROM collection_items ci
+      JOIN cards c ON c.id = ci.card_id
+      JOIN sets s ON s.id = c.set_id
+      JOIN collections col ON col.id = ci.collection_id
+      WHERE col.user_id = $1
+        AND col.type IN ('personal', 'investment')
+    `, [userId]);
+  } catch (error) {
     console.error('Failed to fetch portfolio:', error);
     return null;
   }
-
-  const typedItems = items as CollectionItemRow[];
 
   // Calculate totals
   let totalValue = 0;
@@ -135,7 +136,7 @@ export async function getPortfolioSummary(userId: string): Promise<PortfolioSumm
   const valueBySetMap = new Map<string, number>();
   const valueByGradeMap = new Map<string, number>();
 
-  for (const item of typedItems) {
+  for (const item of items) {
     const card = Array.isArray(item.cards) ? item.cards[0] : item.cards;
     const set = card?.sets;
     const setName = set?.name || 'Unknown';
@@ -172,10 +173,11 @@ export async function getPortfolioSummary(userId: string): Promise<PortfolioSumm
   const sortedByPerformance = [...portfolioCards].sort((a, b) => b.percentChange - a.percentChange);
 
   // Get collections count
-  const { count: collectionsCount } = await supabase
-    .from('collections')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', userId);
+  const collectionCountRows = await dbQuery<{ count: number }>(
+    'SELECT COUNT(*)::int AS count FROM collections WHERE user_id = $1',
+    [userId],
+  );
+  const collectionsCount = collectionCountRows[0]?.count || 0;
 
   // Convert maps to arrays
   const valueBySet = Array.from(valueBySetMap.entries())
@@ -298,35 +300,32 @@ export async function getHistoricalPrice(
   date: Date,
   grade?: string
 ): Promise<number | null> {
-  const supabase = createServerClient();
-
   // Look for price history record closest to the date
   const targetDate = date.toISOString().split('T')[0];
 
-  const { data } = await supabase
-    .from('price_history')
-    .select('price, grade, recorded_at')
-    .eq('card_id', cardId)
-    .lte('recorded_at', `${targetDate}T23:59:59Z`)
-    .order('recorded_at', { ascending: false })
-    .limit(10);
+  const data = await dbQuery<PriceHistoryForDate>(`
+    SELECT price::float8 AS price, grade, recorded_at
+    FROM price_history
+    WHERE card_id = $1
+      AND recorded_at <= $2
+    ORDER BY recorded_at DESC NULLS LAST
+    LIMIT 10
+  `, [cardId, `${targetDate}T23:59:59Z`]);
 
   if (!data || data.length === 0) {
     return null;
   }
 
-  const typedData = data as PriceHistoryForDate[];
-
   // Filter by grade if specified
   const targetGrade = grade || 'raw';
-  const matchingRecord = typedData.find((r) => r.grade === targetGrade);
+  const matchingRecord = data.find((r) => r.grade === targetGrade);
 
   if (matchingRecord) {
     return matchingRecord.price;
   }
 
   // Fall back to first record if no grade match
-  return typedData[0].price;
+  return data[0].price;
 }
 
 /**
@@ -357,24 +356,35 @@ export async function getCollectionBreakdown(userId: string): Promise<Array<{
   totalCostBasis: number;
   gainLoss: number;
 }>> {
-  const supabase = createServerClient();
+  const collections = await dbQuery<CollectionWithItems>(`
+    SELECT
+      col.id,
+      col.user_id,
+      col.name,
+      col.type,
+      col.description,
+      col.is_public,
+      col.anonymous_share,
+      col.share_token,
+      col.total_value::float8 AS total_value,
+      col.total_cost_basis::float8 AS total_cost_basis,
+      col.items_count,
+      col.created_at,
+      col.updated_at,
+      COALESCE((
+        SELECT json_agg(json_build_object(
+          'cost_basis', ci.cost_basis::float8,
+          'current_value', ci.current_value::float8
+        ) ORDER BY ci.id)
+        FROM collection_items ci
+        WHERE ci.collection_id = col.id
+      ), '[]'::json) AS collection_items
+    FROM collections col
+    WHERE col.user_id = $1
+    ORDER BY col.created_at DESC NULLS LAST
+  `, [userId]);
 
-  const { data: collections } = await supabase
-    .from('collections')
-    .select(`
-      *,
-      collection_items (
-        cost_basis,
-        current_value
-      )
-    `)
-    .eq('user_id', userId);
-
-  if (!collections) return [];
-
-  const typedCollections = collections as CollectionWithItems[];
-
-  return typedCollections.map((collection) => {
+  return collections.map((collection) => {
     const items = collection.collection_items || [];
     const totalValue = items.reduce((sum, item) => sum + (item.current_value || 0), 0);
     const totalCostBasis = items.reduce((sum, item) => sum + (item.cost_basis || 0), 0);
