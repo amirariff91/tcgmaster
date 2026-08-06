@@ -17,7 +17,9 @@ interface CardPreviewData {
   slug: string;
   number: string;
   rarity?: Rarity | string | null;
+  curation_status?: string | null;
   image_url?: string | null;
+  local_image_url?: string | null;
   set?: {
     id?: string;
     name: string;
@@ -44,10 +46,15 @@ export function CardPreview({ card, gameSlug, variant = 'default', className }: 
     return (
       <Link href={href} className={cn('block', className)}>
         <div className="flex items-center gap-4 rounded-lg p-3 transition-all duration-200 hover:bg-white/5 hover:border-orange-500/30 border border-transparent">
-          <CardImage src={card.image_url} alt={cleanName} size="sm" />
+          <CardImage src={card.local_image_url || card.image_url} alt={cleanName} size="sm" />
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-white truncate">
+            <h3 className="font-semibold text-white truncate flex items-center gap-1.5">
               {cleanName}
+              {card.curation_status === 'curated' && (
+                <svg className="w-3.5 h-3.5 text-yellow-400 shrink-0 drop-shadow-sm" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+              )}
             </h3>
             <p className="text-sm text-zinc-400 truncate">
               {card.set?.name} - #{card.number}
@@ -76,10 +83,15 @@ export function CardPreview({ card, gameSlug, variant = 'default', className }: 
     return (
       <Link href={href} className={cn('block', className)}>
         <div className="flex items-center gap-3 rounded-lg p-2 transition-all duration-200 hover:bg-white/5 border border-transparent hover:border-orange-500/30">
-          <CardImage src={card.image_url} alt={cleanName} size="sm" />
+          <CardImage src={card.local_image_url || card.image_url} alt={cleanName} size="sm" />
           <div className="flex-1 min-w-0">
-            <h3 className="font-medium text-white truncate text-sm">
+            <h3 className="font-medium text-white truncate text-sm flex items-center gap-1.5">
               {cleanName}
+              {card.curation_status === 'curated' && (
+                <svg className="w-3.5 h-3.5 text-yellow-400 shrink-0 drop-shadow-sm" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+              )}
             </h3>
             {card.current_price !== undefined && (
               <p className="text-sm font-semibold text-orange-400">
@@ -100,21 +112,21 @@ export function CardPreview({ card, gameSlug, variant = 'default', className }: 
         "hover:border-orange-500/30 hover:bg-[#0c1527] transition-all duration-300",
         className
       )}>
-        
+
         {/* Top: Image Area */}
         <div className="relative w-[130px] mx-auto aspect-[5/7]">
           {card.price_confidence && (
-            <Badge 
-              variant="outline" 
+            <Badge
+              variant="outline"
               className="absolute -top-2 -left-2 z-10 scale-90 border-zinc-800 bg-zinc-900/90 text-[10px]"
             >
               {card.price_confidence.toUpperCase()}
             </Badge>
           )}
-          
-          <CardImage 
-            src={card.image_url} 
-            alt={cleanName} 
+
+          <CardImage
+            src={card.local_image_url || card.image_url}
+            alt={cleanName}
             className="w-full h-auto object-contain drop-shadow-md aspect-[5/7] transition-transform duration-300 group-hover:scale-105"
           />
         </div>
@@ -123,8 +135,13 @@ export function CardPreview({ card, gameSlug, variant = 'default', className }: 
         <div className="flex flex-col flex-1 mt-[7px]">
           {/* Card Info */}
           <div className="flex-1 min-w-0">
-            <h3 className="font-bold text-white text-[13px] mb-[5px] leading-tight line-clamp-2">
-              {cleanName}
+            <h3 className="font-bold text-white text-[13px] mb-[5px] leading-tight line-clamp-2 flex items-start gap-1">
+              <span>{cleanName}</span>
+              {card.curation_status === 'curated' && (
+                <svg className="w-3.5 h-3.5 text-yellow-400 shrink-0 mt-0.5 drop-shadow-sm" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+              )}
             </h3>
             <p className="text-[11px] text-zinc-400 mb-[5px] truncate">
               {card.set?.name}
@@ -149,7 +166,7 @@ export function CardPreview({ card, gameSlug, variant = 'default', className }: 
             </div>
           </div>
         </div>
-        
+
       </div>
     </Link>
   );

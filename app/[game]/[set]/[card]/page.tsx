@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
-import { ChevronRight, ExternalLink } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { CardImage } from '@/components/card/card-image';
 import { CardDetailActions } from '@/components/card/card-detail-actions';
 import { RelatedCards, type RelatedCard } from '@/components/card/related-cards';
@@ -13,21 +13,12 @@ import { getCardWithPrices } from '@/lib/ppt/service';
 // Public catalog data only, so use the cookie-free anon client. Reading cookies()
 // (which lib/supabase/server does) opts the route into dynamic rendering and
 // silently defeats `revalidate` — that is why card pages served no-store.
-import { createPublicClient } from '@/lib/supabase/client';
+import { createServerClient, createPublicClient } from '@/lib/supabase/client';
 import { calculatePriceChange24h } from '@/lib/pricing/trending';
 import { latestRecordedAt, priceKindLabel, type PriceKind } from '@/lib/pricing/price-labels';
 
 // `price_history.source` values are lowercase enum members; match on substring so
 // display casing and multi-word names ("TCG Republic") still resolve.
-const MARKET_LOGOS = [
-  { match: 'snkrdunk', logo: '/logos/snkrdunk.png' },
-  { match: 'yuyutei', logo: '/logos/yuyutei.png' },
-  { match: 'cardrush', logo: '/logos/cardrush.png' },
-  { match: 'tcgplayer', logo: '/logos/tcgplayer.png' },
-  { match: 'pricecharting', logo: '/logos/pricecharting.png' },
-  { match: 'tcgrepublic', logo: '/logos/tcgrepublic.png' },
-  { match: 'tcg republic', logo: '/logos/tcgrepublic.png' },
-] as const;
 
 interface CardDataSet {
   id: string;
@@ -56,6 +47,13 @@ interface CurrentSourcePrice {
   recorded_at: string | null;
 }
 
+interface CardDataVariant {
+  id: string;
+  variant_type: string;
+  name: string;
+  slug: string;
+}
+
 interface CardDataPriceCurrent {
   source_prices: Record<string, CurrentSourcePrice>;
   graded_prices: Record<string, GradedPriceData>;
@@ -71,16 +69,20 @@ interface CardDataPriceHistory {
   card_id: string;
   variant_id: string | null;
   grading_company_id: string | null;
-  grade: string;
+  grade: string | null;
   price: number;
   recorded_at: string;
-  source: string;
+  source: string | null;
 }
 
 interface CardDataPopulation {
-  grade: number;
+  grade: string;
   count: number;
-  grading_company_id: string;
+  grading_company_id: string | null;
+}
+
+interface PrintRunInfo {
+  tcgplayer_card_name?: string;
 }
 
 interface CardData {
@@ -88,27 +90,28 @@ interface CardData {
   name: string;
   slug: string;
   number: string;
-  rarity: string | null;
+  rarity: string;
   artist: string | null;
   description: string | null;
-  image_url: string | null;
+  image_url: string;
   local_image_url: string | null;
   tcg_player_id: string | null;
   sets: CardDataSet;
-  card_variants: { id: string; variant_type: string; name: string; slug: string }[];
+  card_variants: CardDataVariant[];
   card_price_current: CardDataPriceCurrent | null;
   price_cache_ttl: number | null;
   price_history: CardDataPriceHistory[];
   population_reports: CardDataPopulation[];
-  print_run_info?: any;
+  print_run_info?: PrintRunInfo | string | null;
   tcgplayer_url?: string;
   snkrdunk_url?: string;
   cardrush_url?: string;
   yuyutei_url?: string;
+  card_source_mapping?: { source: string; external_url: string }[];
 }
 
 async function getCardData(gameSlug: string, setSlug: string, cardSlug: string): Promise<CardData | null> {
-  const supabase = createPublicClient();
+  const supabase = createServerClient();
 
   const { data: card, error } = await supabase
     .from('cards')
@@ -167,6 +170,10 @@ async function getCardData(gameSlug: string, setSlug: string, cardSlug: string):
         recorded_at,
         source
       ),
+      card_source_mapping (
+        source,
+        external_url
+      ),
       population_reports (
         grade,
         count,
@@ -191,7 +198,7 @@ async function getRelatedCards(setId: string, excludeCardId: string): Promise<Re
 
   const { data } = await supabase
     .from('cards')
-    .select('id, slug, name, number, image_url, local_image_url, price_cache_ttl')
+    .select('id, slug, name, number, rarity, image_url, local_image_url, price_cache_ttl')
     .eq('set_id', setId)
     .neq('id', excludeCardId)
     // price_cache_ttl holds the featured price in cents, so this surfaces the
@@ -220,8 +227,7 @@ async function resolveRetiredOnePieceSlug(
     .single();
 
   if (!data) return null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const setSlug = (data as any).sets?.slug as string | undefined;
+  const setSlug = (data as { sets?: { slug?: string } }).sets?.slug;
   if (!setSlug) return null;
   return `/${gameSlug}/${setSlug}/${winnerSlug}`;
 }
@@ -244,7 +250,7 @@ interface PageProps {
 //
 // Anything derived from Date.now() during render now freezes for up to a day —
 // see components/card/price-freshness.tsx.
-export const revalidate = 86400;
+export const revalidate = 0;
 
 // Next 16 only puts a dynamic segment on the ISR path when it declares
 // generateStaticParams. The catalogue is ~15k cards, so prerender nothing at build
@@ -318,6 +324,10 @@ export default async function CardDetailPage({ params }: PageProps) {
     },
   };
 
+  const printRunInfo = typeof cardData.print_run_info === 'object' && cardData.print_run_info !== null
+    ? cardData.print_run_info
+    : null;
+
   const currentPrices = cardData.card_price_current;
   const shouldUseLivePrices = currentPrices === null || (
     currentPrices.headline_cents === null &&
@@ -355,16 +365,34 @@ export default async function CardDetailPage({ params }: PageProps) {
   const winningSource = currentPrices?.headline_source;
   const rawPrice = !headlineGrade || headlineGrade === 'raw' ? featuredPrice : null;
 
-  const populationReports = cardData?.population_reports || [];
+  const COMPANY_UUIDS_TO_SLUG: Record<string, string> = {
+    '74c51627-cc4b-4a82-a1c0-52b3975b47b7': 'psa',
+    '7ffb12c6-eb42-4f9e-ad37-a9a3b6f007b8': 'bgs',
+    'dce6169f-8958-4229-861b-686a4644c984': 'cgc',
+    'da09e2df-2464-40f2-ae0e-0296253d811f': 'tag'
+  };
+
+  const populationReports = (cardData?.population_reports || []).map(pop => ({
+    ...pop,
+    grading_company_id: pop.grading_company_id ? (COMPANY_UUIDS_TO_SLUG[pop.grading_company_id] || pop.grading_company_id) : 'psa'
+  }));
   const population: Record<string, number> = {};
   let totalPop = 0;
   for (const pop of populationReports) {
-    population[`psa-${pop.grade}`] = pop.count;
+    const company = pop.grading_company_id.toLowerCase().replace(/[^a-z]/g, '');
+    population[`${company}-${pop.grade}`] = pop.count;
     totalPop += pop.count;
   }
   const psa10Pop = population['psa-10'] || 0;
 
-  const priceHistoryData = (cardData?.price_history || []).filter((h) => h.source !== 'ppt-api');
+  const priceHistoryData = (cardData?.price_history || [])
+    .filter((h): h is CardDataPriceHistory & { grade: string; source: string } => (
+      h.source !== 'ppt-api' && h.source !== null && h.grade !== null
+    ))
+    .map(h => ({
+      ...h,
+      grading_company_id: h.grading_company_id ? (COMPANY_UUIDS_TO_SLUG[h.grading_company_id] || h.grading_company_id) : null
+    }));
 
   const relevantHistory = priceHistoryData.filter(h => h.grade === activeGradeForChart || h.grade === `psa${activeGradeForChart}`);
 
@@ -374,7 +402,7 @@ export default async function CardDetailPage({ params }: PageProps) {
   relevantHistory.forEach(h => {
     const date = h.recorded_at.split('T')[0];
     const source = h.source || 'Market';
-    
+
     // Skip 'Market' source for charts
     if (source === 'Market') return;
 
@@ -393,19 +421,39 @@ export default async function CardDetailPage({ params }: PageProps) {
   const priceChange24h = calculatePriceChange24h(relevantHistory);
 
   const priceLadderEntries = [
-    { grade: 'raw' as const, grading_company: null, price: rawPrice || 0, confidence: 'high' as const, last_sale_date: null, population: null },
-    { grade: '7' as const, grading_company: 'psa' as const, price: gradedPrices.psa7?.average || 0, confidence: 'high' as const, last_sale_date: null, population: population['psa-7'] || null },
-    { grade: '8' as const, grading_company: 'psa' as const, price: gradedPrices.psa8?.average || 0, confidence: 'high' as const, last_sale_date: null, population: population['psa-8'] || null },
-    { grade: '9' as const, grading_company: 'psa' as const, price: gradedPrices.psa9?.average || 0, confidence: 'high' as const, last_sale_date: null, population: population['psa-9'] || null },
-    { grade: '10' as const, grading_company: 'psa' as const, price: gradedPrices.psa10?.average || 0, confidence: 'medium' as const, last_sale_date: null, population: population['psa-10'] || null },
+    { grade: 'raw' as const, grading_company: null, price: rawPrice || 0, sources: {}, confidence: 'high' as const, last_sale_date: null, population: null },
+    { grade: '10' as const, grading_company: 'psa' as const, price: gradedPrices.psa10?.average || 0, sources: gradedPrices.psa10?.sources, confidence: 'medium' as const, last_sale_date: null, population: population['psa-10'] || null },
+    { grade: '9' as const, grading_company: 'psa' as const, price: gradedPrices.psa9?.average || 0, sources: gradedPrices.psa9?.sources, confidence: 'high' as const, last_sale_date: null, population: population['psa-9'] || null },
+    { grade: '8' as const, grading_company: 'psa' as const, price: gradedPrices.psa8?.average || 0, sources: gradedPrices.psa8?.sources, confidence: 'high' as const, last_sale_date: null, population: population['psa-8'] || null },
+    { grade: '7' as const, grading_company: 'psa' as const, price: gradedPrices.psa7?.average || 0, sources: gradedPrices.psa7?.sources, confidence: 'high' as const, last_sale_date: null, population: population['psa-7'] || null },
+    // CGC
+    { grade: '10' as const, grading_company: 'cgc' as const, price: gradedPrices.cgc10?.average || 0, sources: gradedPrices.cgc10?.sources, confidence: 'medium' as const, last_sale_date: null, population: population['cgc-10'] || null },
+    { grade: '9' as const, grading_company: 'cgc' as const, price: gradedPrices.cgc9?.average || 0, sources: gradedPrices.cgc9?.sources, confidence: 'high' as const, last_sale_date: null, population: population['cgc-9'] || null },
+    { grade: '8' as const, grading_company: 'cgc' as const, price: gradedPrices.cgc8?.average || 0, sources: gradedPrices.cgc8?.sources, confidence: 'high' as const, last_sale_date: null, population: population['cgc-8'] || null },
+    { grade: '7' as const, grading_company: 'cgc' as const, price: gradedPrices.cgc7?.average || 0, sources: gradedPrices.cgc7?.sources, confidence: 'high' as const, last_sale_date: null, population: population['cgc-7'] || null },
+    // BGS
+    { grade: '10' as const, grading_company: 'bgs' as const, price: gradedPrices.bgs10?.average || 0, sources: gradedPrices.bgs10?.sources, confidence: 'medium' as const, last_sale_date: null, population: population['bgs-10'] || null },
+    { grade: '9' as const, grading_company: 'bgs' as const, price: gradedPrices.bgs9?.average || 0, sources: gradedPrices.bgs9?.sources, confidence: 'high' as const, last_sale_date: null, population: population['bgs-9'] || null },
+    { grade: '8' as const, grading_company: 'bgs' as const, price: gradedPrices.bgs8?.average || 0, sources: gradedPrices.bgs8?.sources, confidence: 'high' as const, last_sale_date: null, population: population['bgs-8'] || null },
+    { grade: '7' as const, grading_company: 'bgs' as const, price: gradedPrices.bgs7?.average || 0, sources: gradedPrices.bgs7?.sources, confidence: 'high' as const, last_sale_date: null, population: population['bgs-7'] || null },
+    // TAG
+    { grade: '10' as const, grading_company: 'tag' as const, price: gradedPrices.tag10?.average || 0, sources: gradedPrices.tag10?.sources, confidence: 'medium' as const, last_sale_date: null, population: population['tag-10'] || null },
+    { grade: '9' as const, grading_company: 'tag' as const, price: gradedPrices.tag9?.average || 0, sources: gradedPrices.tag9?.sources, confidence: 'high' as const, last_sale_date: null, population: population['tag-9'] || null },
+    { grade: '8' as const, grading_company: 'tag' as const, price: gradedPrices.tag8?.average || 0, sources: gradedPrices.tag8?.sources, confidence: 'high' as const, last_sale_date: null, population: population['tag-8'] || null },
+    { grade: '7' as const, grading_company: 'tag' as const, price: gradedPrices.tag7?.average || 0, sources: gradedPrices.tag7?.sources, confidence: 'high' as const, last_sale_date: null, population: population['tag-7'] || null },
+    // ARS
+    { grade: '10+' as const, grading_company: 'ars' as const, price: gradedPrices.ars10plus?.average || 0, sources: gradedPrices.ars10plus?.sources, confidence: 'medium' as const, last_sale_date: null, population: population['ars-10plus'] || null },
+    { grade: '10' as const, grading_company: 'ars' as const, price: gradedPrices.ars10?.average || 0, sources: gradedPrices.ars10?.sources, confidence: 'medium' as const, last_sale_date: null, population: population['ars-10'] || null },
+    { grade: '9' as const, grading_company: 'ars' as const, price: gradedPrices.ars9?.average || 0, sources: gradedPrices.ars9?.sources, confidence: 'high' as const, last_sale_date: null, population: population['ars-9'] || null },
+    { grade: '8' as const, grading_company: 'ars' as const, price: gradedPrices.ars8?.average || 0, sources: gradedPrices.ars8?.sources, confidence: 'high' as const, last_sale_date: null, population: population['ars-8'] || null },
   ].filter(e => e.price > 0);
 
-  const availableGrades = [
-    { grade: 'raw' as const, grading_company: null, hasData: rawPrice !== null },
-    { grade: '9' as const, grading_company: 'psa' as const, hasData: !!gradedPrices.psa9?.average },
-    { grade: '10' as const, grading_company: 'psa' as const, hasData: !!gradedPrices.psa10?.average },
-  ].filter(g => g.hasData);
-  
+  const availableGrades = priceLadderEntries.map(c => ({
+    grade: c.grade,
+    grading_company: c.grading_company,
+    hasData: true
+  }));
+
   const latestPricesList = Object.entries(sourcePrices)
     .flatMap(([source, data]) => {
       if (!data || typeof data.usd !== 'number' || !Number.isFinite(data.usd)) return [];
@@ -444,6 +492,15 @@ export default async function CardDetailPage({ params }: PageProps) {
     if (url) marketUrls[source] = url;
   }
 
+  // Also merge any new mapping records
+  if (cardData.card_source_mapping) {
+    for (const mapping of cardData.card_source_mapping) {
+      if (mapping.external_url) {
+        marketUrls[mapping.source] = mapping.external_url;
+      }
+    }
+  }
+
   const { baseName: cleanName, variantInfo } = splitCardName(card.name);
 
   return (
@@ -451,7 +508,7 @@ export default async function CardDetailPage({ params }: PageProps) {
 
       {/* Hero Section */}
       <div className="container max-w-[1400px] mx-auto py-6 lg:py-10 px-4 sm:px-6 relative z-10">
-        
+
         {/* Sleek Breadcrumb */}
         <nav className="flex items-center gap-2 text-[13px] text-zinc-400 mb-8">
           <Link href={`/${game}`} className="hover:text-white transition-colors">{card.game.display_name}</Link>
@@ -462,7 +519,7 @@ export default async function CardDetailPage({ params }: PageProps) {
         </nav>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
-          
+
           {/* Column 1: Image Showcase (col-span-3) */}
           <div className="lg:col-span-3">
             <div className="lg:sticky lg:top-24 group perspective-[1000px]">
@@ -476,7 +533,7 @@ export default async function CardDetailPage({ params }: PageProps) {
                 />
                 <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/10 to-white/0 opacity-0 group-hover:opacity-100 rounded-2xl pointer-events-none transition-opacity duration-500" />
               </div>
-              
+
               <div className="mt-8">
                 <CardDetailActions
                   cardId={card.id}
@@ -489,7 +546,7 @@ export default async function CardDetailPage({ params }: PageProps) {
 
           {/* Column 2: Header, Price & Info (col-span-4) */}
           <div className="lg:col-span-4 flex flex-col space-y-4">
-            
+
             {/* Header */}
             <div>
               <h1 className="text-2xl sm:text-[32px] font-[800] text-white tracking-tight leading-tight mb-1 font-sans">
@@ -505,9 +562,9 @@ export default async function CardDetailPage({ params }: PageProps) {
                   Illustrated by <span className="text-zinc-300">{card.artist}</span>
                 </p>
               )}
-              {cardData.print_run_info?.tcgplayer_card_name && (
+              {printRunInfo?.tcgplayer_card_name && (
                 <p className="text-zinc-400 font-medium text-xs mt-1 bg-white/10 inline-block px-2 py-0.5 rounded-sm">
-                  TCGPlayer: <span className="text-zinc-300">{cardData.print_run_info.tcgplayer_card_name}</span>
+                  TCGPlayer: <span className="text-zinc-300">{printRunInfo.tcgplayer_card_name}</span>
                 </p>
               )}
             </div>
@@ -594,81 +651,16 @@ export default async function CardDetailPage({ params }: PageProps) {
                 </span>
               </div>
             </div>
-            
+
           </div>
 
           {/* Column 3: Chart & Stats (col-span-5) */}
           <div className="lg:col-span-5 flex flex-col space-y-6">
-            <CollectrChart 
-              priceHistory={priceHistoryData} 
-              gradeInfos={priceLadderEntries} 
+            <CollectrChart
+              priceHistory={priceHistoryData}
+              gradeInfos={priceLadderEntries}
+              marketUrls={marketUrls}
             />
-
-
-
-            {/* Compared Sources */}
-            {latestPricesList.length > 0 && (
-              <div className="bg-[#0b1329]/80 backdrop-blur-sm rounded-2xl border border-white/10 overflow-hidden shadow-sm">
-                <div className="bg-white/5 px-5 py-3 border-b border-white/10">
-                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">Compared Sources</h3>
-                </div>
-                <div className="divide-y divide-white/10">
-                  {latestPricesList.map((item) => {
-                    const s = item.source.toLowerCase();
-                    const logo = MARKET_LOGOS.find(m => s.includes(m.match))?.logo ?? null;
-                    // Logos with transparent backgrounds need a white plate to stay legible on the dark card.
-                    const needsWhitePlate = !s.includes('snkrdunk');
-                    const href = marketUrls[item.source] ?? null;
-
-                    const body = (
-                      <>
-                        <div className="flex items-center gap-3">
-                          {logo ? (
-                            <img
-                              src={logo}
-                              alt={item.source}
-                              className={`w-8 h-8 rounded-md border border-white/10 shadow-sm ${
-                                needsWhitePlate
-                                  ? 'bg-white object-contain p-1'
-                                  : 'bg-white/5 object-cover p-0 overflow-hidden'
-                              }`}
-                            />
-                          ) : (
-                            <div className="w-8 h-8 rounded-md border border-white/10 shadow-sm bg-white/5 flex items-center justify-center text-zinc-400">
-                              <span className="text-xs font-bold">{item.source.charAt(0).toUpperCase()}</span>
-                            </div>
-                          )}
-                          <span className="text-white font-bold capitalize">{item.source}</span>
-                          <span className="text-[10px] text-zinc-500 uppercase tracking-wider">{priceKindLabel(item.kind)}</span>
-                          {href && <ExternalLink className="h-3.5 w-3.5 text-zinc-500" aria-hidden />}
-                        </div>
-                        <div className="text-right flex flex-col items-end">
-                          <FormattedPrice price={item.price} className="text-orange-400 font-bold text-lg tabular-nums leading-none" />
-                          <span className="text-[10px] text-zinc-500 mt-1 font-medium uppercase tracking-wider">{formatDate(item.date)}</span>
-                        </div>
-                      </>
-                    );
-
-                    const rowClass = 'flex justify-between items-center px-5 py-4 hover:bg-white/5 transition-colors';
-
-                    return href ? (
-                      <a
-                        key={item.source}
-                        href={href}
-                        target="_blank"
-                        rel="noopener noreferrer nofollow sponsored"
-                        className={rowClass}
-                      >
-                        {body}
-                      </a>
-                    ) : (
-                      <div key={item.source} className={rowClass}>{body}</div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-            
           </div>
         </div>
 

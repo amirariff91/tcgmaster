@@ -9,6 +9,8 @@ export interface MockCard {
   rarity: 'common' | 'uncommon' | 'rare' | 'holo-rare' | 'ultra-rare';
   type?: string; // For Pokemon: fire, water, grass, etc.
   image_url: string | null;
+  local_image_url?: string | null;
+  curation_status?: string | null;
   prices: {
     raw: number | null;
     psa7: number | null;

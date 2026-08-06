@@ -23,6 +23,7 @@ interface CardSearchRow {
     games: { slug: string };
   };
   price_cache_ttl: number | null;
+  curation_status: string | null;
 }
 
 interface CardSuggestionRow {
@@ -38,6 +39,7 @@ interface CardSuggestionRow {
     slug: string;
     games: { slug: string };
   };
+  curation_status?: string | null;
 }
 
 interface SetRow {
@@ -61,6 +63,7 @@ export interface SearchResult {
   marketPrice: number | null;
   slug: string;
   game: string;
+  curationStatus: string | null;
   score: number;
 }
 
@@ -133,7 +136,7 @@ export async function searchCards(
 
   // Helper to build the base query with all filters applied
   const buildBaseQuery = (head: boolean = false) => {
-    const columns = head 
+    const columns = head
       ? 'id, sets!inner ( games!inner ( slug ) )'
       : `
           id,
@@ -144,6 +147,7 @@ export async function searchCards(
           image_url,
           local_image_url,
           price_cache_ttl,
+          curation_status,
           sets!inner (
             id,
             name,
@@ -153,8 +157,13 @@ export async function searchCards(
             )
           )
         `;
-        
-    let dbQuery = supabase.from('cards').select(columns, { count: 'exact', head });
+
+    let dbQuery = supabase.from('cards').select(columns, { count: 'estimated', head });
+
+    // Apply Verified Only filter from NLP
+    if (parsed.isVerifiedOnly) {
+      dbQuery = dbQuery.eq('curation_status', 'curated');
+    }
 
     // Apply text search
     if (parsed.cardName && parsed.cardName.length >= 2) {
@@ -181,9 +190,9 @@ export async function searchCards(
 
     // Apply language filter
     if (options.filters?.lang === 'en') {
-      dbQuery = dbQuery.not('slug', 'ilike', '%-ja');
+      dbQuery = dbQuery.not('slug', 'like', '%-ja');
     } else if (options.filters?.lang === 'ja') {
-      dbQuery = dbQuery.ilike('slug', '%-ja');
+      dbQuery = dbQuery.like('slug', '%-ja');
     }
 
     // Filter out cards with no prices when sorting by "Recently Updated"
@@ -196,15 +205,15 @@ export async function searchCards(
   };
 
   // Helper to apply sorting
-  const applySort = (q: any) => {
+  const applySort = (q: ReturnType<typeof buildBaseQuery>) => {
     if (options.sort === 'price-desc') {
-      return q.order('price_cache_ttl', { ascending: false, nullsFirst: false });
+      return q.order('price_cache_ttl', { ascending: false, nullsFirst: false }).order('id');
     } else if (options.sort === 'price-asc') {
-      return q.order('price_cache_ttl', { ascending: true, nullsFirst: false });
+      return q.order('price_cache_ttl', { ascending: true, nullsFirst: false }).order('id');
     } else if (options.sort === 'name-asc') {
-      return q.order('name', { ascending: true });
+      return q.order('name', { ascending: true }).order('id');
     } else {
-      return q.order('last_price_fetch', { ascending: false, nullsFirst: false }).order('name');
+      return q.order('last_price_fetch', { ascending: false, nullsFirst: false }).order('name').order('id');
     }
   };
 
@@ -221,15 +230,15 @@ export async function searchCards(
   // 2. Fetch Complete Cards (if within range)
   if (offset < safeCompleteCount) {
     const completeFetchSize = Math.min(pageSize, safeCompleteCount - offset);
-    
+
     // If a custom sort is applied, don't split by image! Query all!
     const isCustomSort = options.sort && options.sort !== 'relevance';
-    
+
     if (isCustomSort) {
       let qAll = buildBaseQuery(false);
       qAll = applySort(qAll);
       qAll = qAll.range(offset, offset + pageSize - 1);
-      
+
       const { data, error } = await qAll;
       if (error) {
         console.error('Search error (All):', error);
@@ -240,7 +249,7 @@ export async function searchCards(
       let qComplete = buildBaseQuery(false).not('image_url', 'is', null);
       qComplete = applySort(qComplete);
       qComplete = qComplete.range(offset, offset + completeFetchSize - 1);
-      
+
       const { data, error } = await qComplete;
       if (error) {
         console.error('Search error (Complete):', error);
@@ -253,15 +262,15 @@ export async function searchCards(
   // 3. Fetch Incomplete Cards (if more items needed to fill the page)
   if (completeCards.length < pageSize) {
     const isCustomSort = options.sort && options.sort !== 'relevance';
-    
+
     if (!isCustomSort) {
       const remainingSize = pageSize - completeCards.length;
       const incompleteOffset = Math.max(0, offset - safeCompleteCount);
-      
+
       let qIncomplete = buildBaseQuery(false).is('image_url', null);
       qIncomplete = applySort(qIncomplete);
       qIncomplete = qIncomplete.range(incompleteOffset, incompleteOffset + remainingSize - 1);
-      
+
       const { data, error } = await qIncomplete;
       if (error) {
         console.error('Search error (Incomplete):', error);
@@ -289,6 +298,7 @@ export async function searchCards(
       marketPrice: card.price_cache_ttl ? card.price_cache_ttl / 100 : null,
       slug: card.slug,
       game: game?.slug || 'pokemon',
+      curationStatus: card.curation_status || null,
       score: 0,
     };
 
@@ -394,6 +404,7 @@ export async function getSearchSuggestions(
         marketPrice: null,
         slug: card.slug,
         game: game?.slug || 'pokemon',
+        curationStatus: card.curation_status || null,
         score: 0,
       };
     }),

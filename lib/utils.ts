@@ -152,15 +152,15 @@ export function isValidCertNumber(certNumber: string, company: string): boolean 
 
 export function formatDisplayNumber(gameSlug: string | null | undefined, number: string, cardCount?: number): string {
   if (!number) return '';
-  
+
   // Strip _pX, -pX, _rX, -rX suffixes for UI display
-  let cleanNumber = number.replace(/[_-][pr]\d+/g, '');
-  
+  const cleanNumber = number.replace(/[_-][pr]\d+/g, '');
+
   // Pokemon cards append /total if not already present
   if (gameSlug === 'pokemon') {
     return cleanNumber.includes('/') || !cardCount ? cleanNumber : `${cleanNumber}/${cardCount}`;
   }
-  
+
   // For One Piece and Dragon Ball FW, just return the clean number without /cardCount
   return cleanNumber;
 }
@@ -184,7 +184,7 @@ const KNOWN_VARIANT_TAGS = [
 
 export function splitCardName(fullName: string): { baseName: string; variantInfo: string | null } {
   if (!fullName) return { baseName: '', variantInfo: null };
-  
+
   for (const tag of KNOWN_VARIANT_TAGS) {
     const suffix = ` (${tag})`;
     if (fullName.endsWith(suffix)) {
@@ -194,6 +194,6 @@ export function splitCardName(fullName: string): { baseName: string; variantInfo
       };
     }
   }
-  
+
   return { baseName: fullName, variantInfo: null };
 }

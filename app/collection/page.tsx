@@ -182,8 +182,8 @@ function CollectionItemsView({
   if (error) {
     return (
       <div className="text-center py-12">
-        <p className="font-medium text-red-600">Your collection didn't load</p>
-        <p className="text-sm text-zinc-500 mt-1">We couldn't reach the server. Try refreshing the page.</p>
+        <p className="font-medium text-red-600">Your collection didn&apos;t load</p>
+        <p className="text-sm text-zinc-500 mt-1">We couldn&apos;t reach the server. Try refreshing the page.</p>
         <button onClick={() => window.location.reload()} className="mt-4 text-sm text-zinc-600 underline">
           Refresh
         </button>

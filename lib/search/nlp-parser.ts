@@ -15,6 +15,7 @@ export interface ParsedQuery {
   variant: string | null;
   rarity: string | null;
   isHolo: boolean;
+  isVerifiedOnly: boolean;
   confidence: number;
   suggestions: string[];
   originalQuery: string;
@@ -114,10 +115,18 @@ export function parseSearchQuery(query: string): ParsedQuery {
     variant: null,
     rarity: null,
     isHolo: false,
+    isVerifiedOnly: false,
     confidence: 0,
     suggestions: [],
     originalQuery,
   };
+
+  // Extract "verified only" modifier
+  if (q.includes('verified only') || q.includes('verified')) {
+    result.isVerifiedOnly = true;
+    q = q.replace(/\b(verified only|verified)\b/gi, ' ');
+    confidence += 0.2;
+  }
 
   // Extract grading company and grade (e.g., "PSA 10", "BGS 9.5")
   const gradeMatch = q.match(/\b(psa|bgs|cgc|sgc|beckett)\s*(\d+(?:\.\d+)?)\b/i);
