@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { Metadata } from 'next';
+import { connection } from 'next/server';
 import { ArrowRight, Search, TrendingUp } from 'lucide-react';
 import { SearchBar } from '@/components/search/search-bar';
 import { Button } from '@/components/ui/button';
@@ -225,6 +226,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   } catch (error) {
     // Metadata is best-effort so a build-time DB outage does not fail the route.
     console.error('Failed to load game metadata:', error);
+    await connection();
   }
 
   if (!gameData) {

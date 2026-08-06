@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
+import { connection } from 'next/server';
 import { ChevronRight } from 'lucide-react';
 import { CardImage } from '@/components/card/card-image';
 import { CardDetailActions } from '@/components/card/card-detail-actions';
@@ -285,6 +286,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   } catch (error) {
     // Metadata is best-effort so a build-time DB outage does not fail the route.
     console.error('Failed to load card metadata:', error);
+    await connection();
   }
 
   const cardName = cardData?.name || cardSlug;

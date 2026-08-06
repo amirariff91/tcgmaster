@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { connection } from 'next/server';
 import { dbQuery } from '@/lib/db/client';
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
@@ -58,6 +59,7 @@ export async function generateMetadata({ params }: ArchetypePageProps): Promise<
   } catch (error) {
     // Metadata is best-effort so a build-time DB outage does not fail the route.
     console.error('Failed to load archetype metadata:', error);
+    await connection();
   }
   
   return {

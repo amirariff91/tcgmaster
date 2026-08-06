@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { connection } from 'next/server';
 import { notFound } from 'next/navigation';
 import { getSetBySlug, getRelatedSets } from '@/lib/mock-data';
 import { SetPageClient } from './set-page-client';
@@ -15,7 +16,11 @@ interface SetPageProps {
 }
 
 // Fetch set + cards from Postgres
-async function getSetFromDB(gameSlug: string, setSlug: string): Promise<MockSet | null> {
+async function getSetFromDB(
+  gameSlug: string,
+  setSlug: string,
+  onError?: (error: unknown) => void,
+): Promise<MockSet | null> {
   try {
     const setRows = await dbQuery(`
       SELECT
@@ -154,6 +159,7 @@ async function getSetFromDB(gameSlug: string, setSlug: string): Promise<MockSet 
     };
   } catch (e) {
     console.error('Failed to fetch set from DB:', e);
+    onError?.(e);
     return null;
   }
 }
@@ -177,7 +183,12 @@ export async function generateMetadata({ params }: SetPageProps): Promise<Metada
   const { game, set: setSlug } = await params;
 
   // Try DB first, fall back to mock
-  const setData = await getSetFromDB(game, setSlug) || getSetBySlug(game, setSlug) || null;
+  let dbFailed = false;
+  const setData = await getSetFromDB(game, setSlug, () => {
+    dbFailed = true;
+  }) || getSetBySlug(game, setSlug) || null;
+
+  if (dbFailed) await connection();
 
   if (!setData) return { title: 'Set Not Found | TCGMaster' };
 

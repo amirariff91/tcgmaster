@@ -215,8 +215,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     );
   }
 
-  // Get population data
-  const population = await getPopulationFromPostgres(card.id, 'psa');
+  // Get cached population data without routing this public read through the scraper.
+  let population: PopulationReport | null = null;
+  try {
+    population = await getPopulationFromPostgres(card.id, 'psa');
+  } catch (error) {
+    console.error('Error fetching cached population:', error);
+  }
 
   // The current-price row is keyed by card_id; there is no legacy expiry row to unwrap.
   const currentPrice = card.card_price_current;

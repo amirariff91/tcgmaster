@@ -105,7 +105,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
   // Try database first (unless force refresh)
   if (!forceRefresh) {
-    const cached = await getPopulationFromPostgres(cardId, company);
+    let cached: PopulationReport | null = null;
+    try {
+      cached = await getPopulationFromPostgres(cardId, company);
+    } catch (error) {
+      console.error('Error fetching cached population:', error);
+    }
+
     if (cached) {
       return NextResponse.json({
         data: {

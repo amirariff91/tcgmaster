@@ -79,11 +79,11 @@ export default async function GlobalDecksHub() {
     allDecks = await dbQuery<GlobalDeckRow>(`
       SELECT
         d.leader_card_id,
-        json_build_object(
+        CASE WHEN c.id IS NULL THEN NULL ELSE json_build_object(
           'name', c.name,
           'image_url', c.image_url,
           'local_image_url', c.local_image_url
-        ) AS cards,
+        ) END AS cards,
         json_build_object(
           'games', json_build_object('id', g.id, 'slug', g.slug)
         ) AS tournaments

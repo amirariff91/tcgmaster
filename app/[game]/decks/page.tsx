@@ -69,11 +69,11 @@ export default async function DecksPage({
         d.placement,
         d.player_name,
         d.total_price::float8 AS total_price,
-        json_build_object(
+        CASE WHEN c.id IS NULL THEN NULL ELSE json_build_object(
           'name', c.name,
           'image_url', c.image_url,
           'local_image_url', c.local_image_url
-        ) AS cards
+        ) END AS cards
       FROM decks d
       JOIN tournaments t ON t.id = d.tournament_id
       JOIN games g ON g.id = t.game_id
