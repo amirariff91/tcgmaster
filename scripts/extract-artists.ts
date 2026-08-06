@@ -158,21 +158,20 @@ async function run() {
       const artist = await extractArtist(targetImageUrl);
 
       if (artist) {
+        // artist is either a real name or the model's genuine 'Unknown' verdict —
+        // both are truthy and are final answers worth persisting.
         await dbQuery(
           `UPDATE cards
            SET artist = $1, updated_at = $2
            WHERE id = $3`,
           [artist, new Date().toISOString(), targetCard.id],
         );
-        console.log(`  ✓ Successfully extracted artist for ${targetCard.slug}: "${artist}"`);
+        console.log(`  ✓ Extracted artist for ${targetCard.slug}: "${artist}"`);
       } else {
-        await dbQuery(
-          `UPDATE cards
-           SET artist = $1, updated_at = $2
-           WHERE id = $3`,
-          ['Unknown', new Date().toISOString(), targetCard.id],
-        );
-        console.log(`  ! Extraction failed for ${targetCard.slug}. Set to "Unknown".`);
+        // null = transient failure (image download or Ollama error), NOT a genuine
+        // 'no artist' verdict. Leave artist NULL so the queue retries this card;
+        // writing 'Unknown' here would make it permanently unretried.
+        console.log(`  ! Skipping ${targetCard.slug} (transient failure, will retry).`);
       }
 
       console.log(`Sleeping ${SLEEP_MS / 1000}s to respect Ollama API rate limits...`);

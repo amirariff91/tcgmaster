@@ -3,8 +3,18 @@ import { nextCookies } from 'better-auth/next-js';
 import { magicLink } from 'better-auth/plugins';
 import { dbQuery, pool } from '@/lib/db/client';
 
-const buildSafeSecret = 'tcgmaster-build-secret-change-me-32-characters';
-const baseURL = process.env.BETTER_AUTH_URL || 'http://localhost:3000';
+// Production MUST set BETTER_AUTH_SECRET and BETTER_AUTH_URL. There is no safe
+// fallback: a committed or localhost value makes sessions forgeable / cookies
+// non-secure. Fail closed in production rather than degrade silently.
+const secret = process.env.BETTER_AUTH_SECRET;
+const baseURL = process.env.BETTER_AUTH_URL;
+
+if (process.env.NODE_ENV === 'production' && !secret) {
+  throw new Error('BETTER_AUTH_SECRET is required in production — sessions would be forgeable without it');
+}
+if (process.env.NODE_ENV === 'production' && !baseURL) {
+  throw new Error('BETTER_AUTH_URL is required in production — callbacks and cookies would use localhost');
+}
 
 const googleClientId = process.env.GOOGLE_CLIENT_ID;
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
@@ -68,7 +78,7 @@ export const auth = betterAuth({
   baseURL,
   // Keep builds useful without deployment secrets; production must set
   // BETTER_AUTH_SECRET to a stable, private value.
-  secret: process.env.BETTER_AUTH_SECRET || buildSafeSecret,
+  secret,
   database: pool,
   advanced: {
     database: {

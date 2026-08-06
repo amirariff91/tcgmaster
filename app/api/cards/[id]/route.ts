@@ -86,9 +86,9 @@ async function getPopulationFromPostgres(
     company_slug: PopulationReport['gradingCompany'];
   }>(`
     SELECT
-      pr.grade,
+      pr.grade::float8 AS grade,
       pr.count,
-      pr.gem_rate,
+      pr.gem_rate::float8 AS gem_rate,
       pr.total_population,
       pr.scraped_at,
       pr.source_url,

@@ -17,6 +17,18 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Authorization: rewriting a card's scraper URLs steers what the pipeline
+    // scrapes and can poison append-only price history, so it must be restricted
+    // to trusted curators, not every signed-in user. No role concept exists, so
+    // gate on an explicit ADMIN_EMAILS allowlist (comma-separated).
+    const adminEmails = (process.env.ADMIN_EMAILS || '')
+      .split(',')
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+    if (adminEmails.length === 0 || !adminEmails.includes((user.email || '').toLowerCase())) {
+      return NextResponse.json({ error: 'Forbidden: curator access required' }, { status: 403 });
+    }
+
     const { id } = await params;
     const body = await request.json() as Record<string, unknown>;
 

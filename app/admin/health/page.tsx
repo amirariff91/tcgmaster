@@ -1,7 +1,9 @@
 import { Metadata } from 'next';
 import { Activity, ExternalLink, Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
+import { getAuthUser } from '@/lib/auth-server';
 import { GlobalPlatformHealth } from '@/components/admin/global-health';
 import { AIWorkerClusters } from '@/components/admin/ai-workers';
 import { GameScrapers } from '@/components/admin/game-scrapers';
@@ -23,7 +25,14 @@ function LoadingSection({ title }: { title: string }) {
   );
 }
 
-export default function AdminHealthDashboard() {
+export default async function AdminHealthDashboard() {
+  // The middleware only checks cookie presence; validate the session server-side
+  // here so a forged cookie cannot reach the diagnostics.
+  const user = await getAuthUser();
+  if (!user) {
+    redirect('/login');
+  }
+
   return (
     <div className="min-h-screen bg-[#060c18] pt-24 pb-20">
       <div className="container max-w-[1200px] mx-auto px-4 sm:px-6 space-y-12">
