@@ -15,9 +15,10 @@ export async function scrapePsa(card: PopulationCard, db: PopulationDatabase, co
   const searchQuery = encodeURIComponent(`${card.name} ${card.sets?.name || ''} ${card.number}`);
   console.log(`\n[PSA] Ingesting Population for ${card.slug}...`);
 
+  let page: Awaited<ReturnType<Awaited<ReturnType<typeof getSharedBrowser>>['newPage']>> | undefined;
   try {
     const browser = await getSharedBrowser();
-    const page = await browser.newPage();
+    page = await browser.newPage();
     await page.setViewport({ width: 1280, height: 800 });
     await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36');
 
@@ -34,7 +35,6 @@ export async function scrapePsa(card: PopulationCard, db: PopulationDatabase, co
     const title = await page.title();
     if (title.includes('Sign In')) {
        console.log('  ! Session expired! Please re-run scripts/psa-login.ts to refresh cookies.');
-       await page.close();
        return false;
     }
 
@@ -52,7 +52,6 @@ export async function scrapePsa(card: PopulationCard, db: PopulationDatabase, co
 
     if (!popUrl) {
        console.log(`  ✗ Could not find direct pop report link in search results.`);
-       await page.close();
        return true; // Success (no data found)
     }
 
@@ -109,12 +108,16 @@ export async function scrapePsa(card: PopulationCard, db: PopulationDatabase, co
        console.log(`  ✗ No matching population rows found in the table.`);
     }
 
-    await page.close();
     return true;
 
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     console.log(`  ! Error scraping PSA: ${message}`);
     return false;
+  } finally {
+    // Close the tab on EVERY exit path. Navigation timeouts and the upsert-error
+    // return used to skip page.close(), leaking the page's renderer process — the
+    // per-page half of the Chrome leak. `?.` guards newPage() itself throwing.
+    await page?.close().catch(() => {});
   }
 }

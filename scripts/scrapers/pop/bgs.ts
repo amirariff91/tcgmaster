@@ -13,9 +13,10 @@ export async function scrapeBgs(card: PopulationCard, db: PopulationDatabase) {
   const searchQuery = `${card.name} ${card.number}`;
   console.log(`\n[BGS] Ingesting Population for ${card.slug}...`);
 
+  let page: Awaited<ReturnType<Awaited<ReturnType<typeof getSharedBrowser>>['newPage']>> | undefined;
   try {
     const browser = await getSharedBrowser();
-    const page = await browser.newPage();
+    page = await browser.newPage();
     await page.setViewport({ width: 1280, height: 800 });
     await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36');
 
@@ -48,7 +49,6 @@ export async function scrapeBgs(card: PopulationCard, db: PopulationDatabase) {
 
     if (!popUrl) {
        console.log(`  ✗ Could not find direct pop report link in search results.`);
-       await page.close();
        return true; // Success (no data found)
     }
 
@@ -107,12 +107,15 @@ export async function scrapeBgs(card: PopulationCard, db: PopulationDatabase) {
        console.log(`  ✗ No matching population rows found in the table.`);
     }
 
-    await page.close();
     return true;
 
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     console.log(`  ! Error scraping BGS: ${message}`);
     return false;
+  } finally {
+    // Close the tab on EVERY exit path — navigation timeouts previously leaked the
+    // page's renderer process here. `?.` guards newPage() itself throwing.
+    await page?.close().catch(() => {});
   }
 }
