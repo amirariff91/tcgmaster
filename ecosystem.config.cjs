@@ -37,6 +37,7 @@ module.exports = {
       },
       watch: false,
       autorestart: true,
+      kill_timeout: 12000,
       restart_delay: 5000,   // Wait 5s before restarting on crash
       exp_backoff_restart_delay: 5000, // transient-dep (DB down) restart storms back off instead of burning max_restarts
       max_restarts: 50,       // If crashes > 50 times, stop (circuit breaker)
@@ -58,6 +59,7 @@ module.exports = {
       },
       watch: false,
       autorestart: true,
+      kill_timeout: 12000,
       restart_delay: 5000,
       exp_backoff_restart_delay: 5000, // transient-dep (DB down) restart storms back off instead of burning max_restarts
       max_restarts: 50,
@@ -79,6 +81,7 @@ module.exports = {
       },
       watch: false,
       autorestart: true,
+      kill_timeout: 12000,
       restart_delay: 5000,
       exp_backoff_restart_delay: 5000, // transient-dep (DB down) restart storms back off instead of burning max_restarts
       max_restarts: 50,
@@ -99,6 +102,7 @@ module.exports = {
       },
       watch: false,
       autorestart: true,
+      kill_timeout: 12000,
       restart_delay: 5000,
       exp_backoff_restart_delay: 5000, // transient-dep (DB down) restart storms back off instead of burning max_restarts
       max_restarts: 50,
@@ -120,6 +124,7 @@ module.exports = {
       },
       watch: false,
       autorestart: true,
+      kill_timeout: 12000,
       restart_delay: 5000,
       exp_backoff_restart_delay: 5000,
       max_restarts: 50,
@@ -143,6 +148,7 @@ module.exports = {
       // The script exits(1) without GEMINI_API_KEY. Don't restart it forever in that
       // case — the price scrapers are independent and must not be drowned in its logs.
       autorestart: true,
+      kill_timeout: 12000,
       restart_delay: 10000,  // Longer delay — vision API errors can be transient
       max_restarts: 30,
       min_uptime: '10s',
@@ -163,6 +169,7 @@ module.exports = {
       },
       watch: false,
       autorestart: true,
+      kill_timeout: 12000,
       restart_delay: 10000,
       max_restarts: 30,
       min_uptime: '10s',
@@ -183,6 +190,7 @@ module.exports = {
       },
       watch: false,
       autorestart: true,
+      kill_timeout: 12000,
       restart_delay: 5000,
       max_restarts: 50,
       min_uptime: '10s',
@@ -203,6 +211,7 @@ module.exports = {
       },
       watch: false,
       autorestart: true,
+      kill_timeout: 12000,
       restart_delay: 5000,
       max_restarts: 50,
       min_uptime: '10s',
@@ -220,6 +229,7 @@ module.exports = {
       args: 'run scripts/scrapers/pop/master.ts',
       watch: false,
       autorestart: true,
+      kill_timeout: 12000,
       restart_delay: 15000,
       exp_backoff_restart_delay: 5000,
       max_restarts: 50,

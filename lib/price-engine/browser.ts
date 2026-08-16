@@ -1,5 +1,6 @@
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import { reapOrphanChromeOnce } from './reap-orphan-chrome';
 
 puppeteer.use(StealthPlugin());
 
@@ -102,6 +103,7 @@ function registerShutdownHandlers(): void {
 
 export async function getSharedBrowser(): Promise<SharedBrowser> {
   registerShutdownHandlers();
+  await reapOrphanChromeOnce();
 
   if (sharedBrowser && isConnected(sharedBrowser)) {
     return sharedBrowser;
