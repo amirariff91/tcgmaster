@@ -1,5 +1,6 @@
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import { reapOrphanChromeOnce } from './reap-orphan-chrome';
 
 puppeteer.use(StealthPlugin());
 
@@ -101,6 +102,11 @@ function registerShutdownHandlers(): void {
 }
 
 export async function getSharedBrowser(): Promise<SharedBrowser> {
+  // Reap Chrome orphaned by a prior crash before launching, so a dead worker's
+  // browser can't accumulate across restarts (kill_timeout covers the graceful
+  // path; this covers uncaught-exception exits). Memoized — runs once.
+  await reapOrphanChromeOnce();
+
   registerShutdownHandlers();
 
   if (sharedBrowser && isConnected(sharedBrowser)) {
@@ -113,6 +119,8 @@ export async function getSharedBrowser(): Promise<SharedBrowser> {
 
   const pendingLaunch = puppeteer.launch({
     headless: true,
+    // App-marked profile dir so reapOrphanChromeOnce can distinguish OUR Chrome.
+    userDataDir: `/tmp/puppeteer_dev_profile-tcgmaster-${process.pid}`,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
   }).then(trackBrowser);
 
