@@ -1,12 +1,10 @@
 import type { Metadata } from 'next';
 import { Inter, Newsreader } from 'next/font/google';
-import Script from 'next/script';
+import { GoogleTagManager } from '@next/third-parties/google';
 import './globals.css';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { Providers } from './providers';
-
-const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 
 const inter = Inter({
   variable: '--font-inter',
@@ -64,6 +62,9 @@ export const metadata: Metadata = {
       'max-snippet': -1,
     },
   },
+  verification: {
+    google: process.env.NEXT_PUBLIC_GSC_VERIFICATION,
+  },
 };
 
 export default function RootLayout({
@@ -73,19 +74,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <head>
-        {GA_ID && (
-          <>
-            <Script
-              src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
-              strategy="afterInteractive"
-            />
-            <Script id="ga4-init" strategy="afterInteractive">
-              {`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${GA_ID}',{page_path:window.location.pathname});`}
-            </Script>
-          </>
-        )}
-      </head>
+      {process.env.NEXT_PUBLIC_GTM_ID && (
+        <GoogleTagManager gtmId={process.env.NEXT_PUBLIC_GTM_ID} />
+      )}
       <body className={`${inter.variable} ${newsreader.variable} font-sans antialiased bg-[#060c18] text-zinc-100`}>
         <Providers>
           <div className="flex min-h-screen flex-col">
