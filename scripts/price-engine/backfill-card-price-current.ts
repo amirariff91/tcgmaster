@@ -12,14 +12,15 @@ import { normalizeGrade, type CanonicalGrade } from '../../lib/pricing/grades';
 const CARD_BATCH_SIZE = 500;
 const HISTORY_PAGE_SIZE = 1000;
 const WRITE_BATCH_SIZE = 500;
-const SUPPORTED_SOURCES: readonly Exclude<PriceSource, 'snkrdunk'>[] = [
+const SUPPORTED_SOURCES: readonly PriceSource[] = [
   'tcgplayer',
   'pricecharting',
   'yuyutei',
   'cardrush',
+  'snkrdunk',
 ];
 
-type BackfillSource = Exclude<PriceSource, 'snkrdunk'>;
+type BackfillSource = PriceSource;
 
 type Card = {
   id: string;
@@ -113,14 +114,13 @@ async function loadCardPage(
   db: ReturnType<typeof createScraperClient>,
   offset: number,
 ): Promise<Card[]> {
-  const { data, error } = await db
-    .from('cards')
-    .select('id, slug')
-    .order('id', { ascending: true })
-    .range(offset, offset + CARD_BATCH_SIZE - 1);
-
-  if (error) throw new Error(`Loading cards for current-price backfill failed: ${error.message}`);
-  return (data ?? []) as Card[];
+  return await db(
+    `SELECT id, slug
+     FROM cards
+     ORDER BY id ASC
+     LIMIT $1 OFFSET $2`,
+    [CARD_BATCH_SIZE, offset],
+  ) as Card[];
 }
 
 async function loadNewestHistory(
@@ -133,15 +133,14 @@ async function loadNewestHistory(
   const rows = new Map<string, BackfillObservation>();
 
   for (let offset = 0; ; offset += HISTORY_PAGE_SIZE) {
-    const { data, error } = await db
-      .from('price_history')
-      .select('card_id, price, price_native, currency, source, grade, recorded_at')
-      .in('card_id', cardIds)
-      .order('recorded_at', { ascending: false })
-      .range(offset, offset + HISTORY_PAGE_SIZE - 1);
-
-    if (error) throw new Error(`Loading price_history for current-price backfill failed: ${error.message}`);
-    const page = (data ?? []) as HistoryRow[];
+    const page = await db(
+      `SELECT card_id, price, price_native, currency, source, grade, recorded_at
+       FROM price_history
+       WHERE card_id = ANY($1::uuid[])
+       ORDER BY recorded_at DESC
+       LIMIT $2 OFFSET $3`,
+      [cardIds, HISTORY_PAGE_SIZE, offset],
+    ) as HistoryRow[];
 
     for (const row of page) {
       if (!cardIdSet.has(row.card_id)) continue;
@@ -192,13 +191,35 @@ async function writeRows(
 ): Promise<void> {
   for (let offset = 0; offset < rows.length; offset += WRITE_BATCH_SIZE) {
     const batch = rows.slice(offset, offset + WRITE_BATCH_SIZE);
-    const { error } = await db
-      .from('card_price_current')
-      .upsert(batch, { onConflict: 'card_id' });
-
-    if (error) {
-      throw new Error(`Writing card_price_current rows (${offset}-${offset + batch.length - 1}) failed: ${error.message}`);
-    }
+    await db(
+      `INSERT INTO card_price_current (
+         card_id, source_prices, graded_prices, headline_cents, headline_source,
+         headline_kind, headline_currency, headline_grade, computed_at
+       )
+       SELECT card_id, source_prices, graded_prices, headline_cents, headline_source,
+              headline_kind, headline_currency, headline_grade, computed_at
+       FROM jsonb_to_recordset($1::jsonb) AS rows(
+         card_id uuid,
+         source_prices jsonb,
+         graded_prices jsonb,
+         headline_cents integer,
+         headline_source text,
+         headline_kind price_kind,
+         headline_currency text,
+         headline_grade text,
+         computed_at timestamptz
+       )
+       ON CONFLICT (card_id) DO UPDATE SET
+         source_prices = EXCLUDED.source_prices,
+         graded_prices = EXCLUDED.graded_prices,
+         headline_cents = EXCLUDED.headline_cents,
+         headline_source = EXCLUDED.headline_source,
+         headline_kind = EXCLUDED.headline_kind,
+         headline_currency = EXCLUDED.headline_currency,
+         headline_grade = EXCLUDED.headline_grade,
+         computed_at = EXCLUDED.computed_at`,
+      [JSON.stringify(batch)],
+    );
   }
 }
 

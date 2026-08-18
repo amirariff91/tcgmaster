@@ -8,12 +8,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { createClient } from '@/lib/supabase/browser';
+import { authClient } from '@/lib/auth-client';
 
 function SignUpForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get('redirectTo') || '/collection';
+  const requestedRedirect = searchParams.get('redirectTo');
+  const redirectTo = requestedRedirect?.startsWith('/') && !requestedRedirect.startsWith('//')
+    ? requestedRedirect
+    : '/collection';
 
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
@@ -22,8 +25,6 @@ function SignUpForm() {
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [message, setMessage] = React.useState<string | null>(null);
-
-  const supabase = createClient();
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,24 +43,25 @@ function SignUpForm() {
       return;
     }
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await authClient.signUp.email({
       email,
       password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?redirectTo=${encodeURIComponent(redirectTo)}`,
-        data: {
-          display_name: displayName || email.split('@')[0],
-        },
-      },
+      name: displayName || email.split('@')[0],
     });
 
     if (error) {
-      setError(error.message);
+      setError(error.message || 'Unable to create your account');
       setIsLoading(false);
       return;
     }
 
-    setMessage('Check your email to confirm your account!');
+    if (data?.user) {
+      router.push(redirectTo);
+      router.refresh();
+      return;
+    }
+
+    setMessage('Account created. You can now sign in.');
     setIsLoading(false);
   };
 
@@ -67,15 +69,13 @@ function SignUpForm() {
     setIsLoading(true);
     setError(null);
 
-    const { error } = await supabase.auth.signInWithOAuth({
+    const { error } = await authClient.signIn.social({
       provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback?redirectTo=${encodeURIComponent(redirectTo)}`,
-      },
+      callbackURL: redirectTo,
     });
 
     if (error) {
-      setError(error.message);
+      setError(error.message || 'Unable to sign up with Google');
       setIsLoading(false);
     }
   };

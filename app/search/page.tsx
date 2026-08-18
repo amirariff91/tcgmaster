@@ -60,7 +60,7 @@ function SearchResults() {
     }
     return [];
   });
-  
+
   const [isLoading, setIsLoading] = React.useState(() => results.length === 0);
 
   const [page, setPage] = React.useState(() => {
@@ -91,7 +91,7 @@ function SearchResults() {
           sessionStorage.removeItem('search_results');
         }
       }
-      
+
       sessionStorage.setItem('search_filters_key', currentFiltersKey);
       sessionStorage.setItem('search_page', page.toString());
     }
@@ -114,9 +114,9 @@ function SearchResults() {
           };
           setGameFilters([
             { value: 'all', label: 'TCGs' },
-            ...json.data.filter((g: any) => g.slug !== 'pokemon').map((g: any) => ({ 
-              value: g.slug, 
-              label: gameNameMapping[g.slug] || g.display_name || g.name 
+            ...json.data.filter((g: any) => g.slug !== 'pokemon').map((g: any) => ({
+              value: g.slug,
+              label: gameNameMapping[g.slug] || g.display_name || g.name
             }))
           ]);
         }
@@ -149,10 +149,10 @@ function SearchResults() {
 
   React.useEffect(() => {
     setIsLoading(true);
-    
+
     const params = new URLSearchParams();
     if (query) params.set('q', query);
-    
+
     let fetchPage = page;
     let fetchPageSize = 30;
 
@@ -182,7 +182,7 @@ function SearchResults() {
         const cards = json?.data?.results ?? [];
         setHasMore(json?.data?.pagination?.hasMore ?? false);
         setTotalCount(json?.data?.pagination?.totalCount ?? 0);
-        
+
         const mappedCards = cards.map((c: any) => {
           const [gameSlugPart, setSlugPart, cardSlugPart] = (c.slug || '').split('/');
           const gameSlug = c.game || gameSlugPart || 'pokemon';
@@ -198,6 +198,7 @@ function SearchResults() {
             image_url: c.image_url,
             set: { id: setSlug, name: formatSetName(c.subtitle?.split(' - ')[0] || ''), slug: setSlug },
             current_price: c.price ?? undefined,
+            curation_status: c.curationStatus,
           };
         });
 
@@ -206,7 +207,11 @@ function SearchResults() {
           sessionStorage.setItem('search_results', JSON.stringify(mappedCards));
         } else {
           setResults(prev => {
-            const updated = [...prev, ...mappedCards];
+            const existingIds = new Set(prev.map(c => c.id));
+            const newCards = mappedCards.filter((c: SearchCardResult) => !existingIds.has(c.id));
+            if (newCards.length === 0) return prev;
+
+            const updated = [...prev, ...newCards];
             sessionStorage.setItem('search_results', JSON.stringify(updated));
             return updated;
           });
@@ -255,14 +260,14 @@ function SearchResults() {
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-2">
               <Select options={gameFilters} value={game} onChange={setGame} className="w-64" />
-              <Select 
+              <Select
                 options={game === 'all' ? [{ value: 'all', label: 'Language' }] : [{ value: 'all', label: 'All Languages' }, { value: 'en', label: 'English' }, { value: 'ja', label: 'Japanese' }]}
                 value={game === 'all' ? 'all' : lang}
                 onChange={game === 'all' ? () => {} : setLang}
                 className="w-40"
                 disabled={game === 'all'}
               />
-              <Select 
+              <Select
                 options={game === 'all' ? [{ value: 'all', label: 'Sets' }] : setFilters}
                 value={game === 'all' ? 'all' : cardSet}
                 onChange={game === 'all' ? () => {} : setCardSet}
@@ -348,19 +353,19 @@ function SearchResults() {
               </div>
               <div>
                 <label className="mb-2 block text-sm font-medium text-zinc-300">Language</label>
-                <Select 
-                  options={game === 'all' ? [{ value: 'all', label: 'Language' }] : [{ value: 'all', label: 'All Languages' }, { value: 'en', label: 'English' }, { value: 'ja', label: 'Japanese' }]} 
-                  value={game === 'all' ? 'all' : lang} 
-                  onChange={game === 'all' ? () => {} : setLang} 
+                <Select
+                  options={game === 'all' ? [{ value: 'all', label: 'Language' }] : [{ value: 'all', label: 'All Languages' }, { value: 'en', label: 'English' }, { value: 'ja', label: 'Japanese' }]}
+                  value={game === 'all' ? 'all' : lang}
+                  onChange={game === 'all' ? () => {} : setLang}
                   disabled={game === 'all'}
                 />
               </div>
               <div>
                 <label className="mb-2 block text-sm font-medium text-zinc-300">Set</label>
-                <Select 
-                  options={game === 'all' ? [{ value: 'all', label: 'Sets' }] : setFilters} 
-                  value={game === 'all' ? 'all' : cardSet} 
-                  onChange={game === 'all' ? () => {} : setCardSet} 
+                <Select
+                  options={game === 'all' ? [{ value: 'all', label: 'Sets' }] : setFilters}
+                  value={game === 'all' ? 'all' : cardSet}
+                  onChange={game === 'all' ? () => {} : setCardSet}
                   disabled={game === 'all'}
                 />
               </div>
@@ -438,9 +443,9 @@ function SearchResults() {
       {/* Pagination */}
       {results.length > 0 && hasMore && (
         <div className="mt-12 flex items-center justify-center">
-          <Button 
-            variant="outline" 
-            size="lg" 
+          <Button
+            variant="outline"
+            size="lg"
             onClick={() => setPage(p => p + 1)}
             disabled={isLoading}
             className="w-full max-w-sm rounded-full bg-gradient-to-r from-orange-600 to-amber-500 border-none text-white hover:from-orange-500 hover:to-amber-400 shadow-[0_0_20px_rgba(249,115,22,0.3)] hover:shadow-[0_0_30px_rgba(249,115,22,0.5)] transition-all font-bold"
@@ -486,7 +491,7 @@ export default function SearchPage() {
           <SearchResults />
         </Suspense>
       </div>
-      
+
       {/* CSS overrides for dark theme injection into components that were light mode only */}
       <style dangerouslySetInnerHTML={{__html: `
         .dark-theme-wrapper {
@@ -502,7 +507,7 @@ export default function SearchPage() {
         }
         .dark-theme-wrapper .text-stone-500,
         .dark-theme-wrapper .text-stone-600 {
-          color: #9ca3af !important; 
+          color: #9ca3af !important;
         }
         .dark-theme-wrapper .border-stone-200 {
           border-color: rgba(255,255,255,0.1) !important;

@@ -1,4 +1,3 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
 import { createScraperClient } from './db';
 import { getMappingsForCard, type SourceMapping } from './mapping';
 import { revalidateCardPage } from './revalidate';
@@ -20,8 +19,7 @@ export type WorkerCard = CardRef & {
 export interface QueueQuery {
   ilike(column: string, pattern: string): QueueQuery;
   not(column: string, operator: string, value: string): QueueQuery;
-  order(column: string, options: { ascending: boolean; nullsFirst: boolean }): QueueQuery;
-  limit(count: number): Promise<{ data: unknown[] | null; error: unknown }>;
+  toSql(): { where: string; params: string[] };
 }
 
 export interface WorkerConfig {
@@ -35,7 +33,33 @@ export interface WorkerConfig {
   sleepMs: number;
 }
 
-const CARD_SELECT = 'id, name, slug, number, tcg_player_id, print_run_info, yuyutei_url, cardrush_url, sets ( name )';
+class SqlQueueQuery implements QueueQuery {
+  private readonly clauses: string[] = [];
+  private readonly params: string[] = [];
+
+  ilike(column: string, pattern: string): QueueQuery {
+    if (column !== 'slug') throw new Error(`Unsupported queue column: ${column}`);
+    this.params.push(pattern);
+    this.clauses.push(`c.slug ILIKE $${this.params.length}`);
+    return this;
+  }
+
+  not(column: string, operator: string, value: string): QueueQuery {
+    if (column !== 'slug' || operator !== 'ilike') {
+      throw new Error(`Unsupported queue predicate: ${column} ${operator}`);
+    }
+    this.params.push(value);
+    this.clauses.push(`c.slug NOT ILIKE $${this.params.length}`);
+    return this;
+  }
+
+  toSql(): { where: string; params: string[] } {
+    return {
+      where: this.clauses.length > 0 ? this.clauses.join(' AND ') : 'TRUE',
+      params: this.params,
+    };
+  }
+}
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -71,7 +95,7 @@ export async function runScrapeLoop(config: WorkerConfig): Promise<never> {
   const label = `[${config.label}]`;
   // Coolify injects SOURCE_COMMIT; BUILD_SHA is the manual override for other hosts.
   console.log(`${label} boot build=${process.env.BUILD_SHA ?? process.env.SOURCE_COMMIT ?? 'dev'} node=${process.version}`);
-  const db: SupabaseClient = createScraperClient();
+  const db = createScraperClient();
 
   let previousCardId: string | null = null;
   let consecutiveDbFailures = 0;
@@ -82,12 +106,22 @@ export async function runScrapeLoop(config: WorkerConfig): Promise<never> {
       previousCardId = null;
     }
 
-    const queue = config.queueFilter(db.from('cards').select(CARD_SELECT) as unknown as QueueQuery);
-    const { data: cards, error } = await queue
-      .order('last_price_fetch', { ascending: true, nullsFirst: true })
-      .limit(1);
-
-    if (error) {
+    const queue = config.queueFilter(new SqlQueueQuery());
+    const queueSql = queue.toSql();
+    let cards: unknown[];
+    try {
+      cards = await db(
+        `SELECT c.id, c.name, c.slug, c.number, c.tcg_player_id, c.print_run_info,
+                c.yuyutei_url, c.cardrush_url,
+                CASE WHEN s.id IS NULL THEN NULL ELSE json_build_object('name', s.name) END AS sets
+         FROM cards c
+         LEFT JOIN sets s ON s.id = c.set_id
+         WHERE ${queueSql.where}
+         ORDER BY c.last_price_fetch ASC NULLS FIRST
+         LIMIT 1`,
+        queueSql.params,
+      ) as unknown[];
+    } catch (error) {
       if (!isTransientDbError(error)) throw error;
 
       consecutiveDbFailures++;
@@ -97,7 +131,7 @@ export async function runScrapeLoop(config: WorkerConfig): Promise<never> {
       continue;
     }
 
-    if (!cards || cards.length === 0) {
+    if (cards.length === 0) {
       await sleep(config.sleepMs);
       continue;
     }
@@ -113,11 +147,14 @@ export async function runScrapeLoop(config: WorkerConfig): Promise<never> {
       const result = await config.fetchCard(card, mappings);
       if (result.observations.length === 0) {
         const timestamp = new Date().toISOString();
-        const { error: cardError } = await db
-          .from('cards')
-          .update({ last_price_fetch: timestamp })
-          .eq('id', card.id);
-        if (cardError) updateFailure(card, 'cards empty-result update', cardError);
+        try {
+          await db(
+            `UPDATE cards SET last_price_fetch = $1 WHERE id = $2`,
+            [timestamp, card.id],
+          );
+        } catch (cardError) {
+          updateFailure(card, 'cards empty-result update', cardError);
+        }
         if (mappings.length === 0) {
           console.log(`${label} no confident mapping, skipped`);
         } else {

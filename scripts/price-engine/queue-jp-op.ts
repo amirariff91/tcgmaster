@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { fetchPriceChartingByAnchor } from '../../lib/price-engine/pricecharting';
 import { fetchYuyuteiByAnchor } from '../../lib/price-engine/yuyutei';
+import { fetchSnkrdunkPrice } from '../../lib/price-engine/snkrdunk';
 import type { SourceMapping } from '../../lib/price-engine/mapping';
 import {
   SOURCE_CURRENCY,
@@ -52,16 +53,53 @@ export const fetchCard = async (card: WorkerCard, mappings: SourceMapping[]): Pr
       });
       console.log(`[Japanese OP] PriceCharting: $${priceChartingResult.price}`);
 
-      if (priceChartingResult.gradedPrice) {
+      if (priceChartingResult.gradedPrices) {
+        for (const [gradeKey, gradedPriceValue] of Object.entries(priceChartingResult.gradedPrices)) {
+          observations.push({
+            source: 'pricecharting',
+            grade: normalizeGrade(gradeKey),
+            priceUsd: gradedPriceValue,
+            priceNative: gradedPriceValue,
+            currency: SOURCE_CURRENCY.pricecharting,
+            evidence: priceChartingResult.evidence,
+          });
+          console.log(`[Japanese OP] PriceCharting ${gradeKey.toUpperCase()}: $${gradedPriceValue}`);
+        }
+      }
+    }
+  }
+
+  const snkrdunkMapping = mappings.find((mapping) => mapping.source === 'snkrdunk');
+  if (!snkrdunkMapping?.externalUrl) {
+    console.log('[Japanese OP] snkrdunk: no mapping, skipped');
+  } else {
+    console.log(`[Japanese OP] Fetching from SnkrDunk anchor ${snkrdunkMapping.externalUrl}...`);
+    const snkrdunkResult = await fetchSnkrdunkPrice(snkrdunkMapping.externalUrl);
+    if (snkrdunkResult !== null) {
+      if (snkrdunkResult.price > 0) {
         observations.push({
-          source: 'pricecharting',
-          grade: normalizeGrade('psa10'),
-          priceUsd: priceChartingResult.gradedPrice,
-          priceNative: priceChartingResult.gradedPrice,
-          currency: SOURCE_CURRENCY.pricecharting,
-          evidence: priceChartingResult.evidence,
+          source: 'snkrdunk',
+          grade: normalizeGrade('raw'),
+          priceUsd: snkrdunkResult.price,
+          priceNative: snkrdunkResult.price,
+          currency: SOURCE_CURRENCY.snkrdunk,
+          evidence: snkrdunkResult.evidence,
         });
-        console.log(`[Japanese OP] PriceCharting PSA 10: $${priceChartingResult.gradedPrice}`);
+        console.log(`[Japanese OP] SnkrDunk: $${snkrdunkResult.price}`);
+      }
+
+      if (snkrdunkResult.gradedPrices) {
+        for (const [gradeKey, gradedPriceValue] of Object.entries(snkrdunkResult.gradedPrices)) {
+          observations.push({
+            source: 'snkrdunk',
+            grade: normalizeGrade(gradeKey),
+            priceUsd: gradedPriceValue,
+            priceNative: gradedPriceValue,
+            currency: SOURCE_CURRENCY.snkrdunk,
+            evidence: snkrdunkResult.evidence,
+          });
+          console.log(`[Japanese OP] SnkrDunk ${gradeKey.toUpperCase()}: $${gradedPriceValue}`);
+        }
       }
     }
   }
@@ -72,7 +110,7 @@ export const fetchCard = async (card: WorkerCard, mappings: SourceMapping[]): Pr
 export const workerConfig: WorkerConfig = {
   label: 'Japanese OP',
   queueFilter: (q) => q.ilike('slug', 'op-%').ilike('slug', '%-ja'),
-  sources: ['yuyutei', 'pricecharting'],
+  sources: ['yuyutei', 'pricecharting', 'snkrdunk'],
   fetchCard,
   sleepMs: process.env.SAFE_MODE === '1' ? 40000 : 17000,
 };

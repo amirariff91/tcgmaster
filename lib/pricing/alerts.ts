@@ -3,7 +3,7 @@
  * Hybrid batch + websocket implementation
  */
 
-import { createServerClient } from '@/lib/supabase/client';
+import { dbQuery } from '@/lib/db/client';
 import type { Tables } from '@/lib/supabase/database.types';
 import { lookupGraded, normalizeGrade } from '@/lib/pricing/grades';
 
@@ -78,41 +78,42 @@ export async function checkAllAlerts(): Promise<{
   triggered: number;
   errors: string[];
 }> {
-  const supabase = createServerClient();
   const errors: string[] = [];
   let checked = 0;
   let triggered = 0;
 
   try {
     // Get all active alerts
-    const { data: alerts, error: alertsError } = await supabase
-      .from('price_alerts')
-      .select(`
-        id,
-        user_id,
-        card_id,
-        variant_id,
-        grade,
-        grading_company_id,
-        threshold_percent,
-        direction,
-        baseline_price,
-        delivery_method,
-        cards!inner (
-          id,
-          name,
-          tcg_player_id,
-          sets!inner (name)
-        )
-      `)
-      .eq('is_active', true);
+    const alerts = await dbQuery<AlertRow>(`
+      SELECT
+        pa.id,
+        pa.user_id,
+        pa.card_id,
+        pa.variant_id,
+        pa.grade,
+        pa.grading_company_id,
+        pa.threshold_percent::float8 AS threshold_percent,
+        pa.direction,
+        pa.baseline_price::float8 AS baseline_price,
+        pa.delivery_method,
+        json_build_object(
+          'id', c.id,
+          'name', c.name,
+          'tcg_player_id', c.tcg_player_id,
+          'sets', json_build_object('name', s.name)
+        ) AS cards
+      FROM price_alerts pa
+      JOIN cards c ON c.id = pa.card_id
+      JOIN sets s ON s.id = c.set_id
+      WHERE pa.is_active = true
+    `);
 
-    if (alertsError) {
-      errors.push(`Failed to fetch alerts: ${alertsError.message}`);
+    if (!alerts) {
+      errors.push('Failed to fetch alerts: no rows returned');
       return { checked: 0, triggered: 0, errors };
     }
 
-    const typedAlerts = alerts as AlertRow[] | null;
+    const typedAlerts = alerts;
 
     if (!typedAlerts || typedAlerts.length === 0) {
       return { checked: 0, triggered: 0, errors };
@@ -123,13 +124,13 @@ export async function checkAllAlerts(): Promise<{
         checked++;
 
         // Get the single current price row for this card.
-        const { data: currentPriceData } = await supabase
-          .from('card_price_current')
-          .select('headline_cents, graded_prices')
-          .eq('card_id', alert.card_id)
-          .maybeSingle();
-
-        const currentPriceRow = currentPriceData as CurrentPriceRow | null;
+        const currentPriceRows = await dbQuery<CurrentPriceRow>(`
+          SELECT headline_cents, graded_prices
+          FROM card_price_current
+          WHERE card_id = $1
+          LIMIT 1
+        `, [alert.card_id]);
+        const currentPriceRow = currentPriceRows[0] || null;
 
         if (!currentPriceRow) continue;
 
@@ -182,14 +183,23 @@ export async function checkAllAlerts(): Promise<{
           await queueAlertNotification(triggeredAlert);
 
           // Update alert
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (supabase.from('price_alerts') as any)
-            .update({
-              last_triggered: new Date().toISOString(),
-              trigger_count: (alert.trigger_count || 0) + 1,
-              baseline_price: currentPrice, // Update baseline to current
-            })
-            .eq('id', alert.id);
+          await dbQuery(
+            `
+              UPDATE price_alerts
+              SET last_triggered = $1,
+                  trigger_count = $2,
+                  baseline_price = $3
+              WHERE id = $4
+                AND user_id = $5
+            `,
+            [
+              new Date().toISOString(),
+              (alert.trigger_count || 0) + 1,
+              currentPrice,
+              alert.id,
+              alert.user_id,
+            ],
+          );
 
           triggered++;
         }
@@ -208,25 +218,27 @@ export async function checkAllAlerts(): Promise<{
  * Queue an alert notification
  */
 async function queueAlertNotification(alert: TriggeredAlert): Promise<void> {
-  const supabase = createServerClient();
-
   const direction = alert.direction === 'up' ? 'increased' : 'decreased';
   const emoji = alert.direction === 'up' ? '+' : '';
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase.from('notification_queue') as any).insert({
-    user_id: alert.userId,
-    type: 'price_alert',
-    title: `Price Alert: ${alert.cardName}`,
-    body: `${alert.cardName} (${alert.grade}) has ${direction} by ${emoji}${alert.percentChange.toFixed(1)}%. Now $${alert.currentPrice.toLocaleString()}.`,
-    data: {
-      alertId: alert.alertId,
-      cardId: alert.cardId,
-      previousPrice: alert.previousPrice,
-      currentPrice: alert.currentPrice,
-      percentChange: alert.percentChange,
-    },
-  });
+  await dbQuery(
+    `
+      INSERT INTO notification_queue (user_id, type, title, body, data)
+      VALUES ($1, 'price_alert', $2, $3, $4)
+    `,
+    [
+      alert.userId,
+      `Price Alert: ${alert.cardName}`,
+      `${alert.cardName} (${alert.grade}) has ${direction} by ${emoji}${alert.percentChange.toFixed(1)}%. Now $${alert.currentPrice.toLocaleString()}.`,
+      JSON.stringify({
+        alertId: alert.alertId,
+        cardId: alert.cardId,
+        previousPrice: alert.previousPrice,
+        currentPrice: alert.currentPrice,
+        percentChange: alert.percentChange,
+      }),
+    ],
+  );
 }
 
 /**
@@ -242,16 +254,14 @@ export async function createPriceAlert(params: {
   direction?: 'up' | 'down' | 'both';
   deliveryMethod?: 'email' | 'push' | 'both';
 }): Promise<Tables<'price_alerts'> | null> {
-  const supabase = createServerClient();
-
   // Get current price for baseline
-  const { data: currentPriceData } = await supabase
-    .from('card_price_current')
-    .select('headline_cents, graded_prices')
-    .eq('card_id', params.cardId)
-    .maybeSingle();
-
-  const currentPrice = currentPriceData as CurrentPriceRow | null;
+  const currentPriceRows = await dbQuery<CurrentPriceRow>(`
+    SELECT headline_cents, graded_prices
+    FROM card_price_current
+    WHERE card_id = $1
+    LIMIT 1
+  `, [params.cardId]);
+  const currentPrice = currentPriceRows[0] || null;
 
   const normalizedGrade = normalizeGrade(params.grade);
   let baselinePrice: number | null = null;
@@ -268,28 +278,57 @@ export async function createPriceAlert(params: {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase.from('price_alerts') as any)
-    .insert({
-      user_id: params.userId,
-      card_id: params.cardId,
-      variant_id: params.variantId,
-      grade: normalizedGrade,
-      grading_company_id: params.gradingCompanyId,
-      threshold_percent: params.thresholdPercent,
-      direction: params.direction || 'both',
-      baseline_price: baselinePrice,
-      delivery_method: params.deliveryMethod || 'email',
-    })
-    .select()
-    .single();
+  try {
+    const rows = await dbQuery<Tables<'price_alerts'>>(`
+      INSERT INTO price_alerts (
+        user_id,
+        card_id,
+        variant_id,
+        grade,
+        grading_company_id,
+        threshold_percent,
+        direction,
+        baseline_price,
+        delivery_method
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING
+        id,
+        user_id,
+        card_id,
+        variant_id,
+        grade,
+        grading_company_id,
+        threshold_percent::float8 AS threshold_percent,
+        direction,
+        baseline_price::float8 AS baseline_price,
+        is_active,
+        last_triggered,
+        trigger_count,
+        delivery_method,
+        created_at
+    `, [
+      params.userId,
+      params.cardId,
+      params.variantId ?? null,
+      normalizedGrade,
+      params.gradingCompanyId ?? null,
+      params.thresholdPercent,
+      params.direction || 'both',
+      baselinePrice,
+      params.deliveryMethod || 'email',
+    ]);
+    const data = rows[0] || null;
 
-  if (error) {
+    if (!data) {
+      throw new Error('Alert insert returned no row');
+    }
+
+    return data;
+  } catch (error) {
     console.error('Failed to create alert:', error);
     throw error;
   }
-
-  return data;
 }
 
 /**
@@ -304,25 +343,34 @@ export async function getUserAlerts(userId: string): Promise<Array<{
     currentPrice: number | null;
   };
 }>> {
-  const supabase = createServerClient();
-
-  const { data, error } = await supabase
-    .from('price_alerts')
-    .select(`
-      *,
-      cards!inner (
-        name,
-        image_url,
-        local_image_url,
-        sets!inner (name)
-      )
-    `)
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false });
-
-  if (error) throw error;
-
-  const typedData = data as UserAlertRow[] | null;
+  const typedData = await dbQuery<UserAlertRow>(`
+    SELECT
+      pa.id,
+      pa.user_id,
+      pa.card_id,
+      pa.variant_id,
+      pa.grade,
+      pa.grading_company_id,
+      pa.threshold_percent::float8 AS threshold_percent,
+      pa.direction,
+      pa.baseline_price::float8 AS baseline_price,
+      pa.is_active,
+      pa.last_triggered,
+      pa.trigger_count,
+      pa.delivery_method,
+      pa.created_at,
+      json_build_object(
+        'name', c.name,
+        'image_url', c.image_url,
+        'local_image_url', c.local_image_url,
+        'sets', json_build_object('name', s.name)
+      ) AS cards
+    FROM price_alerts pa
+    JOIN cards c ON c.id = pa.card_id
+    JOIN sets s ON s.id = c.set_id
+    WHERE pa.user_id = $1
+    ORDER BY pa.created_at DESC
+  `, [userId]);
 
   if (!typedData) return [];
 
@@ -361,15 +409,10 @@ export async function getUserAlerts(userId: string): Promise<Array<{
  * Delete a price alert
  */
 export async function deletePriceAlert(alertId: string, userId: string): Promise<boolean> {
-  const supabase = createServerClient();
-
-  const { error } = await supabase
-    .from('price_alerts')
-    .delete()
-    .eq('id', alertId)
-    .eq('user_id', userId);
-
-  if (error) throw error;
+  await dbQuery(
+    `DELETE FROM price_alerts WHERE id = $1 AND user_id = $2`,
+    [alertId, userId],
+  );
   return true;
 }
 
@@ -377,25 +420,27 @@ export async function deletePriceAlert(alertId: string, userId: string): Promise
  * Toggle alert active status
  */
 export async function toggleAlertActive(alertId: string, userId: string): Promise<boolean> {
-  const supabase = createServerClient();
-
   // Get current status
-  const { data: alertData } = await supabase
-    .from('price_alerts')
-    .select('is_active')
-    .eq('id', alertId)
-    .eq('user_id', userId)
-    .single();
-
-  const alert = alertData as { is_active: boolean } | null;
+  const alertRows = await dbQuery<{ is_active: boolean }>(`
+    SELECT is_active
+    FROM price_alerts
+    WHERE id = $1
+      AND user_id = $2
+    LIMIT 1
+  `, [alertId, userId]);
+  const alert = alertRows[0] || null;
 
   if (!alert) return false;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase.from('price_alerts') as any)
-    .update({ is_active: !alert.is_active })
-    .eq('id', alertId)
-    .eq('user_id', userId);
+  await dbQuery(
+    `
+      UPDATE price_alerts
+      SET is_active = $1
+      WHERE id = $2
+        AND user_id = $3
+    `,
+    [!alert.is_active, alertId, userId],
+  );
 
-  return !error;
+  return true;
 }

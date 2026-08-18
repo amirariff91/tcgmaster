@@ -54,29 +54,7 @@ export function PriceChart({
 }: PriceChartProps) {
   const [timeRange, setTimeRange] = React.useState<TimeRange>('30d');
 
-  // If using lightweight chart or OHLC variant
-  if (variant === 'lightweight' || variant === 'ohlc') {
-    // Convert price data to appropriate format
-    const chartData = variant === 'ohlc' ? priceArrayToOHLC(data) : data.map((d) => ({
-      time: d.date,
-      value: d.price,
-    }));
-
-    return (
-      <LightweightChart
-        data={chartData as OHLCData[]}
-        className={className}
-        height={height}
-        chartType={variant === 'ohlc' ? 'candlestick' : 'area'}
-        showVolume={false}
-        showTimeRange={true}
-        defaultTimeRange="30d"
-      />
-    );
-  }
-
-  // Original Recharts implementation below
-
+  // Hooks must be called before early return
   const filteredData = React.useMemo(() => {
     const now = new Date();
     const ranges: Record<TimeRange, number> = {
@@ -107,6 +85,28 @@ export function PriceChart({
   const lineColor = isPositive ? '#10b981' : '#ef4444';
   const gradientId = `priceGradient-${React.useId()}`;
 
+  // If using lightweight chart or OHLC variant
+  if (variant === 'lightweight' || variant === 'ohlc') {
+    // Convert price data to appropriate format
+    const chartData = variant === 'ohlc' ? priceArrayToOHLC(data) : data.map((d) => ({
+      time: d.date,
+      value: d.price,
+    }));
+
+    return (
+      <LightweightChart
+        data={chartData as OHLCData[]}
+        className={className}
+        height={height}
+        chartType={variant === 'ohlc' ? 'candlestick' : 'area'}
+        showVolume={false}
+        showTimeRange={true}
+        defaultTimeRange="30d"
+      />
+    );
+  }
+
+  // Original Recharts implementation below
   return (
     <div className={cn('space-y-4', className)}>
       <div className="flex items-center justify-between">

@@ -17,6 +17,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       unzip \
       ca-certificates \
       fonts-liberation \
+      tini \
       libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 \
       libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 \
       libgbm1 libasound2 libpango-1.0-0 libcairo2 \
@@ -34,6 +35,9 @@ RUN npm ci
 
 COPY . .
 
-# pm2-runtime, not `pm2 start`: it stays in the foreground as PID 1 so Docker can
-# supervise and restart it.
+# tini as PID 1 reaps orphaned Chrome grandchildren (renderers, crashpad_handler)
+# that Puppeteer leaks on navigation timeouts — pm2-runtime does not reap them, so
+# without this they pile up as <defunct> zombies (330 seen in one incident).
+# pm2-runtime still supervises/restarts the workers underneath tini.
+ENTRYPOINT ["tini", "--"]
 CMD ["pm2-runtime", "ecosystem.config.cjs"]

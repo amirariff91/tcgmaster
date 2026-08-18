@@ -18,6 +18,7 @@
  *   scraper-dbfw   — CardRush for Dragon Ball Fusion World
  *   scraper-en-dbfw — TCGCSV for English Dragon Ball Fusion World
  *   artist-vision  — Ollama Cloud vision artist extractor for EN OP cards
+ *   variant-mapper — Ollama Cloud variant mapping for English cards
  */
 
 const SAFE_MODE = process.env.SAFE_MODE === '1';
@@ -36,6 +37,7 @@ module.exports = {
       },
       watch: false,
       autorestart: true,
+      kill_timeout: 12000,
       restart_delay: 5000,   // Wait 5s before restarting on crash
       exp_backoff_restart_delay: 5000, // transient-dep (DB down) restart storms back off instead of burning max_restarts
       max_restarts: 50,       // If crashes > 50 times, stop (circuit breaker)
@@ -57,6 +59,7 @@ module.exports = {
       },
       watch: false,
       autorestart: true,
+      kill_timeout: 12000,
       restart_delay: 5000,
       exp_backoff_restart_delay: 5000, // transient-dep (DB down) restart storms back off instead of burning max_restarts
       max_restarts: 50,
@@ -78,6 +81,7 @@ module.exports = {
       },
       watch: false,
       autorestart: true,
+      kill_timeout: 12000,
       restart_delay: 5000,
       exp_backoff_restart_delay: 5000, // transient-dep (DB down) restart storms back off instead of burning max_restarts
       max_restarts: 50,
@@ -87,7 +91,6 @@ module.exports = {
       time: true,
     },
 
-    // ─────────────────────────────────────────────
     // English Dragon Ball Fusion World — TCGCSV
     // ─────────────────────────────────────────────
     {
@@ -99,6 +102,7 @@ module.exports = {
       },
       watch: false,
       autorestart: true,
+      kill_timeout: 12000,
       restart_delay: 5000,
       exp_backoff_restart_delay: 5000, // transient-dep (DB down) restart storms back off instead of burning max_restarts
       max_restarts: 50,
@@ -120,6 +124,7 @@ module.exports = {
       },
       watch: false,
       autorestart: true,
+      kill_timeout: 12000,
       restart_delay: 5000,
       exp_backoff_restart_delay: 5000,
       max_restarts: 50,
@@ -128,24 +133,22 @@ module.exports = {
       error_file: './logs/scraper-resolver-error.log',
       time: true,
     },
-
-    // ─────────────────────────────────────────────
-    // Vision Artist Extractor (Ollama Cloud) — EN One Piece first
+    // Vision Artist Extractor (Gemini) — EN One Piece first
     // Runs as idle-loop: waits 5min when backlog is empty
     // Expand to JA OP + DBFW in Phase 2
     // ─────────────────────────────────────────────
     {
       name: 'artist-vision',
       script: 'bun',
-      args: 'run scripts/extract-artists-gemini.ts',
+      args: 'run scripts/extract-artists.ts',
       env: {
         SAFE_MODE: SAFE_MODE ? '1' : '0',
-        OLLAMA_VISION_MODEL: 'gemma4:31b',
       },
       watch: false,
-      // The script exits(1) without OLLAMA_API_KEY. Don't restart it forever in that
+      // The script exits(1) without GEMINI_API_KEY. Don't restart it forever in that
       // case — the price scrapers are independent and must not be drowned in its logs.
       autorestart: true,
+      kill_timeout: 12000,
       restart_delay: 10000,  // Longer delay — vision API errors can be transient
       max_restarts: 30,
       min_uptime: '10s',
@@ -153,5 +156,88 @@ module.exports = {
       error_file: './logs/artist-vision-error.log',
       time: true,
     },
+
+    // ─────────────────────────────────────────────
+    // Variant Mapper (Ollama Cloud) — English cards
+    // ─────────────────────────────────────────────
+    {
+      name: 'variant-mapper',
+      script: 'bun',
+      args: 'run scripts/generate-variant-mapping.ts',
+      env: {
+        SAFE_MODE: SAFE_MODE ? '1' : '0',
+      },
+      watch: false,
+      autorestart: true,
+      kill_timeout: 12000,
+      restart_delay: 10000,
+      max_restarts: 30,
+      min_uptime: '10s',
+      log_file: './logs/variant-mapper.log',
+      error_file: './logs/variant-mapper-error.log',
+      time: true,
+    },
+
+    // ─────────────────────────────────────────────
+    // Image Downloader — Background Worker
+    // ─────────────────────────────────────────────
+    {
+      name: 'image-downloader',
+      script: 'bun',
+      args: 'run scripts/image-downloader.ts',
+      env: {
+        SAFE_MODE: SAFE_MODE ? '1' : '0',
+      },
+      watch: false,
+      autorestart: true,
+      kill_timeout: 12000,
+      restart_delay: 5000,
+      max_restarts: 50,
+      min_uptime: '10s',
+      log_file: './logs/image-downloader.log',
+      error_file: './logs/image-downloader-error.log',
+      time: true,
+    },
+
+    // ─────────────────────────────────────────────
+    // Snkrdunk Historical Price Backfill Worker
+    // ─────────────────────────────────────────────
+    {
+      name: 'historical-snkrdunk',
+      script: 'bun',
+      args: 'run scripts/historical-snkrdunk-worker.ts',
+      env: {
+        SAFE_MODE: SAFE_MODE ? '1' : '0',
+      },
+      watch: false,
+      autorestart: true,
+      kill_timeout: 12000,
+      restart_delay: 5000,
+      max_restarts: 50,
+      min_uptime: '10s',
+      log_file: './logs/historical-snkrdunk.log',
+      error_file: './logs/historical-snkrdunk-error.log',
+      time: true,
+    },
+
+    // ─────────────────────────────────────────────
+    // POPULATION SCRAPERS
+    // ─────────────────────────────────────────────
+    {
+      name: 'pop-scraper-master',
+      script: 'bun',
+      args: 'run scripts/scrapers/pop/master.ts',
+      watch: false,
+      autorestart: true,
+      kill_timeout: 12000,
+      restart_delay: 15000,
+      exp_backoff_restart_delay: 5000,
+      max_restarts: 50,
+      min_uptime: '30s',
+      max_memory_restart: '1000M', // Protective safety net
+      log_file: './logs/pop-scraper-master.log',
+      error_file: './logs/pop-scraper-master-error.log',
+      time: true,
+    }
   ],
 };

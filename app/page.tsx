@@ -4,8 +4,7 @@ import { HeroCardsAnimation } from '@/components/home/hero-cards-animation';
 import { MarketMovers, type MarketMover } from '@/components/home/market-movers';
 import { CategoryCards, type Category } from '@/components/home/category-cards';
 import { CardsMarquee } from '@/components/home/cards-marquee';
-// Cookie-free anon client keeps this route statically renderable (see card page).
-import { createPublicClient } from '@/lib/supabase/client';
+import { dbQuery } from '@/lib/db/client';
 
 // Mock data (same as before)
 const marketMovers: { gainers: MarketMover[]; losers: MarketMover[] } = {
@@ -32,22 +31,41 @@ const categories: Category[] = [
 export const revalidate = 3600;
 
 export default async function HomePage() {
-  const supabase = createPublicClient();
-  
   // Database-level scan for all high-end hits across the entire table
-  const { data: rawCards } = await supabase
-    .from('cards')
-    .select('id, name, image_url, local_image_url, slug, rarity')
-    .not('image_url', 'is', null)
-    .or('rarity.ilike.%sp%,rarity.ilike.%sec%,rarity.ilike.%scr%,name.ilike.%manga%,name.ilike.%tournament%,name.ilike.%wanted%')
-    .limit(500);
+  let rawCards: Array<{
+    id: string;
+    name: string;
+    image_url: string | null;
+    local_image_url: string | null;
+    slug: string;
+    rarity: string | null;
+  }> = [];
+
+  try {
+    rawCards = await dbQuery(`
+      SELECT id, name, image_url, local_image_url, slug, rarity
+      FROM cards
+      WHERE image_url IS NOT NULL
+        AND (
+          rarity ILIKE $1
+          OR rarity ILIKE $2
+          OR rarity ILIKE $3
+          OR name ILIKE $4
+          OR name ILIKE $5
+          OR name ILIKE $6
+        )
+      LIMIT 500
+    `, ['%sp%', '%sec%', '%scr%', '%manga%', '%tournament%', '%wanted%']) as typeof rawCards;
+  } catch (error) {
+    console.error('Failed to load home cards:', error);
+  }
 
   // In-memory filter to strictly enforce the OP and DBFW rules
-  const filteredCards = (rawCards || []).filter((card: any) => {
+  const filteredCards = rawCards.filter((card) => {
     const slug = card.slug || '';
     const rarity = (card.rarity || '').toLowerCase();
     const name = (card.name || '').toLowerCase();
-    
+
     const isOP = slug.startsWith('op-');
     const isDB = slug.startsWith('dbfw-');
 
@@ -63,25 +81,26 @@ export default async function HomePage() {
   });
 
   // Perfectly shuffle OP and DBFW cards, then grab up to 60
+  // eslint-disable-next-line react-hooks/purity
   const dbCards = filteredCards.sort(() => Math.random() - 0.5).slice(0, 60);
 
   return (
     <main className="min-h-screen bg-[#060c18] text-zinc-100 overflow-hidden font-sans pt-24 pb-20">
-      
+
       {/* Immersive Hero Section */}
       <section className="relative w-full flex flex-col items-center pt-10 md:pt-20 px-4">
         {/* Background Image & Gradients */}
         <div className="absolute top-[-96px] left-0 w-full h-[800px] z-0 overflow-hidden pointer-events-none">
-          <Image 
-            src="/hero-bg.jpg" 
-            alt="Hero Background" 
-            fill 
-            className="object-cover opacity-80 [mask-image:linear-gradient(to_bottom,black_50%,transparent_100%)]" 
+          <Image
+            src="/hero-bg.jpg"
+            alt="Hero Background"
+            fill
+            className="object-cover opacity-80 [mask-image:linear-gradient(to_bottom,black_50%,transparent_100%)]"
             priority
           />
         </div>
         <div className="absolute top-[-96px] left-1/2 -translate-x-1/2 w-full max-w-7xl h-[800px] bg-radial-gradient from-orange-500/10 to-transparent blur-[120px] pointer-events-none z-0" />
-        
+
         <div className="relative z-10 text-center flex flex-col items-center">
           <h2 className="text-white text-[20px] sm:text-[25px] md:text-[41px] font-black tracking-widest uppercase mb-[-10px] md:mb-[-15px] z-20 drop-shadow-xl" style={{ WebkitTextStroke: '1px rgba(255,255,255,0.8)' }}>
             BECOME
@@ -110,14 +129,14 @@ export default async function HomePage() {
 
       {/* Streamlined Content Sections - Adapted for Dark Theme */}
       <div className="container mx-auto px-4 mt-24 relative z-30">
-        
+
         {/* Market Movers */}
         <section className="mb-24">
           <div className="text-center mb-12">
             <h3 className="text-3xl font-bold text-white tracking-tight">Market <span className="text-orange-500">Movers</span></h3>
             <p className="text-zinc-400 mt-2">Track the biggest gainers and losers in real-time.</p>
           </div>
-          
+
           <div className="bg-[#0b1329]/80 border border-white/10 rounded-3xl p-6 md:p-8 backdrop-blur-md shadow-2xl">
              <MarketMovers gainers={marketMovers.gainers} losers={marketMovers.losers} />
           </div>
@@ -133,7 +152,7 @@ export default async function HomePage() {
            <div className="text-center mb-12">
             <h3 className="text-3xl font-bold text-white tracking-tight">Explore <span className="text-orange-500">Tcgs</span></h3>
           </div>
-          
+
            <CategoryCards categories={categories} />
         </section>
 
@@ -154,7 +173,7 @@ export default async function HomePage() {
         }
         .dark-theme-wrapper .text-stone-500,
         .dark-theme-wrapper .text-stone-600 {
-          color: #9ca3af !important; 
+          color: #9ca3af !important;
         }
         .dark-theme-wrapper .border-stone-200 {
           border-color: rgba(255,255,255,0.1) !important;

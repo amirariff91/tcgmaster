@@ -15,17 +15,17 @@ async function getTcgProducts(baseNumber: string) {
   try {
     const res = await fetch(`https://tcgcsv.com/tcgplayer/${CATEGORY_ID}/groups`, { headers: { 'User-Agent': 'curl/8.4.0' } });
     const groups = (await res.json()).results || [];
-    
+
     const prefixMatch = baseNumber.match(/^([A-Z]+[0-9]+)-/);
     if (!prefixMatch) return [];
     const abbr = prefixMatch[1];
-    
+
     const group = groups.find((g: any) => g.abbreviation === abbr || g.abbreviation?.includes(abbr));
     if (!group) return [];
-    
+
     const productsRes = await fetch(`https://tcgcsv.com/tcgplayer/${CATEGORY_ID}/${group.groupId}/products`, { headers: { 'User-Agent': 'curl/8.4.0' } });
     const products = (await productsRes.json()).results || [];
-    
+
     const matches = products.filter((p: any) => p.extendedData?.find((d: any) => d.name === 'Number')?.value === baseNumber);
     cachedTcgProducts[baseNumber] = matches;
     return matches;
@@ -45,7 +45,7 @@ async function scrapeYuyuteiLinks(baseNumber: string) {
     if (!res.ok) return [];
     const html = await res.text();
     const $ = cheerio.load(html);
-    
+
     const results: { name: string; url: string }[] = [];
     $('.card-product').each((_, el) => {
       const name = $(el).text().trim();
@@ -76,15 +76,15 @@ async function scrapeSnkrdunkLinks(baseNumber: string) {
       console.log(`Navigation timeout or error (ignored): ${e.message}`);
     });
     await new Promise(r => setTimeout(r, 2000));
-    
+
     const html = await page.content();
     const $ = cheerio.load(html);
-    
+
     const results: { name: string; url: string }[] = [];
-    $('.product__item-textarea').each((_, el) => {
-      const name = $(el).find('.product__item-name').text().trim();
-      const link = $(el).closest('a').attr('href');
-      if (link) {
+    $('a[href*="trading-cards"]').each((_, el) => {
+      const name = $(el).find('.tile__name').text().trim();
+      const link = $(el).attr('href');
+      if (link && name) {
         results.push({
           name,
           url: link.startsWith('http') ? link : 'https://snkrdunk.com' + link
@@ -104,12 +104,12 @@ async function scrapeSnkrdunkLinks(baseNumber: string) {
 function resolveCardMappings(card: any, tcgProducts: any[], yyLinks: any[], sdLinks: any[]) {
   const suffix = card.slug.split('_')[1]?.split('-')[0] || '';
   const setCode = card.slug.split('-')[1]?.toLowerCase() || ''; // e.g. "op01"
-  
+
   let tcgId: number | null = null;
   let tcgName: string | null = null;
   let yyUrl: string | null = null;
   let sdUrl: string | null = null;
-  
+
   // Set default variantType based on suffix and rarity
   let variantType = 'Base';
   if (suffix === 'p1') {
@@ -147,7 +147,7 @@ function resolveCardMappings(card: any, tcgProducts: any[], yyLinks: any[], sdLi
     } else if (suffix.startsWith('r')) {
       match = tcgProducts.find(p => p.name.toLowerCase().includes('reprint') || p.name.toLowerCase().includes('prb'));
     }
-    
+
     if (match) {
       tcgId = match.productId;
       tcgName = match.name;
@@ -157,50 +157,43 @@ function resolveCardMappings(card: any, tcgProducts: any[], yyLinks: any[], sdLi
   // 2. Yuyutei URL Mapping (filtering by setCode to prevent PRB mismatching)
   const yySetLinks = yyLinks.filter(l => l.url.includes(`/${setCode}/`));
   if (yySetLinks.length > 0) {
-    let match = null;
-    if (suffix === 'p1') {
-      match = yySetLinks.find(l => l.name.includes('パラレル') && !l.name.includes('スーパー') && !l.name.includes('スペシャル') && !l.name.includes('手配書'));
-    } else if (suffix === 'p2') {
-      match = yySetLinks.find(l => l.name.includes('スーパーパラレル') || l.name.includes('コミック'));
-      if (!match) {
-        match = yySetLinks.find(l => l.name.includes('パラレル') && !l.name.includes('スペシャル'));
+    if (!suffix) {
+      const match = yySetLinks.find(l => !l.name.includes('パラレル') && !l.name.includes('(PRB)') && !l.name.includes('スペシャル') && !l.name.includes('手配書') && !l.name.includes('コミック'));
+      if (match) yyUrl = match.url;
+    } else {
+      const validYyVariants = yySetLinks.filter(l => {
+        const name = l.name;
+        return name.includes('パラレル') || name.includes('スペシャル') || name.includes('手配書') || name.includes('コミック') || name.includes('シークレット');
+      });
+      if (validYyVariants.length === 1) {
+        yyUrl = validYyVariants[0].url;
       }
-    } else if (suffix === 'p3' || suffix === 'p4' || suffix === 'p5' || suffix === 'p6' || suffix === 'p7' || suffix === 'p8') {
-      match = yySetLinks.find(l => l.name.includes('スペシャル') || l.name.includes('手配書'));
-      if (match?.name.includes('手配書')) {
-        variantType = 'Wanted Poster';
-      }
-    } else if (suffix.startsWith('r')) {
-      match = yySetLinks.find(l => l.name.includes('(PRB)'));
-    } else if (!suffix) {
-      match = yySetLinks.find(l => !l.name.includes('パラレル') && !l.name.includes('(PRB)'));
     }
-    
-    if (match) yyUrl = match.url;
   }
 
   // 3. Snkrdunk URL Mapping
   if (sdLinks.length > 0) {
-    let match = null;
-    if (suffix === 'p1') {
-      match = sdLinks.find(l => l.name.toLowerCase().includes('parallel') && !l.name.toLowerCase().includes('super') && !l.name.toLowerCase().includes('special') && !l.name.toLowerCase().includes('wanted'));
-    } else if (suffix === 'p2') {
-      match = sdLinks.find(l => l.name.toLowerCase().includes('super') || l.name.toLowerCase().includes('manga'));
-      if (!match) {
-        match = sdLinks.find(l => l.name.toLowerCase().includes('parallel') && !l.name.toLowerCase().includes('special'));
+    if (!suffix) {
+      const match = sdLinks.find(l => {
+        const name = l.name.toLowerCase();
+        return !name.includes('parallel') && !name.includes('prb') && !name.includes('special') && !name.includes('wanted') && !name.includes('manga');
+      });
+      if (match) sdUrl = match.url;
+    } else {
+      const VARIANT_KEYWORDS = [
+        'alternate art', 'manga', 'parallel', 'super parallel', 'sp', 'special',
+        'wanted', 'serialized', 'serial number', 'serial prize', 'anniversary',
+        'top 8', 'flagship', 'winner', 'championship', 'tournament', 'premium',
+        'スーパーパラレル'
+      ];
+      const validSdVariants = sdLinks.filter(l => {
+        const name = l.name.toLowerCase();
+        return VARIANT_KEYWORDS.some(kw => name.includes(kw));
+      });
+      if (validSdVariants.length === 1) {
+        sdUrl = validSdVariants[0].url;
       }
-    } else if (suffix === 'p3' || suffix === 'p4' || suffix === 'p5' || suffix === 'p6' || suffix === 'p7' || suffix === 'p8') {
-      match = sdLinks.find(l => l.name.toLowerCase().includes('special') || l.name.toLowerCase().includes('wanted'));
-      if (match?.name.toLowerCase().includes('wanted')) {
-        variantType = 'Wanted Poster';
-      }
-    } else if (suffix.startsWith('r')) {
-      match = sdLinks.find(l => l.name.toLowerCase().includes('prb') || l.name.toLowerCase().includes('reprint'));
-    } else if (!suffix) {
-      match = sdLinks.find(l => !l.name.toLowerCase().includes('parallel') && !l.name.toLowerCase().includes('prb'));
     }
-    
-    if (match) sdUrl = match.url;
   }
 
   // Handle Serialized cards explicitly
@@ -213,18 +206,18 @@ function resolveCardMappings(card: any, tcgProducts: any[], yyLinks: any[], sdLi
 
 async function run() {
   console.log("Fetching all variant cards from Supabase...");
-  
-  let allCards: any[] = [];
+
+  const allCards: any[] = [];
   let page = 0;
   const pageSize = 1000;
-  
+
   while (true) {
     const { data: cards, error } = await supabase
       .from('cards')
       .select('id, slug, name, number, rarity, tcg_player_id, yuyutei_url, snkrdunk_url')
       .like('slug', 'op-%_%')
       .range(page * pageSize, (page + 1) * pageSize - 1);
-      
+
     if (error || !cards || cards.length === 0) break;
     allCards.push(...cards);
     page++;
@@ -235,14 +228,14 @@ async function run() {
 
   for (const card of allCards) {
     count++;
-    
+
     const isJp = card.slug.endsWith('-ja');
     const suffix = card.slug.split('_')[1]?.split('-')[0] || '';
-    
+
     const cleanRarity = (card.rarity || '').toLowerCase();
-    const isHighValue = ['secretrare', 'leader', 'special', 'superrare'].includes(cleanRarity) && 
+    const isHighValue = ['secretrare', 'leader', 'special', 'superrare'].includes(cleanRarity) &&
                         ['p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8'].includes(suffix);
-    
+
     let tcgProducts: any[] = [];
     let yyLinks: any[] = [];
     let sdLinks: any[] = [];
@@ -251,12 +244,17 @@ async function run() {
     if (!isJp) {
       tcgProducts = await getTcgProducts(card.number);
     }
-    
+
     if (isHighValue && isJp) {
+      if (card.snkrdunk_url && card.yuyutei_url) {
+        console.log(`[${count}/${allCards.length}] HIGH VALUE (JP): Skipping ${card.slug} (Already Mapped)...`);
+        continue;
+      }
+
       console.log(`[${count}/${allCards.length}] HIGH VALUE (JP): Processing ${card.slug} (${card.name} / ${card.number})...`);
       yyLinks = await scrapeYuyuteiLinks(card.number);
       sdLinks = await scrapeSnkrdunkLinks(card.number);
-      
+
       // Delay to respect rate limits
       await new Promise(r => setTimeout(r, 2000));
     } else {
@@ -264,13 +262,13 @@ async function run() {
         console.log(`[${count}/${allCards.length}] Fast Path: Mapping standard variant ${card.slug}...`);
       }
     }
-    
+
     const mappings = resolveCardMappings(card, tcgProducts, yyLinks, sdLinks);
-    
+
     // Build update payload
     const updatePayload: any = {};
     const setCode = card.slug.split('-')[1]?.toLowerCase() || '';
-    
+
     // Clean up poisoned Snkrdunk URL
     const currentSdUrl = card.snkrdunk_url || '';
     const isSdUrlPoisoned = currentSdUrl.includes('/search/result');
@@ -279,7 +277,7 @@ async function run() {
     } else if (isSdUrlPoisoned || (isHighValue && isJp)) {
       updatePayload.snkrdunk_url = null;
     }
-    
+
     // Clean up poisoned Yuyutei URL
     const currentYyUrl = card.yuyutei_url || '';
     const isYyUrlPoisoned = currentYyUrl && !currentYyUrl.includes(`/${setCode}/`);
@@ -288,33 +286,33 @@ async function run() {
     } else if (isYyUrlPoisoned || (isHighValue && isJp)) {
       updatePayload.yuyutei_url = null;
     }
-    
+
     if (mappings.tcgId) updatePayload.tcg_player_id = String(mappings.tcgId);
-    
+
     // Update name to custom display format
     if (mappings.variantType && mappings.variantType !== 'Base') {
       const cleanBaseName = card.name.split(' (')[0];
       updatePayload.name = `${cleanBaseName} (${mappings.variantType})`;
     }
-    
+
     // Store metadata
     updatePayload.print_run_info = {
       tcgplayer_card_name: mappings.tcgName || card.name,
       variant_type: mappings.variantType
     };
-    
+
     // Only update if there are changes to make it fast
-    if (updatePayload.tcg_player_id !== card.tcg_player_id || 
-        updatePayload.yuyutei_url !== card.yuyutei_url || 
-        updatePayload.snkrdunk_url !== card.snkrdunk_url || 
+    if (updatePayload.tcg_player_id !== card.tcg_player_id ||
+        updatePayload.yuyutei_url !== card.yuyutei_url ||
+        updatePayload.snkrdunk_url !== card.snkrdunk_url ||
         updatePayload.name !== card.name ||
         card.print_run_info?.variant_type !== mappings.variantType) {
-        
+
       const { error: updateError } = await supabase
         .from('cards')
         .update(updatePayload)
         .eq('id', card.id);
-        
+
       if (updateError) {
         console.error(`Failed to update card ${card.slug}:`, updateError.message);
       }

@@ -1,4 +1,4 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { PgQuery } from './db';
 
 export interface ConsistencyInput {
   cardId: string;
@@ -25,25 +25,26 @@ function ratioBetween(left: number, right: number): number {
 }
 
 export async function checkSelfConsistency(
-  db: SupabaseClient,
+  db: PgQuery,
   input: ConsistencyInput,
   corroborating: number[],
 ): Promise<ConsistencyVerdict> {
-  const { data, error } = await db
-    .from('price_history')
-    .select('price')
-    .eq('card_id', input.cardId)
-    .eq('source', input.source)
-    .eq('grade', input.grade)
-    .order('recorded_at', { ascending: false })
-    .limit(5);
-
-  if (error) {
-    throw new Error(`[price-engine] price_history consistency read failed: ${String(error.message ?? error)}`);
+  let rows: Array<{ price: unknown }>;
+  try {
+    rows = await db(
+      `SELECT price
+       FROM price_history
+       WHERE card_id = $1 AND source = $2 AND grade = $3
+       ORDER BY recorded_at DESC
+       LIMIT 5`,
+      [input.cardId, input.source, input.grade],
+    ) as Array<{ price: unknown }>;
+  } catch (error) {
+    throw new Error(`[price-engine] price_history consistency read failed: ${String(error instanceof Error ? error.message : error)}`);
   }
 
-  const historyPrices = (data ?? [])
-    .map((row) => Number((row as { price: unknown }).price))
+  const historyPrices = rows
+    .map((row) => Number(row.price))
     .filter((price) => Number.isFinite(price));
 
   if (historyPrices.length < 3) return { ok: true };

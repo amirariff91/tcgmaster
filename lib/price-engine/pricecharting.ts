@@ -44,21 +44,37 @@ function parsePrice(text: string): number | undefined {
   return Number.isNaN(value) || value <= 0 ? undefined : value;
 }
 
-function readPsa10Price($: cheerio.CheerioAPI): number | undefined {
-  let gradedPrice: number | undefined;
+function readGradedPrices($: cheerio.CheerioAPI): Record<string, number> {
+  const gradedPrices: Record<string, number> = {};
   $('#full-prices tr, #price_data tr').each((_, row) => {
-    if (gradedPrice !== undefined) return;
     const label = $(row).find('td.label').text().replace(/\s+/g, ' ').trim().toLowerCase();
-    if (label !== 'psa 10') return;
-    gradedPrice = parsePrice($(row).find('td.price').text());
+
+    // Normalize common PriceCharting grade labels to our DB format
+    let normalizedGrade: string | null = null;
+    if (label === 'psa 10') normalizedGrade = 'psa10';
+    else if (label === 'psa 9') normalizedGrade = 'psa9';
+    else if (label === 'psa 8') normalizedGrade = 'psa8';
+    else if (label === 'bgs 10') normalizedGrade = 'bgs10';
+    else if (label === 'bgs 9.5') normalizedGrade = 'bgs9.5';
+    else if (label === 'bgs 9') normalizedGrade = 'bgs9';
+    else if (label === 'cgc 10') normalizedGrade = 'cgc10';
+    else if (label === 'cgc 9.5') normalizedGrade = 'cgc9.5';
+    else if (label === 'cgc 9') normalizedGrade = 'cgc9';
+
+    if (!normalizedGrade || gradedPrices[normalizedGrade] !== undefined) return;
+
+    const price = parsePrice($(row).find('td.price').text());
+    if (price !== undefined) {
+      gradedPrices[normalizedGrade] = price;
+    }
   });
-  return gradedPrice;
+  return gradedPrices;
 }
 
 // Returns both raw and PSA 10 graded prices
 export interface PriceChartingResult {
   price: number;
-  gradedPrice?: number;
+  gradedPrices?: Record<string, number>;
   evidence: MatchEvidence;
 }
 
@@ -66,7 +82,7 @@ export interface PriceChartingCandidate {
   title: string;
   url: string;
   price?: number;
-  gradedPrice?: number;
+  gradedPrices?: Record<string, number>;
 }
 
 function readProductPage(
@@ -83,13 +99,12 @@ function readProductPage(
   const productPrice = parsePrice($('#used_price').find('.price').first().text());
   const externalSet = $('.console, .platform, .system, .set').first().text().trim() || undefined;
 
-  // Graded price only from a cell whose visible label is exactly "PSA 10" — the
-  // positional grade cells (complete/new/graded/box/manual) are never guessed at.
-  const gradedPrice = readPsa10Price($);
+  // Graded prices from the explicit table
+  const gradedPrices = readGradedPrices($);
 
   return productPrice === undefined ? null : {
     price: productPrice,
-    ...(gradedPrice !== undefined ? { gradedPrice } : {}),
+    ...(Object.keys(gradedPrices).length > 0 ? { gradedPrices } : {}),
     evidence: {
       externalTitle: heading,
       externalUrl,
@@ -144,13 +159,13 @@ export async function searchPriceChartingCandidates(query: string): Promise<Pric
     if (results.length === 0) {
       const title = $('h1').first().text().trim();
       const price = parsePrice($('#used_price').find('.price').first().text());
-      const gradedPrice = readPsa10Price($);
+      const gradedPrices = readGradedPrices($);
 
       return [{
         title,
         url: pageUrl,
         ...(price !== undefined ? { price } : {}),
-        ...(gradedPrice !== undefined ? { gradedPrice } : {}),
+        ...(Object.keys(gradedPrices).length > 0 ? { gradedPrices } : {}),
       }];
     }
 
@@ -159,13 +174,13 @@ export async function searchPriceChartingCandidates(query: string): Promise<Pric
       const href = $(row).find('td.title a').attr('href');
       const url = href ? new URL(href, pageUrl).toString() : pageUrl;
       const price = parsePrice($(row).find('td.price.used_price span.js-price').text());
-      const gradedPrice = parsePrice($(row).find('td.price.grade10_price span.js-price').text());
+      const psa10Price = parsePrice($(row).find('td.price.grade10_price span.js-price').text());
 
       return {
         title,
         url,
         ...(price !== undefined ? { price } : {}),
-        ...(gradedPrice !== undefined ? { gradedPrice } : {}),
+        ...(psa10Price !== undefined ? { gradedPrices: { psa10: psa10Price } } : {}),
       };
     });
   } catch (err) {
@@ -198,17 +213,17 @@ export async function fetchPriceChartingPrice(query: string): Promise<PriceChart
     await waitForSourceRateLimit('pricecharting');
 
     const searchUrl = `https://www.pricecharting.com/search-products?type=prices&q=${encodeURIComponent(baseQuery)}`;
-    
+
     const browser = await getSharedBrowser();
     page = await browser.newPage();
-    
+
     await page.setViewport({ width: 1280, height: 800 });
     await page.goto(searchUrl, { waitUntil: 'networkidle2', timeout: 60000 });
     await new Promise(r => setTimeout(r, 1000));
-    
+
     const html = await page.content();
     const $ = cheerio.load(html);
-    
+
     let selectedResult: Element | null = null;
     const results = $('table#games_table tbody tr');
 
@@ -258,9 +273,9 @@ export async function fetchPriceChartingPrice(query: string): Promise<PriceChart
     });
 
     if (!selectedResult) return null;
-    
+
     let rawPrice: number | undefined;
-    let gradedPrice: number | undefined;
+    const gradedPrices: Record<string, number> = {};
 
     // Extract Ungraded / Raw Price
     const priceText = $(selectedResult).find('td.price.used_price span.js-price').text();
@@ -272,13 +287,13 @@ export async function fetchPriceChartingPrice(query: string): Promise<PriceChart
       }
     }
 
-    // Extract PSA 10 (Grade 10) Price
+    // Extract PSA 10 (Grade 10) Price from search table
     const psaText = $(selectedResult).find('td.price.grade10_price span.js-price').text();
     if (psaText) {
       const match = psaText.match(/([0-9.,]+)/);
       if (match) {
         const p = parseFloat(match[1].replace(/,/g, ''));
-        if (!isNaN(p) && p > 0) gradedPrice = p;
+        if (!isNaN(p) && p > 0) gradedPrices.psa10 = p;
       }
     }
 
@@ -289,7 +304,7 @@ export async function fetchPriceChartingPrice(query: string): Promise<PriceChart
       const externalUrl = href ? new URL(href, 'https://www.pricecharting.com').toString() : undefined;
       return {
         price: rawPrice,
-        gradedPrice,
+        ...(Object.keys(gradedPrices).length > 0 ? { gradedPrices } : {}),
         evidence: {
           externalTitle: rawTitle,
           externalUrl,

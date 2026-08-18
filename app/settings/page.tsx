@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { Metadata } from 'next';
-import { createClient } from '@/lib/supabase/server';
+import { getAuthUser } from '@/lib/auth-server';
 import { SettingsClient } from './settings-client';
 
 export const metadata: Metadata = {
@@ -9,15 +9,11 @@ export const metadata: Metadata = {
 };
 
 export default async function SettingsPage() {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   // Redirect to login if not authenticated
   if (!user) {
-    redirect('/login?redirect=/settings');
+    redirect('/login?redirectTo=/settings');
   }
 
   return <SettingsClient user={user} />;

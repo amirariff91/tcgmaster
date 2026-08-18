@@ -9,7 +9,7 @@ import {
   fetchPokemonCardImageByNameAndSet,
   getCardsNeedingImages,
 } from '@/lib/images/service';
-import { createServerClient } from '@/lib/supabase/client';
+import { dbQuery } from '@/lib/db/client';
 
 // Event types
 interface FetchCardImageEvent {
@@ -50,16 +50,13 @@ export const fetchCardImage = inngest.createFunction(
   async ({ event, step }) => {
     const { cardId, pokeTcgId, cardName, setSlug } = event.data;
 
-    const supabase = createServerClient();
-    const { data: cardData } = await supabase
-      .from('cards')
-      .select('local_image_url')
-      .eq('id', cardId)
-      .single();
-
-    const card = cardData as {
+    const cardRows = await dbQuery(
+      `SELECT local_image_url FROM cards WHERE id = $1 LIMIT 1`,
+      [cardId],
+    ) as Array<{
       local_image_url: string | null;
-    } | null;
+    }>;
+    const card = cardRows[0] ?? null;
 
     // Skip if already has image
     if (card?.local_image_url) {
@@ -204,33 +201,24 @@ export const retryFailedImageFetches = inngest.createFunction(
       return { retried: 0, disabled: true, reason: 'no per-card Pokemon TCG API id in schema' };
     }
 
-    const supabase = createServerClient();
-
     // Define the card type for this query
     type FailedCard = {
       id: string;
       name: string;
-      sets: { slug: string; games: { slug: string } };
+      set_slug: string;
     };
 
     // Find cards without local images
     const failedCardsResult = await step.run('get-failed-cards', async (): Promise<FailedCard[]> => {
-      const { data } = await supabase
-        .from('cards')
-        .select(`
-          id,
-          name,
-          sets!inner (
-            slug,
-            games!inner (
-              slug
-            )
-          )
-        `)
-        .is('local_image_url', null)
-        .eq('sets.games.slug', 'pokemon')
-        .limit(50);
-      return (data as FailedCard[]) || [];
+      return await dbQuery(
+        `SELECT c.id, c.name, s.slug AS set_slug
+         FROM cards c
+         JOIN sets s ON s.id = c.set_id
+         JOIN games g ON g.id = s.game_id
+         WHERE c.local_image_url IS NULL AND g.slug = $1
+         LIMIT 50`,
+        ['pokemon'],
+      ) as FailedCard[];
     });
 
     if (failedCardsResult.length === 0) {
@@ -244,7 +232,7 @@ export const retryFailedImageFetches = inngest.createFunction(
         cardId: card.id,
         pokeTcgId: null,
         cardName: card.name,
-        setSlug: card.sets.slug,
+        setSlug: card.set_slug,
         priority: 'low' as const,
       },
     }));

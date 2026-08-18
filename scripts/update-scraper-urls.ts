@@ -19,7 +19,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function run() {
   console.log('Fetching all cards...');
-  
+
   const { data: cards, error } = await supabase
     .from('cards')
     .select('id, number, name, tcgplayer_url, snkrdunk_url, yuyutei_url, cardrush_url');
@@ -34,12 +34,12 @@ async function run() {
   let count = 0;
   for (const card of cards) {
     if (!card.number) continue;
-    
+
     // Basic formatting for One Piece (e.g. OP01-120)
     const formattedNumber = card.number.toUpperCase();
-    
+
     // Snkrdunk URL
-    const snkrdunkUrl = card.snkrdunk_url || `https://snkrdunk.com/en/search/result?keyword=${formattedNumber}`;
+    const snkrdunkUrl = card.snkrdunk_url || `https://snkrdunk.com/en/search/result?keyword=${encodeURIComponent(card.name + ' ' + formattedNumber + ' One Piece')}`;
     // Yuyutei URL
     const yuyuteiUrl = card.yuyutei_url || `https://yuyu-tei.jp/sell/opc/s/search?search_word=${formattedNumber}`;
     // Cardrush URL
@@ -57,7 +57,7 @@ async function run() {
           tcgplayer_url: tcgplayerUrl,
         })
         .eq('id', card.id);
-        
+
       count++;
       if (count % 10 === 0) console.log(`Updated ${count} cards...`);
     }

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createPublicClient } from '@/lib/supabase/client';
-import { redis, CACHE_KEYS, CACHE_TTL } from '@/lib/redis/client';
+import { dbQuery } from '@/lib/db/client';
+import { redis } from '@/lib/redis/client';
 
 export async function GET() {
   try {
@@ -11,18 +11,11 @@ export async function GET() {
       return NextResponse.json({ data: cached });
     }
 
-    const supabase = createPublicClient();
-    
-    const { data, error } = await supabase
-      .from('games')
-      .select('id, name, slug, display_name')
-      .order('display_name');
-
-    if (error) {
-      throw error;
-    }
-
-    const gamesList = data || [];
+    const gamesList = await dbQuery(`
+      SELECT id, name, slug, display_name
+      FROM games
+      ORDER BY display_name
+    `);
     
     // Cache for 1 hour since games don't change often
     await redis.set(cacheKey, gamesList, { ex: 3600 });

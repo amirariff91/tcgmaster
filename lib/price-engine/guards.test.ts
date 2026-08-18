@@ -9,28 +9,7 @@ const input: ConsistencyInput = {
 };
 
 function dbWithHistory(prices: number[]) {
-  return {
-    from() {
-      const query = {
-        select() {
-          return query;
-        },
-        eq() {
-          return query;
-        },
-        order() {
-          return query;
-        },
-        limit() {
-          return Promise.resolve({
-            data: prices.map((price) => ({ price })),
-            error: null,
-          });
-        },
-      };
-      return query;
-    },
-  };
+  return async () => prices.map((price) => ({ price }));
 }
 
 describe('checkSelfConsistency', () => {

@@ -75,9 +75,9 @@ export function CardGridItem({
       >
         {/* Card Image / Placeholder */}
         <div className="relative flex-shrink-0">
-          {card.image_url ? (
+          {(card.local_image_url || card.image_url) ? (
             <Image
-              src={card.image_url}
+              src={card.local_image_url || card.image_url || ''}
               alt={cleanName}
               width={80}
               height={112}

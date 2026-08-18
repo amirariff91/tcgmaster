@@ -1,17 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { getAuthUser } from '@/lib/auth-server';
 import { getUserAlerts, createPriceAlert } from '@/lib/pricing/alerts';
 
 // GET /api/alerts - Get all alerts for the authenticated user
 export async function GET() {
-  const supabase = await createClient();
+  const user = await getAuthUser();
 
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
+  if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -22,14 +17,9 @@ export async function GET() {
 
 // POST /api/alerts - Create a new price alert
 export async function POST(request: NextRequest) {
-  const supabase = await createClient();
+  const user = await getAuthUser();
 
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
+  if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

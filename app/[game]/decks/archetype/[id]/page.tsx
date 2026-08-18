@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
-// Cookie-free anon client keeps this route statically renderable (see card page).
-import { createPublicClient } from '@/lib/supabase/client';
+import { connection } from 'next/server';
+import { dbQuery } from '@/lib/db/client';
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -49,9 +49,18 @@ type StandardDeckCard = {
 
 export async function generateMetadata({ params }: ArchetypePageProps): Promise<Metadata> {
   const { id } = await params;
-  const supabase = createPublicClient();
-  const { data: leader } = await supabase.from('cards').select('name').eq('id', id).single();
-  const leaderName = (leader as { name: string | null } | null)?.name || 'Archetype';
+  let leaderName = 'Archetype';
+  try {
+    const rows = await dbQuery<{ name: string | null }>(
+      'SELECT name FROM cards WHERE id = $1 LIMIT 1',
+      [id],
+    );
+    leaderName = rows[0]?.name || leaderName;
+  } catch (error) {
+    // Metadata is best-effort so a build-time DB outage does not fail the route.
+    console.error('Failed to load archetype metadata:', error);
+    await connection();
+  }
   
   return {
     title: `${leaderName} Decks & Meta | TCGMaster`,
@@ -61,27 +70,47 @@ export async function generateMetadata({ params }: ArchetypePageProps): Promise<
 
 export default async function ArchetypePage({ params }: ArchetypePageProps) {
   const { game, id } = await params;
-  const supabase = createPublicClient();
+  let leaderCard: CardImageRecord | null = null;
+  let decksData: ArchetypeDeck[] = [];
 
-  // Fetch the Leader Card
-  const { data: leaderCard } = await supabase
-    .from('cards')
-    .select('*')
-    .eq('id', id)
-    .single();
+  try {
+    // Fetch the Leader Card
+    const leaderRows = await dbQuery<CardImageRecord>(`
+      SELECT name, image_url, local_image_url
+      FROM cards
+      WHERE id = $1
+      LIMIT 1
+    `, [id]);
+    leaderCard = leaderRows[0] || null;
+
+    // Fetch all winning decks that use this Leader and rebuild the tournament embed.
+    decksData = await dbQuery<ArchetypeDeck>(`
+      SELECT
+        d.id,
+        d.placement,
+        d.total_price::float8 AS total_price,
+        d.player_name,
+        json_build_object(
+          'name', t.name,
+          'date', t.date,
+          'num_players', t.num_players,
+          'source_url', t.source_url
+        ) AS tournaments
+      FROM decks d
+      JOIN tournaments t ON t.id = d.tournament_id
+      WHERE d.leader_card_id = $1
+      ORDER BY d.created_at DESC
+    `, [id]);
+  } catch (error) {
+    console.error('Failed to load archetype:', error);
+    return notFound();
+  }
 
   if (!leaderCard) {
     notFound();
   }
 
-  // Fetch all winning decks that use this Leader
-  const { data: decksData } = await supabase
-    .from('decks')
-    .select('*, tournaments!inner(name, date, num_players, source_url)')
-    .eq('leader_card_id', id)
-    .order('created_at', { ascending: false });
-
-  const decks = (decksData ?? []) as unknown as ArchetypeDeck[];
+  const decks = decksData;
 
   // Sort decks by the actual date of the tournament (most recent first)
   decks.sort((a, b) => {
@@ -113,11 +142,23 @@ export default async function ArchetypePage({ params }: ArchetypePageProps) {
   
   let standardCards: StandardDeckCard[] = [];
   if (standardDeck) {
-    const { data } = await supabase
-      .from('deck_cards')
-      .select('count, cards(name, image_url, local_image_url)')
-      .eq('deck_id', standardDeck.id);
-    standardCards = (data ?? []) as unknown as StandardDeckCard[];
+    try {
+      standardCards = await dbQuery<StandardDeckCard>(`
+        SELECT
+          dc.count,
+          CASE WHEN c.id IS NULL THEN NULL ELSE json_build_object(
+            'name', c.name,
+            'image_url', c.image_url,
+            'local_image_url', c.local_image_url
+          ) END AS cards
+        FROM deck_cards dc
+        LEFT JOIN cards c ON c.id = dc.card_id
+        WHERE dc.deck_id = $1
+        ORDER BY dc.id
+      `, [standardDeck.id]);
+    } catch (error) {
+      console.error('Failed to load standard deck cards:', error);
+    }
   }
 
   return (

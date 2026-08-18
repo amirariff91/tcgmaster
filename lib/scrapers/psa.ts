@@ -3,10 +3,10 @@
  * Scrapes PSA cert data from psa.com/cert/[number]
  */
 
-import { createServerClient } from '@/lib/supabase/client';
+import { dbQuery } from '@/lib/db/client';
 import { redis, CACHE_KEYS, CACHE_TTL } from '@/lib/redis/client';
 
-// Type definitions for Supabase query results
+// Type definitions for database query results
 interface CompanyIdRow {
   id: string;
 }
@@ -26,7 +26,7 @@ interface CertHistoryRow {
   raw_data: Partial<PSACertData> | null;
   scraped_at: string;
   is_verified: boolean;
-  grading_companies: { slug: string };
+  grading_company_slug: string;
 }
 
 export interface PSACertData {
@@ -285,53 +285,64 @@ function getHolderGeneration(certNumber: string): string {
  * Store cert data in database
  */
 async function storeCertData(certData: PSACertData): Promise<void> {
-  const supabase = createServerClient();
-
   // Get PSA grading company ID
-  const { data: companyData } = await supabase
-    .from('grading_companies')
-    .select('id')
-    .eq('slug', 'psa')
-    .single();
-
-  const company = companyData as CompanyIdRow | null;
+  const companyRows = await dbQuery(
+    `SELECT id FROM grading_companies WHERE slug = $1 LIMIT 1`,
+    ['psa'],
+  ) as CompanyIdRow[];
+  const company = companyRows[0] ?? null;
 
   if (!company) return;
 
   // Try to match to a card in our database
   let cardId: string | null = null;
   if (certData.cardDescription) {
-    const { data: cardData } = await supabase
-      .from('cards')
-      .select('id')
-      .ilike('name', `%${certData.cardDescription.split(' ').slice(0, 2).join(' ')}%`)
-      .limit(1)
-      .single();
-
-    const card = cardData as CardIdRow | null;
+    const cardRows = await dbQuery(
+      `SELECT id
+       FROM cards
+       WHERE name ILIKE $1
+       LIMIT 1`,
+      [`%${certData.cardDescription.split(' ').slice(0, 2).join(' ')}%`],
+    ) as CardIdRow[];
+    const card = cardRows[0] ?? null;
     cardId = card?.id || null;
   }
 
   // Upsert cert history
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase.from('cert_history') as any)
-    .upsert({
-      cert_number: certData.certNumber,
-      grading_company_id: company.id,
-      card_id: cardId,
-      grade: certData.grade,
-      cert_date: certData.certDate,
-      holder_generation: certData.holderGeneration,
-      holder_type: certData.labelType,
-      is_reholder: certData.isReholder,
-      previous_cert_number: certData.previousCertNumber,
-      is_verified: true,
-      last_verified_at: new Date().toISOString(),
-      raw_data: certData,
-      scraped_at: certData.scrapedAt,
-    }, {
-      onConflict: 'cert_number,grading_company_id',
-    });
+  await dbQuery(
+    `INSERT INTO cert_history (
+       cert_number, grading_company_id, card_id, grade, cert_date, holder_generation,
+       holder_type, is_reholder, previous_cert_number, is_verified, last_verified_at,
+       raw_data, scraped_at
+     )
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, TRUE, $10, $11::jsonb, $12)
+     ON CONFLICT (cert_number, grading_company_id) DO UPDATE SET
+       card_id = EXCLUDED.card_id,
+       grade = EXCLUDED.grade,
+       cert_date = EXCLUDED.cert_date,
+       holder_generation = EXCLUDED.holder_generation,
+       holder_type = EXCLUDED.holder_type,
+       is_reholder = EXCLUDED.is_reholder,
+       previous_cert_number = EXCLUDED.previous_cert_number,
+       is_verified = EXCLUDED.is_verified,
+       last_verified_at = EXCLUDED.last_verified_at,
+       raw_data = EXCLUDED.raw_data,
+       scraped_at = EXCLUDED.scraped_at`,
+    [
+      certData.certNumber,
+      company.id,
+      cardId,
+      certData.grade,
+      certData.certDate,
+      certData.holderGeneration,
+      certData.labelType,
+      certData.isReholder,
+      certData.previousCertNumber,
+      new Date().toISOString(),
+      JSON.stringify(certData),
+      certData.scrapedAt,
+    ],
+  );
 }
 
 /**
@@ -375,29 +386,18 @@ export async function batchLookupPSACerts(
  * Get cert data from database
  */
 export async function getCertFromDb(certNumber: string): Promise<PSACertData | null> {
-  const supabase = createServerClient();
-
-  const { data } = await supabase
-    .from('cert_history')
-    .select(`
-      cert_number,
-      grade,
-      cert_date,
-      holder_generation,
-      holder_type,
-      is_reholder,
-      previous_cert_number,
-      raw_data,
-      scraped_at,
-      is_verified,
-      grading_companies!cert_history_grading_company_id_fkey!inner (slug)
-    `)
-    .eq('cert_number', certNumber)
-    .single();
-
-  if (!data) return null;
-
-  const typedData = data as CertHistoryRow;
+  const rows = await dbQuery(
+    `SELECT ch.cert_number, ch.grade, ch.cert_date, ch.holder_generation,
+            ch.holder_type, ch.is_reholder, ch.previous_cert_number, ch.raw_data,
+            ch.scraped_at, ch.is_verified, gc.slug AS grading_company_slug
+     FROM cert_history ch
+     JOIN grading_companies gc ON gc.id = ch.grading_company_id
+     WHERE ch.cert_number = $1
+     LIMIT 1`,
+    [certNumber],
+  ) as CertHistoryRow[];
+  const typedData = rows[0];
+  if (!typedData) return null;
   const rawData = typedData.raw_data;
 
   return {

@@ -1,15 +1,12 @@
 /**
  * Image Service
- * Handles lazy downloading of card images to Supabase Storage
+ * Handles lazy downloading of card images to Cloudflare R2
  * Integrates with Pokemon TCG API for Pokemon cards
  */
 
-import { createServerClient } from '@/lib/supabase/client';
+import { dbQuery } from '@/lib/db/client';
 import { getPokemonTCGClient } from '@/lib/pokemon-tcg/client';
-import { SET_ID_MAP } from '@/lib/pokemon-tcg/types';
-import { storeCardImage } from '@/lib/images/r2';
-
-const STORAGE_BUCKET = 'card-images';
+import { deleteR2Objects, listR2ObjectKeys, storeCardImage } from '@/lib/images/r2';
 
 // Image size variants
 const IMAGE_SIZES = {
@@ -43,17 +40,15 @@ export async function getCardImageUrl(
     forceDownload?: boolean;
   }
 ): Promise<ImageResult> {
-  const supabase = createServerClient();
-
   // Check if we already have the image locally
   if (!options?.forceDownload) {
-    const { data: cardData } = await supabase
-      .from('cards')
-      .select('local_image_url, image_fetched_at')
-      .eq('id', cardId)
-      .single();
-
-    const card = cardData as { local_image_url: string | null; image_fetched_at: string | null } | null;
+    const cardRows = await dbQuery<{ local_image_url: string | null; image_fetched_at: string | null }>(`
+      SELECT local_image_url, image_fetched_at
+      FROM cards
+      WHERE id = $1
+      LIMIT 1
+    `, [cardId]);
+    const card = cardRows[0] || null;
 
     if (card?.local_image_url) {
       return {
@@ -68,13 +63,15 @@ export async function getCardImageUrl(
     const localUrl = await downloadAndStoreImage(cardId, sourceUrl);
 
     // Update the card record
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.from('cards') as any)
-      .update({
-        local_image_url: localUrl,
-        image_fetched_at: new Date().toISOString(),
-      })
-      .eq('id', cardId);
+    await dbQuery(
+      `
+        UPDATE cards
+        SET local_image_url = $1,
+            image_fetched_at = $2
+        WHERE id = $3
+      `,
+      [localUrl, new Date().toISOString(), cardId],
+    );
 
     return {
       url: localUrl,
@@ -99,7 +96,6 @@ export async function fetchPokemonCardImage(
   cardId: string,
   pokeTcgId: string
 ): Promise<ImageResult> {
-  const supabase = createServerClient();
   const client = getPokemonTCGClient();
 
   try {
@@ -117,13 +113,15 @@ export async function fetchPokemonCardImage(
     const variants = await downloadAndStoreWithVariants(cardId, card.images.large);
 
     // Update card record with image URL
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.from('cards') as any)
-      .update({
-        local_image_url: variants.large,
-        image_fetched_at: new Date().toISOString(),
-      })
-      .eq('id', cardId);
+    await dbQuery(
+      `
+        UPDATE cards
+        SET local_image_url = $1,
+            image_fetched_at = $2
+        WHERE id = $3
+      `,
+      [variants.large, new Date().toISOString(), cardId],
+    );
 
     return {
       url: variants.large,
@@ -171,14 +169,12 @@ export async function fetchPokemonCardImageByNameAndSet(
 }
 
 /**
- * Download image from source and upload to Supabase Storage
+ * Download image from source and upload to R2
  */
 async function downloadAndStoreImage(
   cardId: string,
   sourceUrl: string
 ): Promise<string> {
-  const supabase = createServerClient();
-
   // Fetch the image
   const response = await fetch(sourceUrl);
   if (!response.ok) {
@@ -189,11 +185,11 @@ async function downloadAndStoreImage(
   const extension = contentType.includes('jpeg') || contentType.includes('jpg') ? 'jpg' : 'png';
   const blob = await response.blob();
 
-  // Generate storage path (identical key on R2 or Supabase)
+  // Generate storage path
   const storagePath = `cards/${cardId}.${extension}`;
 
-  // Store to R2 (preferred) or Supabase Storage fallback; returns the public URL.
-  return storeCardImage({ key: storagePath, body: blob, contentType, supabase, bucket: STORAGE_BUCKET });
+  // Store to R2 and return the public URL.
+  return storeCardImage({ key: storagePath, body: blob, contentType });
 }
 
 /**
@@ -204,8 +200,6 @@ async function downloadAndStoreWithVariants(
   cardId: string,
   sourceUrl: string
 ): Promise<ImageVariants> {
-  const supabase = createServerClient();
-
   // Fetch the original image
   const response = await fetch(sourceUrl);
   if (!response.ok) {
@@ -225,10 +219,10 @@ async function downloadAndStoreWithVariants(
     large: '',
   };
 
-  // Upload the large variant (original) to R2 (preferred) or Supabase fallback.
+  // Upload the large variant (original) to R2.
   const largePath = `cards/${cardId}/large.${extension}`;
   variants.large = await storeCardImage({
-    key: largePath, body: arrayBuffer, contentType, supabase, bucket: STORAGE_BUCKET,
+    key: largePath, body: arrayBuffer, contentType,
   });
 
   // Medium and thumbnail reference the same object; the CF Image Transformations loader
@@ -394,53 +388,40 @@ export async function cleanupOrphanedImages(): Promise<{
   deleted: number;
   errors: string[];
 }> {
-  const supabase = createServerClient();
   const errors: string[] = [];
   let deleted = 0;
 
   try {
-    // List all files in storage
-    const { data: files, error: listError } = await supabase.storage
-      .from(STORAGE_BUCKET)
-      .list('cards');
-
-    if (listError) {
-      errors.push(`Failed to list files: ${listError.message}`);
-      return { deleted, errors };
-    }
+    // List all card objects in R2.
+    const files = await listR2ObjectKeys('cards/');
 
     if (!files || files.length === 0) {
       return { deleted, errors };
     }
 
     // Get all card IDs with local images
-    const { data: cardsData } = await supabase
-      .from('cards')
-      .select('id')
-      .not('local_image_url', 'is', null);
-
-    const cards = cardsData as Array<{ id: string }> | null;
-    const cardIds = new Set(cards?.map((c) => c.id) || []);
+    const cards = await dbQuery<{ id: string }>(
+      'SELECT id FROM cards WHERE local_image_url IS NOT NULL',
+    );
+    const cardIds = new Set(cards.map((c) => c.id));
 
     // Find orphaned files
     const orphanedFiles: string[] = [];
-    for (const file of files) {
-      const cardId = file.name.replace(/\.(jpg|png)$/, '');
+    for (const key of files) {
+      const relativeKey = key.slice('cards/'.length);
+      const cardId = relativeKey.split('/')[0].replace(/\.(jpg|png|webp)$/, '');
       if (!cardIds.has(cardId)) {
-        orphanedFiles.push(`cards/${file.name}`);
+        orphanedFiles.push(key);
       }
     }
 
     // Delete orphaned files
     if (orphanedFiles.length > 0) {
-      const { error: deleteError } = await supabase.storage
-        .from(STORAGE_BUCKET)
-        .remove(orphanedFiles);
-
-      if (deleteError) {
-        errors.push(`Failed to delete files: ${deleteError.message}`);
-      } else {
+      try {
+        await deleteR2Objects(orphanedFiles);
         deleted = orphanedFiles.length;
+      } catch (error) {
+        errors.push(`Failed to delete files: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
   } catch (error) {
@@ -454,15 +435,13 @@ export async function cleanupOrphanedImages(): Promise<{
  * Check if a card needs image fetching
  */
 export async function needsImageFetch(cardId: string): Promise<boolean> {
-  const supabase = createServerClient();
-
-  const { data } = await supabase
-    .from('cards')
-    .select('local_image_url, image_fetched_at')
-    .eq('id', cardId)
-    .single();
-
-  const card = data as { local_image_url: string | null; image_fetched_at: string | null } | null;
+  const rows = await dbQuery<{ local_image_url: string | null; image_fetched_at: string | null }>(`
+    SELECT local_image_url, image_fetched_at
+    FROM cards
+    WHERE id = $1
+    LIMIT 1
+  `, [cardId]);
+  const card = rows[0] || null;
 
   // Needs fetch if no local URL
   if (!card?.local_image_url) return true;
@@ -478,34 +457,24 @@ export async function getCardsNeedingImages(
   gameSlug: string,
   limit: number = 100
 ): Promise<Array<{ id: string; name: string; setSlug: string; pokeTcgId: string | null }>> {
-  const supabase = createServerClient();
-
-  const { data } = await supabase
-    .from('cards')
-    .select(`
-      id,
-      name,
-      sets!inner (
-        slug,
-        games!inner (
-          slug
-        )
-      )
-    `)
-    .eq('sets.games.slug', gameSlug)
-    .is('local_image_url', null)
-    .limit(limit);
-
-  if (!data) return [];
-
-  return data.map((card: {
+  const data = await dbQuery<{
     id: string;
     name: string;
-    sets: { slug: string; games: { slug: string } };
-  }) => ({
+    set_slug: string;
+  }>(`
+    SELECT c.id, c.name, s.slug AS set_slug
+    FROM cards c
+    JOIN sets s ON s.id = c.set_id
+    JOIN games g ON g.id = s.game_id
+    WHERE g.slug = $1
+      AND c.local_image_url IS NULL
+    LIMIT $2
+  `, [gameSlug, limit]);
+
+  return data.map((card) => ({
     id: card.id,
     name: card.name,
-    setSlug: card.sets.slug,
+    setSlug: card.set_slug,
     pokeTcgId: null,
   }));
 }
