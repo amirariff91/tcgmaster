@@ -22,6 +22,7 @@ const marketMovers: { gainers: MarketMover[]; losers: MarketMover[] } = {
 const categories: Category[] = [
   { name: 'One Piece', slug: 'one-piece', description: 'Romance Dawn, Pillars of Strength, Manga Rares', cardCount: '10,000+', change: '+12.4%', topMover: 'Manga Shanks PSA 10' },
   { name: 'Pokémon', slug: 'pokemon', description: 'Base Set, 151, Vintage Holos, Special Illustration Rares', cardCount: '20,000+', change: '+14.2%', topMover: 'Charizard Base Set' },
+  { name: 'Riftbound', slug: 'riftbound', description: 'Origins, Spiritforged, Unleashed, Vendetta, Champions', cardCount: '1,400+', change: '+8.9%', topMover: 'Ahri Legendary' },
   { name: 'Dragon Ball', slug: 'dbfw', description: 'Fusion World, Awakened Pulse, Super Rares', cardCount: '5,200+', change: '+5.7%', topMover: 'Goku SCR' },
 ];
 
@@ -52,14 +53,15 @@ export default async function HomePage() {
           OR rarity ILIKE $2
           OR rarity ILIKE $3
           OR rarity ILIKE $4
-          OR name ILIKE $5
+          OR rarity ILIKE $5
           OR name ILIKE $6
           OR name ILIKE $7
           OR name ILIKE $8
+          OR name ILIKE $9
         )
       LIMIT 800
     `, [
-      '%sp%', '%sec%', '%scr%', '%illustration%',
+      '%sp%', '%sec%', '%scr%', '%illustration%', '%legendary%',
       '%manga%', '%tournament%', '%wanted%', '%charizard%'
     ]) as typeof rawCards;
   } catch (error) {
@@ -75,6 +77,7 @@ export default async function HomePage() {
     const isOP = slug.startsWith('op-');
     const isDB = slug.startsWith('dbfw-');
     const isPokemon = slug.startsWith('pokemon-');
+    const isRiftbound = slug.startsWith('riftbound-');
 
     if (isOP) {
       // For One Piece: SP, Manga, Tournament, Wanted, SEC
@@ -87,6 +90,10 @@ export default async function HomePage() {
     if (isPokemon) {
       // For Pokémon: Special Illustration Rare, Illustration Rare, Secret, Charizard, Pikachu, Vintage Holos
       return rarity.includes('illustration') || rarity.includes('secret') || rarity.includes('holo') || name.includes('charizard') || name.includes('pikachu') || name.includes('mew');
+    }
+    if (isRiftbound) {
+      // For Riftbound: Legendary, Epic, Rare
+      return rarity.includes('legendary') || rarity.includes('epic') || rarity.includes('rare');
     }
     return false;
   });

@@ -110,7 +110,8 @@ function SearchResults() {
           const gameNameMapping: Record<string, string> = {
             'dbfw': 'Dragon Ball : Fusion World',
             'one-piece': 'One Piece',
-            'pokemon': 'Pokémon'
+            'pokemon': 'Pokémon',
+            'riftbound': 'Riftbound',
           };
           setGameFilters([
             { value: 'all', label: 'TCGs' },

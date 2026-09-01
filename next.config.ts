@@ -26,6 +26,11 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "images.pokemontcg.io",
       },
+      // Riot Games / Riftbound Sanity CDN
+      {
+        protocol: "https",
+        hostname: "cmsassets.rgpub.io",
+      },
       // PokemonPriceTracker CDN
       {
         protocol: "https",

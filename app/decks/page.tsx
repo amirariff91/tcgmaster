@@ -29,6 +29,11 @@ const gameStyles: Record<string, { bg: string; text: string; banner: string }> =
     text: 'text-amber-400',
     banner: '/images/dbfw-banner.jpg',
   },
+  'riftbound': {
+    bg: 'from-violet-900/40 to-purple-900/40 border-purple-400/30',
+    text: 'text-purple-400',
+    banner: '/images/riftbound-banner.jpg',
+  },
 };
 
 const defaultStyle = {
