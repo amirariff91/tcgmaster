@@ -198,6 +198,9 @@ async function fetchHistoricalSalesForCard(cardId: string, snkrdunkId: string) {
               error instanceof Error ? error.message : String(error),
             );
           }
+        } else {
+          console.log(`  ✓ Caught up to existing history at page ${page}. Breaking early.`);
+          break;
         }
       }
 
@@ -336,7 +339,7 @@ async function fetchHistoricalSalesForCard(cardId: string, snkrdunkId: string) {
 
   await dbQuery(
     `UPDATE cards
-     SET historical_fetched = TRUE,
+     SET snkrdunk_fetched = TRUE,
          last_price_fetch = $1,
          curation_status = $2
      WHERE id = $3`,
@@ -352,16 +355,68 @@ async function run() {
   while (true) {
     try {
       // Continuous 24/7 Rolling Queue: Order by last_price_fetch ASC (Nulls First)
-      let cards: QueueCard[];
+      let cards: QueueCard[] = [];
       try {
+        // Phase 0: Manga Cards Priority
+        const MANGA_SLUGS = [
+          'op-op01-120_p2-ja', 'op-op01-120_r2-ja', 'op-op02-013_p2-ja', 'op-op02-013_r1-ja',
+          'op-op03-122_p2-ja', 'op-op03-122_r1-ja', 'op-op04-083_p2-ja', 'op-op04-083_r1-ja',
+          'op-op05-119_p2-ja', 'op-op05-119_r2-ja', 'op-op05-069_p2-ja', 'op-op05-069_r1-ja',
+          'op-op05-074_p2-ja', 'op-op05-074_r2-ja', 'op-op06-118_p2-ja', 'op-eb01-006_p2-ja',
+          'op-eb01-006_r1-ja', 'op-op07-051_p2-ja', 'op-op08-118_p2-ja', 'op-op09-119_p2-ja',
+          'op-op09-093_p2-ja', 'op-op09-004_p2-ja', 'op-op09-051_p2-ja', 'op-op09-118_p2-ja',
+          'op-op10-119_p2-ja', 'op-eb02-061_p2-ja', 'op-op11-118_p2-ja', 'op-op12-118_p2-ja',
+          'op-op06-119_p3-ja', 'op-op13-119_p3-ja', 'op-op13-119_p1-ja', 'op-op13-120_p3-ja',
+          'op-op13-120_p2-ja', 'op-op13-118_p3-ja', 'op-op13-118_p2-ja', 'op-op14-119_p2-ja',
+          'op-op15-118_p2-ja', 'op-eb03-uta_p2-ja', 'op-eb04-koby_p2-ja', 'op-op16-065_p2-ja',
+          'op-op16-073_p2-ja', 'op-op16-063_p2-ja'
+        ];
+
         cards = await dbQuery<QueueCard>(`
           SELECT id, slug, name, snkrdunk_url, last_price_fetch
           FROM cards
           WHERE snkrdunk_url IS NOT NULL
-            AND slug LIKE $1
+            AND slug = ANY($1::text[])
+            AND snkrdunk_fetched = FALSE
           ORDER BY last_price_fetch ASC NULLS FIRST
           LIMIT 50
-        `, ['op-%-ja']);
+        `, [MANGA_SLUGS]);
+
+        // Phase 1: Japanese One Piece Priority (unfetched)
+        if (cards.length === 0) {
+          cards = await dbQuery<QueueCard>(`
+            SELECT id, slug, name, snkrdunk_url, last_price_fetch
+            FROM cards
+            WHERE snkrdunk_url IS NOT NULL
+              AND slug LIKE 'op-%-ja'
+              AND snkrdunk_fetched = FALSE
+            ORDER BY last_price_fetch ASC NULLS FIRST
+            LIMIT 50
+          `);
+        }
+
+        // Phase 2: Other TCGs Expansion (unfetched)
+        if (cards.length === 0) {
+          cards = await dbQuery<QueueCard>(`
+            SELECT id, slug, name, snkrdunk_url, last_price_fetch
+            FROM cards
+            WHERE snkrdunk_url IS NOT NULL
+              AND snkrdunk_fetched = FALSE
+            ORDER BY last_price_fetch ASC NULLS FIRST
+            LIMIT 50
+          `);
+        }
+
+        // Phase 3: Rolling Maintenance (all cards)
+        if (cards.length === 0) {
+          cards = await dbQuery<QueueCard>(`
+            SELECT id, slug, name, snkrdunk_url, last_price_fetch
+            FROM cards
+            WHERE snkrdunk_url IS NOT NULL
+            ORDER BY last_price_fetch ASC NULLS FIRST
+            LIMIT 50
+          `);
+        }
       } catch (error) {
         console.error('Error querying cards queue:', error);
         await new Promise(r => setTimeout(r, 30000));

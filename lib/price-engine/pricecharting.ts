@@ -92,7 +92,9 @@ function readProductPage(
   wantedNumber?: string,
 ): PriceChartingResult | null {
   const heading = $('h1').first().text().trim();
-  if (wantedNumber && (!titleHasNumberToken(heading, wantedNumber) || isQualifiedPrinting(heading))) {
+  // Only reject bracketed variants if we are guessing from search results.
+  // If explicitly mapped (cached-url), trust the URL.
+  if (wantedNumber && matchedBy !== 'cached-url' && (!titleHasNumberToken(heading, wantedNumber) || isQualifiedPrinting(heading))) {
     return null;
   }
 
@@ -102,8 +104,12 @@ function readProductPage(
   // Graded prices from the explicit table
   const gradedPrices = readGradedPrices($);
 
-  return productPrice === undefined ? null : {
-    price: productPrice,
+  if (productPrice === undefined && Object.keys(gradedPrices).length === 0) {
+    return null;
+  }
+
+  return {
+    price: productPrice || 0, // Fallback to 0 if only graded prices exist
     ...(Object.keys(gradedPrices).length > 0 ? { gradedPrices } : {}),
     evidence: {
       externalTitle: heading,

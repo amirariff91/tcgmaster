@@ -272,26 +272,6 @@ export function CollectrChart({ priceHistory, gradeInfos, marketUrls = {}, class
     return { chartData: chartDataArr, activeSources: activeSourcesArr, minPrice: min === Infinity ? 0 : min, maxPrice: max === -Infinity ? 100 : max, latestPricesList };
   }, [filteredByGrade, timeRange]);
 
-  // Compute a permanent list of RAW prices for the "Compared Sources" section below the chart
-  const rawLatestPricesList = React.useMemo(() => {
-    const rawHistory = priceHistory.filter(h => h.grade === 'raw');
-    const sortedRawHistory = [...rawHistory].sort((a, b) => new Date(a.recorded_at).getTime() - new Date(b.recorded_at).getTime());
-
-    // Find unique sources in raw data
-    const rawSources = new Set<string>();
-    rawHistory.forEach(p => rawSources.add(p.source || 'default'));
-
-    return Array.from(rawSources).map(source => {
-      const latestPoint = sortedRawHistory.slice().reverse().find(p => p.source === source);
-      return {
-        source,
-        price: latestPoint?.price || 0,
-        date: latestPoint?.recorded_at || new Date().toISOString(),
-        kind: SOURCE_KIND[source] || 'market',
-      };
-    }).sort((a, b) => a.price - b.price);
-  }, [priceHistory]);
-
 
   return (
     <div className={cn("flex flex-col space-y-6 w-full", className)}>
@@ -482,13 +462,21 @@ export function CollectrChart({ priceHistory, gradeInfos, marketUrls = {}, class
     </div>
 
     {/* Compared Sources */}
-    {rawLatestPricesList.length > 0 && (
+    {latestPricesList.length > 0 && (
       <div className="bg-[#0b1329]/80 backdrop-blur-sm rounded-2xl border border-white/10 overflow-hidden shadow-sm">
-        <div className="bg-white/5 px-5 py-3 border-b border-white/10">
-          <h3 className="text-sm font-bold text-white uppercase tracking-wider">Compared Sources</h3>
+        <div className="bg-white/5 px-5 py-3 border-b border-white/10 flex items-center justify-between">
+          <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+            Compared Sources
+            <span className={cn(
+              "px-1.5 py-0.5 rounded text-[10px] font-extrabold tracking-widest",
+              activeTab === 'RAW' ? "bg-zinc-800 text-zinc-300" : "bg-[#2dd4bf]/20 text-[#2dd4bf]"
+            )}>
+              {activeTab === 'RAW' ? 'RAW' : `${(activeCompany || 'PSA').toUpperCase()} ${activeGrade}`}
+            </span>
+          </h3>
         </div>
         <div className="divide-y divide-white/10">
-          {rawLatestPricesList.map((item) => {
+          {latestPricesList.map((item) => {
             const s = item.source.toLowerCase();
             const logo = MARKET_LOGOS.find(m => s.includes(m.match))?.logo ?? null;
             const needsWhitePlate = !s.includes('snkrdunk');

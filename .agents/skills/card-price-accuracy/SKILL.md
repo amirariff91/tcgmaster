@@ -70,3 +70,20 @@ When executing automated mapping fixes or auditing source URLs for cards, ALWAYS
 - **Raw Cards:** Data MUST be aggregated from all three primary sources (Snkrdunk, PriceCharting, Yuyutei).
 - **Graded Cards:** Data MUST be aggregated from Snkrdunk and PriceCharting.
 - **Supported Grades:** When parsing graded tables, scrapers MUST extract and store prices for all available grading companies and tiers (e.g. `PSA`, `BGS`, `CGC`, `ARS`). The data structures must use dictionaries (e.g., `gradedPrices: Record<string, number>`) instead of single `gradedPrice` properties to support this multiplicity.
+
+## Pattern 9: Cross-Platform Extreme Mismatch Guard
+**Symptom:** Generating a headline price or updating the database when one platform reports $1,000+ (e.g. Snkrdunk) and another reports $7 (e.g. PriceCharting).
+**Root Cause:** Highly valuable variants are often mis-aggregated with Base cards by text-based aggregators (like PriceCharting). However, natural market variance (e.g. $100 vs $200 between sellers) is completely normal and should NOT be penalized.
+**Resolution Logic:**
+- NEVER aggressively quarantine a price based on minor percentage differences (e.g., 20% or 50% differences) across platforms.
+- ONLY quarantine a cross-platform price when the difference crosses a massive **catastrophe boundary** (e.g., > 10x ratio difference).
+- A 10x+ ratio usually indicates a structural mapping error (e.g., Base card vs Manga card), whereas a 2x-3x ratio is just natural seller variance.
+
+## Pattern 10: Quarantine Migration (No Delete Data)
+**Symptom:** A card has a completely incorrect URL mapped (e.g., Manga Shanks points to the $7 Base Shanks on PriceCharting). Fixing the URL in the database does NOT erase the corrupted historical data, leaving the charts poisoned permanently.
+**Root Cause:** The system must purge the old data, but strict "no delete data" policies prevent dropping rows from `price_history`.
+**Resolution Logic:**
+- **NEVER** use `DELETE FROM price_history` without a backup.
+- **ALWAYS** perform a **Quarantine Migration**: Move the corrupted rows from `price_history` into the `price_quarantine` table (e.g., `INSERT INTO price_quarantine SELECT ... FROM price_history`, then `DELETE FROM price_history`).
+- This instantly scrubs the frontend UI charts (which strictly pull from `price_history`) while permanently preserving the data in the quarantine vault for auditing.
+- Follow up by scrubbing the corrupted source from `card_price_current` and triggering a re-scrape to populate the fresh, correct data.

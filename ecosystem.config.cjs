@@ -212,6 +212,26 @@ module.exports = {
     },
 
     // ─────────────────────────────────────────────
+    // PriceCharting Historical Price Backfill Worker
+    // ─────────────────────────────────────────────
+    {
+      name: 'historical-pc',
+      script: 'bun',
+      args: 'run scripts/historical-pc-worker.ts',
+      env: {
+        SAFE_MODE: SAFE_MODE ? '1' : '0',
+      },
+      watch: false,
+      autorestart: true,
+      restart_delay: 5000,
+      max_restarts: 50,
+      min_uptime: '10s',
+      log_file: './logs/historical-pc.log',
+      error_file: './logs/historical-pc-error.log',
+      time: true,
+    },
+
+    // ─────────────────────────────────────────────
     // POPULATION SCRAPERS
     // ─────────────────────────────────────────────
     {

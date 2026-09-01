@@ -32,12 +32,13 @@ function urlMatchesNumber(url: string, baseNumber: string): boolean {
 export function assertIdentity(
   expected: ExpectedIdentity,
   evidence: MatchEvidence | null | undefined,
+  strict: boolean = true,
 ): IdentityVerdict {
   if (!evidence || Object.keys(evidence).length === 0 || !evidence.externalTitle?.trim()) {
     return { ok: false, reason: 'no-evidence', detail: 'Matched product evidence is missing its external title.' };
   }
 
-  if (evidence.inStock === false) {
+  if (strict && evidence.inStock === false) {
     return { ok: false, reason: 'sold-out', detail: 'Matched product is marked sold out.' };
   }
 

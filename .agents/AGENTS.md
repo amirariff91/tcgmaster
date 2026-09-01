@@ -6,3 +6,6 @@
 ## Architecture Context (self-hosted Coolify)
 - **Self-hosted**: This repo runs on a self-hosted **Coolify** instance (miccy-nano), not Vercel/Supabase Cloud. Since 2026-08-06 it uses **plain Postgres 16** (`pg`, `lib/db/client.ts`) for all data and **Better Auth** (`lib/auth.ts`) for auth — not supabase-js. Legacy `NEXT_PUBLIC_SUPABASE_*`/`SUPABASE_SECRET_KEY` env vars are retained only for rollback.
 - **Environment Variables**: Always refer users to `.env.example` when discussing configuration; self-hosted keys differ from cloud keys.
+
+## Data Preservation Policy
+- **NO DELETE DATA**: Never permanently delete scraped data from `price_history`. If data is corrupt, collected from the wrong URL, or otherwise invalid, **MOVE IT** to the `price_quarantine` table with an appropriate reason (e.g., `manual-mapping-correction`). Data is expensive to collect; we preserve it securely in quarantine instead of destroying it.

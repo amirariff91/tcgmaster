@@ -4,7 +4,7 @@ import { assertIdentity, type MatchEvidence } from './identity';
 import { checkSelfConsistency } from './guards';
 import { markForReverification, type SourceMapping, upsertMapping } from './mapping';
 
-export type PriceSource = 'tcgplayer' | 'pricecharting' | 'yuyutei' | 'cardrush' | 'snkrdunk';
+export type PriceSource = 'tcgplayer' | 'pricecharting' | 'yuyutei' | 'cardrush' | 'snkrdunk' | 'cardmarket';
 export type PriceKind = 'market' | 'lowest_listing' | 'retail_sell' | 'sold_guide' | 'marketplace_ask';
 
 export const SOURCE_KIND: Record<PriceSource, PriceKind> = {
@@ -12,15 +12,17 @@ export const SOURCE_KIND: Record<PriceSource, PriceKind> = {
   pricecharting: 'sold_guide',
   yuyutei: 'retail_sell',
   cardrush: 'lowest_listing',
-  snkrdunk: 'marketplace_ask',
+  snkrdunk: 'sold_guide',
+  cardmarket: 'market',
 };
 
-export const SOURCE_CURRENCY: Record<PriceSource, 'USD' | 'JPY'> = {
+export const SOURCE_CURRENCY: Record<PriceSource, 'USD' | 'JPY' | 'EUR'> = {
   tcgplayer: 'USD',
   pricecharting: 'USD',
   yuyutei: 'JPY',
   cardrush: 'JPY',
   snkrdunk: 'USD',
+  cardmarket: 'EUR',
 };
 
 export const SOURCE_SCOPED_UPDATE_COLUMNS: Record<string, PriceSource> = {
@@ -33,7 +35,7 @@ export interface PriceObservation {
   grade: CanonicalGrade;
   priceUsd: number;
   priceNative: number | null;
-  currency: 'USD' | 'JPY';
+  currency: 'USD' | 'JPY' | 'EUR';
   evidence: MatchEvidence;
   recordedAt?: string;
 }
@@ -52,19 +54,20 @@ export interface Headline {
   grade: CanonicalGrade;
 }
 
-// Headline policy: raw market first, then retail sell, sold guide, and lowest
-// listing. Marketplace asks are intentionally excluded because an ask is not a
-// market-clearing price.
+// Headline policy: raw market first, then retail sell, sold guide, and lowest listing. 
+// Marketplace asks (Snkrdunk) act as the final fallback for high-end variants where retail is OOS 
+// and text-based aggregators (PriceCharting) are structurally corrupted.
 const HEADLINE_KIND_PREFERENCE: PriceKind[] = [
   'market',
   'retail_sell',
   'sold_guide',
   'lowest_listing',
+  'marketplace_ask',
 ];
 
 export function selectHeadline(obs: PriceObservation[]): Headline | null {
   const rawObservations = obs.filter(
-    (observation) => observation.grade === 'raw' && Number.isFinite(observation.priceUsd),
+    (observation) => observation.grade === 'raw' && Number.isFinite(observation.priceUsd) && observation.priceUsd > 0,
   );
 
   for (const kind of HEADLINE_KIND_PREFERENCE) {
@@ -96,7 +99,7 @@ export type GradedPrices = Record<string, GradedPrice>;
 export interface CurrentSourcePrice {
   usd: number;
   native: number | null;
-  currency: 'USD' | 'JPY';
+  currency: 'USD' | 'JPY' | 'EUR';
   kind: PriceKind;
   recorded_at: string;
 }
@@ -141,7 +144,7 @@ export interface CurrentPriceRow {
   headline_cents: number | null;
   headline_source: PriceSource | null;
   headline_kind: PriceKind | null;
-  headline_currency: 'USD' | 'JPY' | null;
+  headline_currency: 'USD' | 'JPY' | 'EUR' | null;
   headline_grade: CanonicalGrade | null;
   computed_at: string;
 }
@@ -200,7 +203,7 @@ export function shapeCurrentRow(
   const sourcePrices: Record<string, CurrentSourcePrice> = {};
 
   for (const observation of acceptedObs) {
-    if (observation.grade !== 'raw' || !Number.isFinite(observation.priceUsd)) continue;
+    if (observation.grade !== 'raw' || !Number.isFinite(observation.priceUsd) || observation.priceUsd <= 0) continue;
 
     sourcePrices[observation.source] = {
       usd: observation.priceUsd,
@@ -294,11 +297,11 @@ export async function persistObservations(
   const quarantineRows: Record<string, unknown>[] = [];
   const mappingsBySource = new Map(mappings.map((mapping) => [mapping.source, mapping]));
   const identityVerdicts = obs.map((observation) => (
-    assertIdentity({ number: card.number, name: card.name }, observation.evidence)
+    assertIdentity({ number: card.number, name: card.name }, observation.evidence, observation.source !== 'yuyutei')
   ));
   const identityApprovedObservations = obs.filter((observation, index) => (
     identityVerdicts[index]?.ok === true
-    && observation.evidence.inStock !== false
+    && (observation.evidence.inStock !== false || observation.source === 'yuyutei')
     && !hasSetDrift(observation, mappingsBySource.get(observation.source))
   ));
   for (const [index, observation] of obs.entries()) {
@@ -348,6 +351,31 @@ export async function persistObservations(
         && other.grade === observation.grade
       ))
       .map((other) => other.priceUsd);
+
+    // Cross-source catastrophe guard for variants
+    // If PriceCharting is >8x lower than a trusted source (like Snkrdunk), it is likely
+    // aggregating the Base card instead of the Variant.
+    if (card.slug.includes('_') && observation.source === 'pricecharting') {
+      const snkrdunkPrice = identityApprovedObservations.find(o => o.source === 'snkrdunk' && o.grade === observation.grade)?.priceUsd;
+      if (snkrdunkPrice && snkrdunkPrice / observation.priceUsd > 8) {
+        quarantineRows.push({
+          card_id: card.id,
+          source: observation.source,
+          grade: normalizeGrade(observation.grade),
+          price: observation.priceUsd,
+          price_native: observation.priceNative,
+          currency: observation.currency,
+          price_kind: SOURCE_KIND[observation.source],
+          reason: 'corrupted-variant-aggregation',
+          evidence: quarantineEvidence(card, observation, {
+            snkrdunkPrice,
+            ratio: snkrdunkPrice / observation.priceUsd,
+          }),
+        });
+        continue;
+      }
+    }
+
     const consistency = await checkSelfConsistency(db, {
       cardId: card.id,
       source: observation.source,

@@ -139,18 +139,21 @@ describe('selectHeadline', () => {
   });
 
   it.each([
-    ['retail_sell', 'yuyutei'],
-    ['sold_guide', 'pricecharting'],
-    ['lowest_listing', 'cardrush'],
-  ] as const)('selects %s when it is the first available kind', (kind: string, source: string) => {
+    ['retail_sell', 'yuyutei', 'lowest_listing', 'cardrush'],
+    ['sold_guide', 'pricecharting', 'lowest_listing', 'cardrush'],
+  ] as const)('selects %s over %s', (kind: string, source: string, lowerKind: string, lowerSource: string) => {
     expect(selectHeadline([
-      observation('snkrdunk', 1),
+      observation(lowerSource as PriceObservation['source'], 1),
       observation(source as PriceObservation['source'], 2.5),
     ])).toEqual({ cents: 250, source, kind, grade: 'raw' });
   });
 
-  it('never selects a marketplace ask', () => {
-    expect(selectHeadline([observation('snkrdunk', 12)])).toBeNull();
+  it('selects lowest_listing when higher kinds are not available', () => {
+    const source = 'cardrush';
+    const kind = 'lowest_listing';
+    expect(selectHeadline([observation(source, 12)])).toEqual({
+      cents: 1200, source, kind, grade: 'raw'
+    });
   });
 
   it('breaks same-kind ties by taking the lowest price', () => {
@@ -599,9 +602,9 @@ describe('persistObservations', () => {
       [
         observation('tcgplayer', 1000),
         {
-          ...observation('yuyutei', 900),
+          ...observation('cardrush', 900),
           evidence: {
-            externalTitle: 'Card yuyutei OP01-001',
+            externalTitle: 'Card cardrush OP01-001',
             inStock: false,
             matchedBy: 'search',
           },
@@ -612,7 +615,7 @@ describe('persistObservations', () => {
     expect(result.quarantined).toBe(2);
     expect(quarantineInserts[0]).toEqual([
       expect.objectContaining({ source: 'tcgplayer', reason: 'ratio-vs-median' }),
-      expect.objectContaining({ source: 'yuyutei', reason: 'sold-out' }),
+      expect.objectContaining({ source: 'cardrush', reason: 'sold-out' }),
     ]);
   });
 
