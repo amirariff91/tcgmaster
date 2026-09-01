@@ -3,6 +3,12 @@ import { dbQuery } from '@/lib/db/client';
 
 export async function POST(req: NextRequest) {
   try {
+    const cronSecret = process.env.CRON_SECRET;
+    const authHeader = req.headers.get('authorization');
+    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const data = await req.json();
     const { slug, insertRows, url } = data;
 
