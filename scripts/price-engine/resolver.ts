@@ -132,15 +132,14 @@ async function loadMappedCardIds(db: DbClient, source: ResolverSource): Promise<
     const cardIds = new Set<string>();
 
     for (let offset = 0; ; offset += PAGE_SIZE) {
-      const { data, error } = await db
-        .from('card_source_mapping')
-        .select('card_id')
-        .eq('source', source)
-        .order('card_id', { ascending: true })
-        .range(offset, offset + PAGE_SIZE - 1);
-
-      if (error) throw new Error(`Loading mapped card IDs: ${error.message}`);
-      const page = (data ?? []) as { card_id: string }[];
+      const page = await db(
+        `SELECT card_id
+         FROM card_source_mapping
+         WHERE source = $1
+         ORDER BY card_id ASC
+         LIMIT $2 OFFSET $3`,
+        [source, PAGE_SIZE, offset],
+      ) as { card_id: string }[];
       for (const row of page) cardIds.add(row.card_id);
       if (page.length < PAGE_SIZE) break;
     }
@@ -149,23 +148,27 @@ async function loadMappedCardIds(db: DbClient, source: ResolverSource): Promise<
   });
 }
 
-function applyCandidateFilters(query: any, source: ResolverSource, game?: Game): any {
-  let filtered = query;
+function candidateFilters(source: ResolverSource, game?: Game): { where: string; params: unknown[] } {
+  const clauses: string[] = [];
+  const params: unknown[] = [];
+  const add = (value: unknown): string => {
+    params.push(value);
+    return `$${params.length}`;
+  };
 
   if (source === 'yuyutei') {
-    filtered = filtered.ilike('slug', 'op-%').ilike('slug', '%-ja');
+    clauses.push(`c.slug ILIKE ${add('op-%')}`, `c.slug ILIKE ${add('%-ja')}`);
   } else if (source === 'cardrush') {
-    filtered = filtered.ilike('slug', 'dbfw-%').ilike('slug', '%-ja');
+    clauses.push(`c.slug ILIKE ${add('dbfw-%')}`, `c.slug ILIKE ${add('%-ja')}`);
   } else if (source === 'tcgplayer') {
-    filtered = filtered
-      .or('slug.ilike.op-%,slug.ilike.dbfw-%')
-      .not('slug', 'ilike', '%-ja');
+    clauses.push(`(c.slug ILIKE ${add('op-%')} OR c.slug ILIKE ${add('dbfw-%')})`);
+    clauses.push(`c.slug NOT ILIKE ${add('%-ja')}`);
   } else if (source === 'pricecharting') {
-    filtered = filtered.or('slug.ilike.op-%,slug.ilike.dbfw-%');
+    clauses.push(`(c.slug ILIKE ${add('op-%')} OR c.slug ILIKE ${add('dbfw-%')})`);
   }
 
-  if (game) filtered = filtered.ilike('slug', `${game}-%`);
-  return filtered;
+  if (game) clauses.push(`c.slug ILIKE ${add(`${game}-%`)}`);
+  return { where: clauses.join(' AND '), params };
 }
 
 async function loadCandidates(
@@ -183,17 +186,20 @@ async function loadCandidates(
     // Exclude locally after ordered pages rather than putting thousands of UUIDs into
     // a PostgREST `not in (...)` URL once a source has broad coverage.
     for (let offset = 0; ; offset += PAGE_SIZE) {
-      const query = applyCandidateFilters(
-        db.from('cards').select('id, name, slug, number, tcg_player_id, yuyutei_url, cardrush_url, sets ( name )'),
-        source,
-        game,
-      );
-      const { data, error } = await query
-        .order('slug', { ascending: true })
-        .range(offset, offset + PAGE_SIZE - 1);
-
-      if (error) throw new Error(`Loading resolver candidates: ${error.message}`);
-      const page = (data ?? []) as ResolverCard[];
+      const filters = candidateFilters(source, game);
+      const limitParam = filters.params.length + 1;
+      const offsetParam = filters.params.length + 2;
+      const page = await db(
+        `SELECT c.id, c.name, c.slug, c.number, c.tcg_player_id,
+                c.yuyutei_url, c.cardrush_url,
+                CASE WHEN s.id IS NULL THEN NULL ELSE json_build_object('name', s.name) END AS sets
+         FROM cards c
+         LEFT JOIN sets s ON s.id = c.set_id
+         WHERE ${filters.where}
+         ORDER BY c.slug ASC
+         LIMIT $${limitParam} OFFSET $${offsetParam}`,
+        [...filters.params, PAGE_SIZE, offset],
+      ) as ResolverCard[];
       for (const card of page) {
         if (mappedCardIds.has(card.id)) continue;
         if (skippedThisRun.has(card.id)) {
@@ -441,16 +447,14 @@ async function loadReverificationMappings(
     const mappings: SourceMapping[] = [];
 
     for (let offset = 0; ; offset += PAGE_SIZE) {
-      const { data, error } = await db
-        .from('card_source_mapping')
-        .select('*')
-        .eq('source', source)
-        .filter('evidence->>reverify', 'eq', 'true')
-        .order('card_id', { ascending: true })
-        .range(offset, offset + PAGE_SIZE - 1);
-
-      if (error) throw new Error(`Loading reverification mappings: ${error.message}`);
-      const page = (data ?? []) as ResolverMappingRow[];
+      const page = await db(
+        `SELECT *
+         FROM card_source_mapping
+         WHERE source = $1 AND evidence->>'reverify' = 'true'
+         ORDER BY card_id ASC
+         LIMIT $2 OFFSET $3`,
+        [source, PAGE_SIZE, offset],
+      ) as ResolverMappingRow[];
       mappings.push(...page.map(mappingFromRow));
       if (page.length < PAGE_SIZE) break;
     }
@@ -461,14 +465,17 @@ async function loadReverificationMappings(
 
 async function loadCardById(db: DbClient, cardId: string): Promise<ResolverCard | null> {
   return withDbBackoff('[resolver] reverification card query', async () => {
-    const { data, error } = await db
-      .from('cards')
-      .select('id, name, slug, number, tcg_player_id, yuyutei_url, cardrush_url, sets ( name )')
-      .eq('id', cardId)
-      .maybeSingle();
-
-    if (error) throw new Error(`Loading reverification card ${cardId}: ${error.message}`);
-    return data ? data as ResolverCard : null;
+    const rows = await db(
+      `SELECT c.id, c.name, c.slug, c.number, c.tcg_player_id,
+              c.yuyutei_url, c.cardrush_url,
+              CASE WHEN s.id IS NULL THEN NULL ELSE json_build_object('name', s.name) END AS sets
+       FROM cards c
+       LEFT JOIN sets s ON s.id = c.set_id
+       WHERE c.id = $1
+       LIMIT 1`,
+      [cardId],
+    ) as ResolverCard[];
+    return rows[0] ?? null;
   });
 }
 

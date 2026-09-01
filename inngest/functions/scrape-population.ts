@@ -3,7 +3,7 @@
  */
 
 import { inngest } from '../client';
-import { createServerClient } from '@/lib/supabase/client';
+import { dbQuery } from '@/lib/db/client';
 import { scrapePopulation } from '@/lib/scrapers/gemrate';
 
 // Scrape population data weekly
@@ -14,23 +14,18 @@ export const scrapePopulationData = inngest.createFunction(
   },
   { cron: '0 3 * * 0' }, // Weekly on Sunday at 3 AM
   async ({ step }) => {
-    const supabase = createServerClient();
-
     // Get high-value cards that need population updates
     const cards = await step.run('fetch-cards', async () => {
-      const { data } = await supabase
-        .from('cards')
-        .select(`
-          id,
-          name,
-          sets!inner (name)
-        `)
-        .order('created_at', { ascending: false })
-        .limit(100);
-      return data as Array<{ id: string; name: string; sets: { name: string } }> | null;
+      return await dbQuery(
+        `SELECT c.id, c.name, s.name AS set_name
+         FROM cards c
+         JOIN sets s ON s.id = c.set_id
+         ORDER BY c.created_at DESC
+         LIMIT 100`,
+      ) as Array<{ id: string; name: string; set_name: string }>;
     });
 
-    if (!cards || cards.length === 0) {
+    if (cards.length === 0) {
       return { scraped: 0, message: 'No cards to scrape' };
     }
 
@@ -44,7 +39,7 @@ export const scrapePopulationData = inngest.createFunction(
       await step.run(`scrape-batch-${i}`, async () => {
         for (const card of batch) {
           try {
-            const setName = card.sets?.name || '';
+            const setName = card.set_name || '';
 
             const result = await scrapePopulation(card.name, setName, 'psa');
             if (result) {

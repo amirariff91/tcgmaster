@@ -192,3 +192,13 @@ body {
   background: #d4d4d8;
   border-radius: 2px;
 }
+
+@media print {
+  body {
+    background: transparent !important;
+    color: #000000 !important;
+  }
+  * {
+    color: #000000 !important;
+  }
+}

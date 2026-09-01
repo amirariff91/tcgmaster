@@ -1,7 +1,7 @@
 import Link from 'next/link';
-import { CardImage } from '@/components/card/card-image';
-import { FormattedPrice } from '@/components/ui/formatted-price';
-import { formatDisplayNumber, splitCardName } from '@/lib/utils';
+
+import { CardGridItem } from '@/components/cards/card-grid-item';
+import { type MockCard } from '@/lib/mock-data';
 
 export interface RelatedCard {
   id: string;
@@ -10,6 +10,7 @@ export interface RelatedCard {
   number: string;
   image_url: string | null;
   local_image_url: string | null;
+  rarity?: string;
   /** Latest featured price in cents, as stored on cards.price_cache_ttl. */
   price_cache_ttl: number | null;
 }
@@ -28,6 +29,8 @@ interface RelatedCardsProps {
 export function RelatedCards({ cards, gameSlug, setSlug, setName }: RelatedCardsProps) {
   if (cards.length === 0) return null;
 
+  const mockRarities = ['common', 'uncommon', 'rare', 'holo-rare', 'ultra-rare'] as const;
+
   return (
     <section className="mt-12">
       <div className="mb-4 flex items-baseline justify-between gap-4">
@@ -40,38 +43,37 @@ export function RelatedCards({ cards, gameSlug, setSlug, setName }: RelatedCards
         </Link>
       </div>
 
-      <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+      <ul className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
         {cards.map((related) => {
-          const { baseName } = splitCardName(related.name);
           const price = related.price_cache_ttl ? related.price_cache_ttl / 100 : null;
+
+          const mockCard: MockCard = {
+            id: related.id,
+            name: related.name,
+            slug: related.slug,
+            number: related.number,
+            rarity: related.rarity && (mockRarities as readonly string[]).includes(related.rarity)
+              ? related.rarity as MockCard['rarity']
+              : 'common',
+            image_url: related.image_url,
+            local_image_url: related.local_image_url,
+            prices: {
+              raw: price,
+              psa7: null,
+              psa8: null,
+              psa9: null,
+              psa10: null,
+            },
+            change24h: 0,
+          };
 
           return (
             <li key={related.id}>
-              <Link
-                href={`/${gameSlug}/${setSlug}/${related.slug}`}
-                className="group block rounded-xl border border-white/10 bg-[#0b1329]/80 p-2 backdrop-blur-sm transition-colors hover:border-white/25 hover:bg-white/5"
-              >
-                <CardImage
-                  src={related.local_image_url || related.image_url}
-                  alt={baseName}
-                  size="sm"
-                  className="w-full rounded-lg"
-                />
-                <p className="mt-2 truncate text-[12px] font-semibold text-white" title={baseName}>
-                  {baseName}
-                </p>
-                <div className="flex items-baseline justify-between gap-1">
-                  <span className="text-[10px] font-medium tracking-wider text-zinc-500">
-                    {formatDisplayNumber(gameSlug, related.number)}
-                  </span>
-                  {price !== null && (
-                    <FormattedPrice
-                      price={price}
-                      className="text-[11px] font-bold tabular-nums text-orange-400"
-                    />
-                  )}
-                </div>
-              </Link>
+              <CardGridItem
+                card={mockCard}
+                gameSlug={gameSlug}
+                setSlug={setSlug}
+              />
             </li>
           );
         })}

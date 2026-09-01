@@ -46,3 +46,6 @@ next-env.d.ts
 logs/
 .wrangler/
 .playwright-mcp/
+psa-cookies.json
+scratch*
+*.py

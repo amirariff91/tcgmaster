@@ -96,14 +96,13 @@ async function loadAllCards(db: ReturnType<typeof createScraperClient>): Promise
   const cards: SeedCard[] = [];
 
   for (let offset = 0; ; offset += PAGE_SIZE) {
-    const { data, error } = await db
-      .from('cards')
-      .select(CARD_SELECT)
-      .order('id', { ascending: true })
-      .range(offset, offset + PAGE_SIZE - 1);
-
-    if (error) throw new Error(`Loading cards for source-mapping seed: ${error.message}`);
-    const page = (data ?? []) as SeedCard[];
+    const page = await db(
+      `SELECT ${CARD_SELECT}
+       FROM cards
+       ORDER BY id ASC
+       LIMIT $1 OFFSET $2`,
+      [PAGE_SIZE, offset],
+    ) as SeedCard[];
     cards.push(...page);
     if (page.length < PAGE_SIZE) break;
   }
@@ -118,14 +117,13 @@ async function loadExistingPairs(
   const manualPairs = new Set<string>();
 
   for (let offset = 0; ; offset += PAGE_SIZE) {
-    const { data, error } = await db
-      .from('card_source_mapping')
-      .select('card_id, source, matched_by, confidence')
-      .order('card_id', { ascending: true })
-      .range(offset, offset + PAGE_SIZE - 1);
-
-    if (error) throw new Error(`Loading existing source mappings: ${error.message}`);
-    const page = (data ?? []) as {
+    const page = await db(
+      `SELECT card_id, source, matched_by, confidence
+       FROM card_source_mapping
+       ORDER BY card_id ASC
+       LIMIT $1 OFFSET $2`,
+      [PAGE_SIZE, offset],
+    ) as {
       card_id: string;
       source: PriceSource;
       matched_by: MatchedBy;
@@ -149,16 +147,41 @@ async function writeRows(
 ): Promise<void> {
   for (let offset = 0; offset < rows.length; offset += WRITE_CHUNK_SIZE) {
     const chunk = rows.slice(offset, offset + WRITE_CHUNK_SIZE);
-    const { error } = await db
-      .from('card_source_mapping')
-      .upsert(chunk, {
-        onConflict: 'card_id,source',
-        ignoreDuplicates,
-      });
+    const conflictAction = ignoreDuplicates
+      ? 'DO NOTHING'
+      : `DO UPDATE SET
+           external_id = EXCLUDED.external_id,
+           external_url = EXCLUDED.external_url,
+           external_title = EXCLUDED.external_title,
+           external_set = EXCLUDED.external_set,
+           confidence = EXCLUDED.confidence,
+           matched_by = EXCLUDED.matched_by,
+           evidence = EXCLUDED.evidence,
+           verified_at = EXCLUDED.verified_at,
+           updated_at = NOW()`;
 
-    if (error) {
-      throw new Error(`Writing source mappings (${offset}-${offset + chunk.length - 1}): ${error.message}`);
-    }
+    await db(
+      `INSERT INTO card_source_mapping (
+         card_id, source, external_id, external_url, external_title, external_set,
+         confidence, matched_by, evidence, verified_at
+       )
+       SELECT card_id, source, external_id, external_url, external_title, external_set,
+              confidence, matched_by, evidence, verified_at
+       FROM jsonb_to_recordset($1::jsonb) AS rows(
+         card_id uuid,
+         source price_source,
+         external_id text,
+         external_url text,
+         external_title text,
+         external_set text,
+         confidence mapping_confidence,
+         matched_by text,
+         evidence jsonb,
+         verified_at timestamptz
+       )
+       ON CONFLICT (card_id, source) ${conflictAction}`,
+      [JSON.stringify(chunk)],
+    );
   }
 }
 

@@ -83,7 +83,7 @@ const PACK_ID_MAP: Record<string, string> = {
 async function loadEnglishNamesForPack(jpPackId: string): Promise<void> {
   const enPackId = PACK_ID_MAP[jpPackId];
   if (!enPackId) return;
-  
+
   try {
     const res = await fetch(`https://raw.githubusercontent.com/buhbbl/punk-records/main/english/data/${enPackId}.json`);
     if (!res.ok) return;
@@ -102,12 +102,12 @@ async function loadEnglishNamesForPack(jpPackId: string): Promise<void> {
 
 async function loadAllEnglishNames(): Promise<void> {
   console.log("Loading English names from punk-records...");
-  
+
   // Load English packs list
   const packsRes = await fetch('https://raw.githubusercontent.com/buhbbl/punk-records/main/english/packs.json');
   if (!packsRes.ok) return;
   const packs: Record<string, any> = await packsRes.json();
-  
+
   // Load all English card data
   for (const packId of Object.keys(packs)) {
     try {
@@ -121,52 +121,52 @@ async function loadAllEnglishNames(): Promise<void> {
       }
     } catch (e) {}
   }
-  
+
   console.log(`Loaded ${Object.keys(englishNameCache).length} English card names into memory.`);
 }
 
 async function run() {
   const DRY_RUN = process.argv.includes('--dry-run');
-  
+
   console.log(`Starting Japanese Name Fix Script (${DRY_RUN ? 'DRY RUN' : 'LIVE MODE'})...`);
-  
+
   // Load all English card names from punk-records
   await loadAllEnglishNames();
-  
+
   // Find all Japanese cards with Japanese characters in name
   let page = 0;
   const pageSize = 1000;
-  let totalFixed = 0;
+  const totalFixed = 0;
   let totalSkipped = 0;
   let hasMore = true;
-  
+
   const fixes: { slug: string; oldName: string; newName: string; id: string }[] = [];
-  
+
   while (hasMore) {
     const { data: cards, error } = await supabase
       .from('cards')
       .select('id, slug, name, number')
       .ilike('slug', '%-ja')
       .range(page * pageSize, (page + 1) * pageSize - 1);
-      
+
     if (error || !cards || cards.length === 0) {
       hasMore = false;
       break;
     }
-    
+
     for (const card of cards) {
       if (!JP_REGEX.test(card.name || '')) continue;
-      
+
       // Strategy 1: Look up by exact card number (e.g. ST04-005_p2 -> ST04-005_P2)
       const cardNumber = (card.number || '').toUpperCase();
       let newName = englishNameCache[cardNumber];
-      
+
       // Strategy 2: If variant suffix not found, try base number (ST04-005_p2 -> ST04-005)
       if (!newName && cardNumber.includes('_')) {
         const baseNumber = cardNumber.split('_')[0];
         newName = englishNameCache[baseNumber];
       }
-      
+
       // Strategy 3: Look up via slug (strip -ja, strip variant suffix)
       if (!newName) {
         // e.g. op-st04-005_p2-ja -> ST04-005_P2 or ST04-005
@@ -174,12 +174,12 @@ async function run() {
         const slugNumber = slugBase.replace(/-/g, '-').toUpperCase();
         newName = englishNameCache[slugNumber];
       }
-      
+
       // Strategy 4: Hardcoded translation table (for promo + newer sets not in punk-records EN)
       if (!newName && HARDCODED_TRANSLATIONS[card.name]) {
         newName = HARDCODED_TRANSLATIONS[card.name];
       }
-      
+
       if (newName) {
         fixes.push({ slug: card.slug, oldName: card.name, newName, id: card.id });
       } else {
@@ -187,25 +187,25 @@ async function run() {
         console.log(`  ⚠️  No English name found for: ${card.slug} (${card.number}) - "${card.name}"`);
       }
     }
-    
+
     page++;
   }
-  
+
   console.log(`\n=== Fix Preview ===`);
   console.log(`Cards to fix: ${fixes.length}`);
   console.log(`Cards with no English equivalent: ${totalSkipped}`);
-  
+
   // Show first 20 fixes as preview
   console.log(`\nSample fixes:`);
   fixes.slice(0, 20).forEach(f => {
     console.log(`  ${f.slug}: "${f.oldName}" → "${f.newName}"`);
   });
-  
+
   if (DRY_RUN) {
     console.log(`\n[DRY RUN] No changes written. Run without --dry-run to apply fixes.`);
     return;
   }
-  
+
   // Apply fixes in batches
   console.log(`\nApplying ${fixes.length} name fixes...`);
   let batchCount = 0;
@@ -217,7 +217,7 @@ async function run() {
     batchCount += batch.length;
     process.stdout.write(`\r  Progress: ${batchCount}/${fixes.length}`);
   }
-  
+
   console.log(`\n\n✅ Done! Fixed ${fixes.length} card names. ${totalSkipped} cards had no English equivalent.`);
 }
 

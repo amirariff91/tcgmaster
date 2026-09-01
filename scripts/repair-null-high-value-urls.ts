@@ -15,7 +15,7 @@ async function scrapeYuyuteiLinks(baseNumber: string) {
     if (!res.ok) return [];
     const html = await res.text();
     const $ = cheerio.load(html);
-    
+
     const results: { name: string; url: string }[] = [];
     $('.card-product').each((_, el) => {
       const name = $(el).text().trim();
@@ -41,29 +41,29 @@ async function scrapeSnkrdunkLinks(baseNumber: string, cardName: string) {
     const browser = await getSharedBrowser();
     page = await browser.newPage();
     await page.setViewport({ width: 1280, height: 800 });
-    
+
     // Try multiple search terms (1. Card Number, 2. Name + Set Code, 3. Set Code)
     const setCode = baseNumber.split('-')[0]; // e.g. "OP05"
     const searchQueries = [
-      baseNumber, 
+      baseNumber,
       `${cardName.split(' (')[0]} ${setCode}`,
       setCode.replace(/([A-Za-z]+)([0-9]+)/, '$1-$2') // e.g. "OP-05"
     ];
-    
-    let results: { name: string; url: string }[] = [];
-    
+
+    const results: { name: string; url: string }[] = [];
+
     for (const query of searchQueries) {
       const searchUrl = `https://snkrdunk.com/en/search/result?keyword=${encodeURIComponent(query)}`;
       console.log(`-> Searching Snkrdunk for query: ${query}...`);
-      
+
       await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 15000 }).catch(e => {
         console.log(`Navigation error: ${e.message}`);
       });
       await new Promise(r => setTimeout(r, 2000));
-      
+
       const html = await page.content();
       const $ = cheerio.load(html);
-      
+
       $('.product__item-textarea').each((_, el) => {
         const name = $(el).find('.product__item-name').text().trim();
         const link = $(el).closest('a').attr('href');
@@ -74,18 +74,18 @@ async function scrapeSnkrdunkLinks(baseNumber: string, cardName: string) {
           });
         }
       });
-      
+
       // If we found products containing our baseNumber, we can stop searching!
       const hasMatch = results.some(r => r.name.includes(baseNumber));
       if (hasMatch) {
         console.log(`-> Found match for ${baseNumber} on Snkrdunk!`);
         break;
       }
-      
+
       // Delay before next search query
       await new Promise(r => setTimeout(r, 1000));
     }
-    
+
     return results;
   } catch (e) {
     console.error(`Snkrdunk scrape failed for ${baseNumber}`, e);
@@ -113,7 +113,7 @@ async function run() {
   const highValueCards = cards.filter(card => {
     const suffix = card.slug.split('_')[1]?.split('-')[0] || '';
     const cleanRarity = (card.rarity || '').toLowerCase();
-    const isHighValue = ['secretrare', 'leader', 'special', 'superrare'].includes(cleanRarity) && 
+    const isHighValue = ['secretrare', 'leader', 'special', 'superrare'].includes(cleanRarity) &&
                         ['p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8'].includes(suffix);
     // Explicit check for serialized ones too
     const isSerialized = card.slug.includes('eb04-061_p2') || card.slug.includes('st01-001_p3') || card.slug.includes('st01-001_p4');
@@ -124,11 +124,11 @@ async function run() {
 
   for (const card of highValueCards) {
     console.log(`\nRepairing ${card.slug} (${card.name} / ${card.number})...`);
-    
+
     const suffix = card.slug.split('_')[1]?.split('-')[0] || '';
     const setCode = card.slug.split('-')[1]?.toLowerCase() || '';
     const baseNumber = card.number.split('_')[0];
-    
+
     let yyUrl = card.yuyutei_url;
     let sdUrl = card.snkrdunk_url;
 
@@ -137,7 +137,7 @@ async function run() {
       console.log(`-> Scraping Yuyutei for ${baseNumber}...`);
       const yyLinks = await scrapeYuyuteiLinks(baseNumber);
       const yySetLinks = yyLinks.filter(l => l.url.includes(`/${setCode}/`));
-      
+
       let match = null;
       if (suffix === 'p1') {
         // Alt Art
@@ -153,7 +153,7 @@ async function run() {
           return isSpecialRange || l.name.includes('スペシャル') || l.name.includes('手配書');
         });
       }
-      
+
       if (match) {
         console.log(`-> Mapped Yuyutei URL: ${match.url}`);
         yyUrl = match.url;
@@ -164,7 +164,7 @@ async function run() {
     if (!sdUrl) {
       console.log(`-> Scraping Snkrdunk for ${baseNumber}...`);
       const sdLinks = await scrapeSnkrdunkLinks(baseNumber, card.name);
-      
+
       let match = null;
       if (suffix === 'p1') {
         match = sdLinks.find(l => l.name.includes(baseNumber) && l.name.toLowerCase().includes('parallel') && !l.name.toLowerCase().includes('super') && !l.name.toLowerCase().includes('special') && !l.name.toLowerCase().includes('wanted'));
@@ -179,7 +179,7 @@ async function run() {
         // Special/Wanted
         match = sdLinks.find(l => l.name.includes(baseNumber) && (l.name.toLowerCase().includes('special') || l.name.toLowerCase().includes('wanted')));
       }
-      
+
       if (match) {
         console.log(`-> Mapped Snkrdunk URL: ${match.url}`);
         sdUrl = match.url;
@@ -196,7 +196,7 @@ async function run() {
         .from('cards')
         .update(updatePayload)
         .eq('id', card.id);
-        
+
       if (updateError) {
         console.error(`-> Failed to update card ${card.slug}:`, updateError.message);
       } else {

@@ -1,4 +1,4 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { PgQuery } from './db';
 import type { PriceSource } from './write-path';
 
 export type MappingConfidence = 'confirmed' | 'derived' | 'rejected';
@@ -63,30 +63,39 @@ function toRow(mapping: SourceMapping): MappingRow & { updated_at: string } {
 }
 
 export async function getMapping(
-  db: SupabaseClient,
+  db: PgQuery,
   cardId: string,
   source: PriceSource,
 ): Promise<SourceMapping | null> {
-  const { data, error } = await db
-    .from('card_source_mapping')
-    .select('*')
-    .eq('card_id', cardId)
-    .eq('source', source)
-    .maybeSingle();
-  if (error) throw new Error(`getMapping(${cardId}, ${source}): ${error.message}`);
-  return data ? fromRow(data as MappingRow) : null;
+  try {
+    const rows = await db(
+      `SELECT *
+       FROM card_source_mapping
+       WHERE card_id = $1 AND source = $2
+       LIMIT 1`,
+      [cardId, source],
+    ) as MappingRow[];
+    return rows[0] ? fromRow(rows[0]) : null;
+  } catch (error) {
+    throw new Error(`getMapping(${cardId}, ${source}): ${error instanceof Error ? error.message : String(error)}`);
+  }
 }
 
 export async function getMappingsForCard(
-  db: SupabaseClient,
+  db: PgQuery,
   cardId: string,
 ): Promise<SourceMapping[]> {
-  const { data, error } = await db
-    .from('card_source_mapping')
-    .select('*')
-    .eq('card_id', cardId);
-  if (error) throw new Error(`getMappingsForCard(${cardId}): ${error.message}`);
-  return ((data ?? []) as MappingRow[]).map(fromRow);
+  try {
+    const rows = await db(
+      `SELECT *
+       FROM card_source_mapping
+       WHERE card_id = $1`,
+      [cardId],
+    ) as MappingRow[];
+    return rows.map(fromRow);
+  } catch (error) {
+    throw new Error(`getMappingsForCard(${cardId}): ${error instanceof Error ? error.message : String(error)}`);
+  }
 }
 
 export interface UpsertResult {
@@ -100,7 +109,7 @@ export interface UpsertResult {
  * seed re-runs and resolver passes stay idempotent and non-destructive.
  */
 export async function upsertMapping(
-  db: SupabaseClient,
+  db: PgQuery,
   mapping: SourceMapping,
   opts: { force?: boolean } = {},
 ): Promise<UpsertResult> {
@@ -110,50 +119,89 @@ export async function upsertMapping(
       return { mapping: existing, written: false };
     }
   }
-  const { data, error } = await db
-    .from('card_source_mapping')
-    .upsert(toRow(mapping), { onConflict: 'card_id,source' })
-    .select()
-    .single();
-  if (error) throw new Error(`upsertMapping(${mapping.cardId}, ${mapping.source}): ${error.message}`);
-  return { mapping: fromRow(data as MappingRow), written: true };
+  const row = toRow(mapping);
+  try {
+    const rows = await db(
+      `INSERT INTO card_source_mapping (
+         card_id, source, external_id, external_url, external_title, external_set,
+         confidence, matched_by, evidence, verified_at, updated_at
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11)
+       ON CONFLICT (card_id, source) DO UPDATE SET
+         external_id = EXCLUDED.external_id,
+         external_url = EXCLUDED.external_url,
+         external_title = EXCLUDED.external_title,
+         external_set = EXCLUDED.external_set,
+         confidence = EXCLUDED.confidence,
+         matched_by = EXCLUDED.matched_by,
+         evidence = EXCLUDED.evidence,
+         verified_at = EXCLUDED.verified_at,
+         updated_at = EXCLUDED.updated_at
+       RETURNING *`,
+      [
+        row.card_id,
+        row.source,
+        row.external_id,
+        row.external_url,
+        row.external_title,
+        row.external_set,
+        row.confidence,
+        row.matched_by,
+        row.evidence === null ? null : JSON.stringify(row.evidence),
+        row.verified_at,
+        row.updated_at,
+      ],
+    ) as MappingRow[];
+    const written = rows[0];
+    if (!written) throw new Error('mapping upsert returned no row');
+    return { mapping: fromRow(written), written: true };
+  } catch (error) {
+    throw new Error(`upsertMapping(${mapping.cardId}, ${mapping.source}): ${error instanceof Error ? error.message : String(error)}`);
+  }
 }
 
 /** Evidence drifted: null verified_at so the resolver revisits this pair. */
 export async function markForReverification(
-  db: SupabaseClient,
+  db: PgQuery,
   cardId: string,
   source: PriceSource,
 ): Promise<void> {
   const existing = await getMapping(db, cardId, source);
   if (!existing) return;
 
-  const { error } = await db
-    .from('card_source_mapping')
-    .update({
-      evidence: { ...(existing.evidence ?? {}), reverify: true },
-      verified_at: null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('card_id', cardId)
-    .eq('source', source);
-  if (error) throw new Error(`markForReverification(${cardId}, ${source}): ${error.message}`);
+  try {
+    await db(
+      `UPDATE card_source_mapping
+       SET evidence = COALESCE(evidence, '{}'::jsonb) || $3::jsonb,
+           verified_at = NULL,
+           updated_at = $4
+       WHERE card_id = $1 AND source = $2`,
+      [cardId, source, JSON.stringify({ reverify: true }), new Date().toISOString()],
+    );
+  } catch (error) {
+    throw new Error(`markForReverification(${cardId}, ${source}): ${error instanceof Error ? error.message : String(error)}`);
+  }
 }
 
 /** One query per resolver run: qualifier → meaning for a (game, source) pair. */
 export async function loadQualifierMap(
-  db: SupabaseClient,
+  db: PgQuery,
   game: string,
   source: PriceSource,
 ): Promise<Map<string, QualifierMeaning>> {
-  const { data, error } = await db
-    .from('source_qualifiers')
-    .select('qualifier, means')
-    .eq('game', game)
-    .eq('source', source);
-  if (error) throw new Error(`loadQualifierMap(${game}, ${source}): ${error.message}`);
+  let rows: { qualifier: string; means: QualifierMeaning }[];
+  try {
+    rows = await db(
+      `SELECT qualifier, means
+       FROM source_qualifiers
+       WHERE game = $1 AND source = $2`,
+      [game, source],
+    ) as { qualifier: string; means: QualifierMeaning }[];
+  } catch (error) {
+    throw new Error(`loadQualifierMap(${game}, ${source}): ${error instanceof Error ? error.message : String(error)}`);
+  }
   return new Map(
-    ((data ?? []) as { qualifier: string; means: QualifierMeaning }[]).map((r) => [
+    rows.map((r) => [
       r.qualifier.toLowerCase(),
       r.means,
     ]),

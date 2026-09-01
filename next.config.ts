@@ -60,8 +60,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  // `eslint` was removed from NextConfig in Next 16 — keeping it is a type error
-  // and it no longer does anything. Lint is not part of `next build` any more.
   typescript: {
     ignoreBuildErrors: true,
   },

@@ -65,59 +65,63 @@ function persistenceDb(
   deletes: Record<string, number> = {},
   options: PersistenceOptions = {},
 ): never {
-  const db = {
-    from(table: string) {
-      const query = {
-        select() {
-          options.events?.push(`${table}.select`);
-          return query;
-        },
-        eq() {
-          return query;
-        },
-        order() {
-          return query;
-        },
-        gte() {
-          return Promise.resolve({ data: [], error: null });
-        },
-        limit() {
-          return Promise.resolve({ data: [], error: null });
-        },
-        maybeSingle() {
-          options.events?.push(`${table}.maybeSingle`);
-          return Promise.resolve({
-            data: table === 'card_price_current' ? options.currentPrice ?? null : null,
-            error: null,
-          });
-        },
-        insert(rows: unknown) {
-          options.events?.push(`${table}.insert`);
-          inserts[table] ??= [];
-          inserts[table].push(rows);
-          return Promise.resolve({ error: null });
-        },
-        upsert(rows: unknown) {
-          options.events?.push(`${table}.upsert`);
-          upserts[table] ??= [];
-          upserts[table].push(rows);
-          return Promise.resolve({ error: null });
-        },
-        delete() {
-          options.events?.push(`${table}.delete`);
-          deletes[table] = (deletes[table] ?? 0) + 1;
-          return query;
-        },
-        update(payload: unknown) {
-          options.events?.push(`${table}.update`);
-          updates[table] ??= [];
-          updates[table].push(payload);
-          return query;
-        },
-      };
-      return query;
-    },
-  };
+  const db = vi.fn(async (text: string, params: readonly unknown[] = []) => {
+    if (text.includes('SELECT source_prices, graded_prices')) {
+      options.events?.push('card_price_current.maybeSingle');
+      return options.currentPrice ? [options.currentPrice] : [];
+    }
+
+    if (text.includes('SELECT price') && text.includes('FROM price_history')) {
+      return [];
+    }
+
+    if (text.includes('SELECT source, grade, price') && text.includes('FROM price_history')) {
+      return [];
+    }
+
+    if (text.includes('INSERT INTO price_quarantine')) {
+      options.events?.push('price_quarantine.insert');
+      inserts.price_quarantine ??= [];
+      inserts.price_quarantine.push(JSON.parse(String(params[0])));
+      return [];
+    }
+
+    if (text.includes('INSERT INTO price_history')) {
+      options.events?.push('price_history.insert');
+      inserts.price_history ??= [];
+      inserts.price_history.push(JSON.parse(String(params[0])));
+      return [];
+    }
+
+    if (text.includes('INSERT INTO card_price_current')) {
+      options.events?.push('card_price_current.upsert');
+      upserts.card_price_current ??= [];
+      upserts.card_price_current.push({
+        card_id: params[0],
+        source_prices: JSON.parse(String(params[1])),
+        graded_prices: JSON.parse(String(params[2])),
+        headline_cents: params[3],
+        headline_source: params[4],
+        headline_kind: params[5],
+        headline_currency: params[6],
+        headline_grade: params[7],
+        computed_at: params[8],
+      });
+      return [];
+    }
+
+    if (text.includes('UPDATE cards')) {
+      options.events?.push('cards.update');
+      const payload: Record<string, unknown> = { last_price_fetch: params[params.length - 1] };
+      if (text.includes('tcg_player_id =')) payload.tcg_player_id = params[1];
+      if (text.includes('print_run_info =')) payload.print_run_info = params[text.includes('tcg_player_id =') ? 2 : 1];
+      updates.cards ??= [];
+      updates.cards.push(payload);
+      return [];
+    }
+
+    return [];
+  });
   return db as never;
 }
 
@@ -135,18 +139,21 @@ describe('selectHeadline', () => {
   });
 
   it.each([
-    ['retail_sell', 'yuyutei'],
-    ['sold_guide', 'pricecharting'],
-    ['lowest_listing', 'cardrush'],
-  ] as const)('selects %s when it is the first available kind', (kind, source) => {
+    ['retail_sell', 'yuyutei', 'lowest_listing', 'cardrush'],
+    ['sold_guide', 'pricecharting', 'lowest_listing', 'cardrush'],
+  ] as const)('selects %s over %s', (kind: string, source: string, lowerKind: string, lowerSource: string) => {
     expect(selectHeadline([
-      observation('snkrdunk', 1),
-      observation(source, 2.5),
+      observation(lowerSource as PriceObservation['source'], 1),
+      observation(source as PriceObservation['source'], 2.5),
     ])).toEqual({ cents: 250, source, kind, grade: 'raw' });
   });
 
-  it('never selects a marketplace ask', () => {
-    expect(selectHeadline([observation('snkrdunk', 12)])).toBeNull();
+  it('selects lowest_listing when higher kinds are not available', () => {
+    const source = 'cardrush';
+    const kind = 'lowest_listing';
+    expect(selectHeadline([observation(source, 12)])).toEqual({
+      cents: 1200, source, kind, grade: 'raw'
+    });
   });
 
   it('breaks same-kind ties by taking the lowest price', () => {
@@ -284,6 +291,8 @@ describe('persistObservations', () => {
       headline_grade: null,
       computed_at: expect.any(String),
     }));
+    // Regression guard: price_cache was dropped by 20260728190000_drop_price_cache.sql.
+    // The write path must never resurrect it.
     expect(inserts.price_cache).toBeUndefined();
     expect(deletes.price_cache).toBeUndefined();
   });
@@ -458,7 +467,7 @@ describe('persistObservations', () => {
   it.each([
     ['stored title differs from fetched title', 'Monkey D. Luffy OP01-001', 'OP01-001'],
     ['fetched title differs from stored title', 'OP01-001', 'Monkey D. Luffy OP01-001'],
-  ])('writes normally when %s', async (_label, storedTitle, fetchedTitle) => {
+  ])('writes normally when %s', async (_label: string, storedTitle: string, fetchedTitle: string) => {
     const inserts: Record<string, unknown[]> = {};
     const result = await persistObservations(
       persistenceDb(inserts),
@@ -511,45 +520,19 @@ describe('persistObservations', () => {
 
   it('excludes quarantined observations from history, raw prices, and the headline', async () => {
     const inserts: Record<string, unknown[]> = {};
-    const db = {
-      from(table: string) {
-        const query = {
-          select() {
-            return query;
-          },
-          eq() {
-            return query;
-          },
-          order() {
-            return query;
-          },
-          gte() {
-            return Promise.resolve({ data: [], error: null });
-          },
-          limit() {
-            return Promise.resolve({ data: [], error: null });
-          },
-          maybeSingle() {
-            return Promise.resolve({ data: null, error: null });
-          },
-          insert(rows: unknown) {
-            inserts[table] ??= [];
-            inserts[table].push(rows);
-            return Promise.resolve({ error: null });
-          },
-          upsert() {
-            return Promise.resolve({ error: null });
-          },
-          delete() {
-            return query;
-          },
-          update() {
-            return query;
-          },
-        };
-        return query;
-      },
-    };
+    const db = vi.fn(async (text: string, params: readonly unknown[] = []) => {
+      if (text.includes('SELECT price') && text.includes('FROM price_history')) return [];
+      if (text.includes('SELECT source, grade, price') && text.includes('FROM price_history')) return [];
+      if (text.includes('INSERT INTO price_quarantine')) {
+        inserts.price_quarantine = [JSON.parse(String(params[0]))];
+        return [];
+      }
+      if (text.includes('INSERT INTO price_history')) {
+        inserts.price_history = [JSON.parse(String(params[0]))];
+        return [];
+      }
+      return [];
+    });
 
     const result = await persistObservations(
       db as never,
@@ -579,44 +562,15 @@ describe('persistObservations', () => {
   it('suppresses identical observations already written in the last 15 minutes', async () => {
     const historyInserts: unknown[] = [];
     let recentRows: unknown[] = [];
-    const db = {
-      from(table: string) {
-        const query = {
-          select() {
-            return query;
-          },
-          eq() {
-            return query;
-          },
-          order() {
-            return query;
-          },
-          gte() {
-            return Promise.resolve({ data: recentRows, error: null });
-          },
-          limit() {
-            return Promise.resolve({ data: [], error: null });
-          },
-          maybeSingle() {
-            return Promise.resolve({ data: null, error: null });
-          },
-          insert(rows: unknown) {
-            if (table === 'price_history') historyInserts.push(rows);
-            return Promise.resolve({ error: null });
-          },
-          upsert() {
-            return Promise.resolve({ error: null });
-          },
-          delete() {
-            return query;
-          },
-          update() {
-            return query;
-          },
-        };
-        return query;
-      },
-    };
+    const db = vi.fn(async (text: string, params: readonly unknown[] = []) => {
+      if (text.includes('SELECT price') && text.includes('FROM price_history')) return [];
+      if (text.includes('SELECT source, grade, price') && text.includes('FROM price_history')) return recentRows;
+      if (text.includes('INSERT INTO price_history')) {
+        historyInserts.push(JSON.parse(String(params[0])));
+        return [];
+      }
+      return [];
+    });
     const card = { id: 'card-1', slug: 'op-01-001', number: 'OP01-001', name: 'Card' };
     const observations = [observation('tcgplayer', 10)];
 
@@ -630,49 +584,17 @@ describe('persistObservations', () => {
 
   it('does not let a sold-out corroborator rescue an outlier', async () => {
     const quarantineInserts: unknown[] = [];
-    const db = {
-      from(table: string) {
-        let selectedColumns = '';
-        const query = {
-          select(columns?: string) {
-            selectedColumns = columns ?? '';
-            return query;
-          },
-          eq() {
-            return query;
-          },
-          order() {
-            return query;
-          },
-          gte() {
-            return Promise.resolve({ data: [], error: null });
-          },
-          limit() {
-            const data = table === 'price_history' && selectedColumns === 'price'
-              ? [{ price: 100 }, { price: 100 }, { price: 100 }]
-              : [];
-            return Promise.resolve({ data, error: null });
-          },
-          maybeSingle() {
-            return Promise.resolve({ data: null, error: null });
-          },
-          insert(rows: unknown) {
-            if (table === 'price_quarantine') quarantineInserts.push(rows);
-            return Promise.resolve({ error: null });
-          },
-          upsert() {
-            return Promise.resolve({ error: null });
-          },
-          delete() {
-            return query;
-          },
-          update() {
-            return query;
-          },
-        };
-        return query;
-      },
-    };
+    const db = vi.fn(async (text: string, params: readonly unknown[] = []) => {
+      if (text.includes('SELECT price') && text.includes('FROM price_history')) {
+        return [{ price: 100 }, { price: 100 }, { price: 100 }];
+      }
+      if (text.includes('SELECT source, grade, price') && text.includes('FROM price_history')) return [];
+      if (text.includes('INSERT INTO price_quarantine')) {
+        quarantineInserts.push(JSON.parse(String(params[0])));
+        return [];
+      }
+      return [];
+    });
 
     const result = await persistObservations(
       db as never,
@@ -680,9 +602,9 @@ describe('persistObservations', () => {
       [
         observation('tcgplayer', 1000),
         {
-          ...observation('yuyutei', 900),
+          ...observation('cardrush', 900),
           evidence: {
-            externalTitle: 'Card yuyutei OP01-001',
+            externalTitle: 'Card cardrush OP01-001',
             inStock: false,
             matchedBy: 'search',
           },
@@ -693,7 +615,7 @@ describe('persistObservations', () => {
     expect(result.quarantined).toBe(2);
     expect(quarantineInserts[0]).toEqual([
       expect.objectContaining({ source: 'tcgplayer', reason: 'ratio-vs-median' }),
-      expect.objectContaining({ source: 'yuyutei', reason: 'sold-out' }),
+      expect.objectContaining({ source: 'cardrush', reason: 'sold-out' }),
     ]);
   });
 

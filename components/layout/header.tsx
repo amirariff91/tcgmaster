@@ -4,11 +4,10 @@ import * as React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Menu, X, Settings, LogOut, Briefcase, Bell, Trophy, FolderOpen } from 'lucide-react';
-import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
-import { createClient } from '@/lib/supabase/browser';
+import { authClient } from '@/lib/auth-client';
 import { CurrencyToggle } from '@/components/ui/currency-toggle';
 
 interface NavItem {
@@ -34,52 +33,12 @@ export function Header() {
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = React.useState(false);
-  const [user, setUser] = React.useState<SupabaseUser | null>(null);
-  const [isAuthLoading, setIsAuthLoading] = React.useState(true);
-  const supabase = React.useMemo(() => createClient(), []);
+  const { data: session, isPending: isAuthLoading } = authClient.useSession();
+  const user = session?.user ?? null;
   const userMenuToggleRef = React.useRef<HTMLButtonElement>(null);
   const userMenuRef = React.useRef<HTMLDivElement>(null);
   const mobileMenuToggleRef = React.useRef<HTMLButtonElement>(null);
   const mobileMenuRef = React.useRef<HTMLElement>(null);
-
-  React.useEffect(() => {
-    let isMounted = true;
-    let authStateChanged = false;
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      authStateChanged = true;
-
-      if (!isMounted) return;
-
-      setUser(session?.user ?? null);
-      setIsAuthLoading(false);
-    });
-
-    const loadUser = async () => {
-      try {
-        const {
-          data: { user: currentUser },
-        } = await supabase.auth.getUser();
-
-        if (!isMounted || authStateChanged) return;
-
-        setUser(currentUser);
-      } finally {
-        if (isMounted && !authStateChanged) {
-          setIsAuthLoading(false);
-        }
-      }
-    };
-
-    void loadUser();
-
-    return () => {
-      isMounted = false;
-      subscription.unsubscribe();
-    };
-  }, [supabase]);
 
   React.useEffect(() => {
     if (!isUserMenuOpen) return;
@@ -150,7 +109,7 @@ export function Header() {
   const handleSignOut = async () => {
     setIsUserMenuOpen(false);
 
-    const { error } = await supabase.auth.signOut();
+    const { error } = await authClient.signOut();
     if (error) {
       // Leave the session as-is rather than showing a signed-out header over
       // still-authenticated content.
@@ -158,7 +117,7 @@ export function Header() {
       return;
     }
 
-    // onAuthStateChange only updates this client component. Server-rendered
+    // The session hook updates this client component. Server-rendered
     // content (e.g. /settings) keeps rendering the old session until the route
     // is revalidated; refreshing also lets middleware bounce gated pages.
     router.refresh();
@@ -220,9 +179,9 @@ export function Header() {
                     aria-controls="account-menu"
                   >
                     <Avatar
-                      src={user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null}
-                      alt={user.user_metadata?.full_name ?? user.email ?? 'User'}
-                      fallback={user.user_metadata?.full_name ?? user.email ?? 'User'}
+                      src={user.image ?? null}
+                      alt={user.name ?? user.email ?? 'User'}
+                      fallback={user.name ?? user.email ?? 'User'}
                       size="sm"
                     />
                   </Button>

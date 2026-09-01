@@ -22,7 +22,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatPrice, formatPriceChange } from '@/lib/utils';
 import { useCollections, useCollection } from '@/hooks/use-collections';
-import { createClient } from '@/lib/supabase/browser';
+import { authClient } from '@/lib/auth-client';
 
 // Map collection type to icon
 function getCollectionIcon(type: string) {
@@ -182,8 +182,8 @@ function CollectionItemsView({
   if (error) {
     return (
       <div className="text-center py-12">
-        <p className="font-medium text-red-600">Your collection didn't load</p>
-        <p className="text-sm text-zinc-500 mt-1">We couldn't reach the server. Try refreshing the page.</p>
+        <p className="font-medium text-red-600">Your collection didn&apos;t load</p>
+        <p className="text-sm text-zinc-500 mt-1">We couldn&apos;t reach the server. Try refreshing the page.</p>
         <button onClick={() => window.location.reload()} className="mt-4 text-sm text-zinc-600 underline">
           Refresh
         </button>
@@ -388,9 +388,8 @@ export default function CollectionPage() {
 
   // Auth check — redirect to /login if not signed in
   React.useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) {
+    authClient.getSession().then(({ data }: { data: { user?: unknown } | null }) => {
+      if (!data?.user) {
         router.replace('/login');
       } else {
         setIsAuthChecked(true);

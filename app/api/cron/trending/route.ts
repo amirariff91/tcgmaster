@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { dbQuery } from '@/lib/db/client';
 import { redis } from '@/lib/redis/client';
 import { formatDisplayNumber, formatSetName } from '@/lib/utils';
 
@@ -16,42 +16,47 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.SUPABASE_SECRET_KEY;
-    if (!supabaseUrl || !supabaseKey) {
-      throw new Error('Missing Supabase credentials');
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
     // Fetch popular/expensive cards
-    const { data: cards, error } = await supabase
-      .from('cards')
-      .select(`
-        id,
-        name,
-        slug,
-        number,
-        rarity,
-        image_url,
-        local_image_url,
-        sets!inner (
-          name,
-          slug,
-          games!inner (
-            slug
-          )
-        ),
-        card_price_current!inner (
-          headline_cents
-        )
-      `)
-      .gt('card_price_current.headline_cents', 0)
-      .limit(1000);
-
-    if (error || !cards) {
-      throw error || new Error('No cards found');
-    }
+    const cards = await dbQuery<{
+      id: string;
+      name: string;
+      slug: string;
+      number: string;
+      rarity: string | null;
+      image_url: string | null;
+      local_image_url: string | null;
+      sets: {
+        name: string;
+        slug: string;
+        games: { slug: string };
+      };
+      card_price_current: {
+        headline_cents: number | null;
+      };
+    }>(`
+      SELECT
+        c.id,
+        c.name,
+        c.slug,
+        c.number,
+        c.rarity,
+        c.image_url,
+        c.local_image_url,
+        json_build_object(
+          'name', s.name,
+          'slug', s.slug,
+          'games', json_build_object('slug', g.slug)
+        ) AS sets,
+        json_build_object(
+          'headline_cents', cpc.headline_cents
+        ) AS card_price_current
+      FROM cards c
+      JOIN sets s ON s.id = c.set_id
+      JOIN games g ON g.id = s.game_id
+      JOIN card_price_current cpc ON cpc.card_id = c.id
+      WHERE cpc.headline_cents > 0
+      LIMIT 1000
+    `);
 
     const scoredCards = cards.map((card: any) => {
       const marketPrice = typeof card.card_price_current?.headline_cents === 'number'
