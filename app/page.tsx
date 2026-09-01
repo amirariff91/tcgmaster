@@ -20,8 +20,9 @@ const marketMovers: { gainers: MarketMover[]; losers: MarketMover[] } = {
 };
 
 const categories: Category[] = [
-  { name: 'One Piece', slug: 'one-piece', description: 'Romance Dawn, Pillars of Strength, Manga Rares', cardCount: '4,500+', change: '+12.4%', topMover: 'Manga Shanks PSA 10' },
-  { name: 'Dragon Ball', slug: 'dragon-ball', description: 'Fusion World, Awakened Pulse, Super Rares', cardCount: '2,100+', change: '+5.7%', topMover: 'Goku SCR' }
+  { name: 'One Piece', slug: 'one-piece', description: 'Romance Dawn, Pillars of Strength, Manga Rares', cardCount: '10,000+', change: '+12.4%', topMover: 'Manga Shanks PSA 10' },
+  { name: 'Pokémon', slug: 'pokemon', description: 'Base Set, 151, Vintage Holos, Special Illustration Rares', cardCount: '20,000+', change: '+14.2%', topMover: 'Charizard Base Set' },
+  { name: 'Dragon Ball', slug: 'dbfw', description: 'Fusion World, Awakened Pulse, Super Rares', cardCount: '5,200+', change: '+5.7%', topMover: 'Goku SCR' },
 ];
 
 // Without this the page has no dynamic API left after the cookie-free client swap, so
@@ -50,17 +51,22 @@ export default async function HomePage() {
           rarity ILIKE $1
           OR rarity ILIKE $2
           OR rarity ILIKE $3
-          OR name ILIKE $4
+          OR rarity ILIKE $4
           OR name ILIKE $5
           OR name ILIKE $6
+          OR name ILIKE $7
+          OR name ILIKE $8
         )
-      LIMIT 500
-    `, ['%sp%', '%sec%', '%scr%', '%manga%', '%tournament%', '%wanted%']) as typeof rawCards;
+      LIMIT 800
+    `, [
+      '%sp%', '%sec%', '%scr%', '%illustration%',
+      '%manga%', '%tournament%', '%wanted%', '%charizard%'
+    ]) as typeof rawCards;
   } catch (error) {
     console.error('Failed to load home cards:', error);
   }
 
-  // In-memory filter to strictly enforce the OP and DBFW rules
+  // In-memory filter to strictly enforce high-end hits per game
   const filteredCards = rawCards.filter((card) => {
     const slug = card.slug || '';
     const rarity = (card.rarity || '').toLowerCase();
@@ -68,6 +74,7 @@ export default async function HomePage() {
 
     const isOP = slug.startsWith('op-');
     const isDB = slug.startsWith('dbfw-');
+    const isPokemon = slug.startsWith('pokemon-');
 
     if (isOP) {
       // For One Piece: SP, Manga, Tournament, Wanted, SEC
@@ -77,10 +84,14 @@ export default async function HomePage() {
       // For Dragon Ball: SCR, SEC
       return rarity.includes('scr') || rarity.includes('sec');
     }
+    if (isPokemon) {
+      // For Pokémon: Special Illustration Rare, Illustration Rare, Secret, Charizard, Pikachu, Vintage Holos
+      return rarity.includes('illustration') || rarity.includes('secret') || rarity.includes('holo') || name.includes('charizard') || name.includes('pikachu') || name.includes('mew');
+    }
     return false;
   });
 
-  // Perfectly shuffle OP and DBFW cards, then grab up to 60
+  // Perfectly shuffle cards across games, then grab up to 60
   // eslint-disable-next-line react-hooks/purity
   const dbCards = filteredCards.sort(() => Math.random() - 0.5).slice(0, 60);
 

@@ -204,11 +204,11 @@ export default async function GlobalDecksHub() {
                 {/* Fixed Height Archetypes List (Top 10) */}
                 {/* lg:h-[900px] provides a permanent, flawless layout column on desktop, while h-[450px] prevents massive scrolling on mobile */}
                 <div className="relative h-[450px] lg:h-[900px]">
-                  {/* Coming Soon Overlay */}
-                  {game.slug === 'pokemon' && (
+                  {/* Empty / Ingesting Overlay */}
+                  {archetypes.length === 0 && (
                     <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm rounded-b-3xl">
                       <div className="bg-[#060c18]/90 border border-indigo-500/30 px-6 py-3 rounded-2xl shadow-[0_0_30px_rgba(99,102,241,0.2)] flex items-center justify-center transform -translate-y-12">
-                        <span className="font-bold text-white tracking-wide uppercase text-sm">Coming Soon</span>
+                        <span className="font-bold text-white tracking-wide uppercase text-sm">Tournaments Ingesting Soon</span>
                       </div>
                     </div>
                   )}
@@ -218,7 +218,7 @@ export default async function GlobalDecksHub() {
                       <Link 
                         key={arch.leaderCardId} 
                         href={`/${arch.gameSlug}/decks/archetype/${arch.leaderCardId}`}
-                        className={`group relative flex items-center h-[76px] p-3 rounded-2xl border border-white/5 bg-white/[0.03] overflow-hidden shrink-0 transition-all ${game.slug !== 'pokemon' ? 'hover:bg-white/10 hover:border-white/20' : 'opacity-30 pointer-events-none'}`}
+                        className="group relative flex items-center h-[76px] p-3 rounded-2xl border border-white/5 bg-white/[0.03] overflow-hidden shrink-0 transition-all hover:bg-white/10 hover:border-white/20"
                       >
                       {/* Rank Number Background */}
                       <div className="absolute -left-2 top-1/2 -translate-y-1/2 text-6xl font-black italic text-white/[0.02] group-hover:text-white/[0.04] transition-colors pointer-events-none z-0">

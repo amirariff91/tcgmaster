@@ -114,7 +114,7 @@ function SearchResults() {
           };
           setGameFilters([
             { value: 'all', label: 'TCGs' },
-            ...json.data.filter((g: any) => g.slug !== 'pokemon').map((g: any) => ({
+            ...json.data.map((g: any) => ({
               value: g.slug,
               label: gameNameMapping[g.slug] || g.display_name || g.name
             }))
