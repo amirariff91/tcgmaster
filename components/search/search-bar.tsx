@@ -184,11 +184,15 @@ export function SearchBar({
                         </p>
                       )}
                     </div>
-                    {result.price !== null && (
+                    {result.price !== null && result.price > 0 ? (
                       <span className="text-sm font-semibold text-orange-400">
                         ${result.price.toLocaleString()}
                       </span>
-                    )}
+                    ) : result.type === 'card' ? (
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-orange-400">
+                        Coming Soon
+                      </span>
+                    ) : null}
                   </button>
                 </li>
               ))}

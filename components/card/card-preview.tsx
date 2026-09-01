@@ -61,7 +61,7 @@ export function CardPreview({ card, gameSlug, variant = 'default', className }: 
             </p>
           </div>
           <div className="text-right">
-            {card.current_price !== undefined ? (
+            {card.current_price && card.current_price > 0 ? (
               <>
                 <p className="font-bold text-orange-400">
                   {format(card.current_price)}
@@ -71,7 +71,7 @@ export function CardPreview({ card, gameSlug, variant = 'default', className }: 
                 )}
               </>
             ) : (
-              <p className="text-sm text-zinc-500">Price : Unavailable</p>
+              <p className="font-bold text-orange-400 text-xs uppercase tracking-wider">Coming Soon</p>
             )}
           </div>
         </div>
@@ -93,9 +93,13 @@ export function CardPreview({ card, gameSlug, variant = 'default', className }: 
                 </svg>
               )}
             </h3>
-            {card.current_price !== undefined && (
+            {card.current_price && card.current_price > 0 ? (
               <p className="text-sm font-semibold text-orange-400">
                 {format(card.current_price)}
+              </p>
+            ) : (
+              <p className="text-xs font-semibold text-orange-400 uppercase tracking-wider">
+                Coming Soon
               </p>
             )}
           </div>
@@ -159,8 +163,8 @@ export function CardPreview({ card, gameSlug, variant = 'default', className }: 
                   {format(card.current_price)}
                 </span>
               ) : (
-                <span className="font-medium text-zinc-500 text-[11px] uppercase tracking-wider">
-                  Price : Unavailable
+                <span className="font-bold text-orange-400 text-[12px] uppercase tracking-wider">
+                  Coming Soon
                 </span>
               )}
             </div>

@@ -16,13 +16,13 @@ interface CardSearchRow {
   rarity: string | null;
   image_url: string | null;
   local_image_url: string | null;
+  headline_cents: number | null;
   sets: {
     id: string;
     name: string;
     slug: string;
     games: { slug: string };
   };
-  price_cache_ttl: number | null;
   curation_status: string | null;
 }
 
@@ -34,6 +34,7 @@ interface CardSuggestionRow {
   rarity: string | null;
   image_url: string | null;
   local_image_url: string | null;
+  headline_cents?: number | null;
   sets: {
     name: string;
     slug: string;
@@ -137,6 +138,7 @@ export async function searchCards(
     FROM cards c
     JOIN sets s ON s.id = c.set_id
     JOIN games g ON g.id = s.game_id
+    LEFT JOIN card_price_current cpc ON cpc.card_id = c.id
   `;
 
   const buildFilters = () => {
@@ -178,16 +180,16 @@ export async function searchCards(
     }
 
     if (options.sort === 'recent') {
-      clauses.push('c.price_cache_ttl IS NOT NULL');
+      clauses.push('cpc.headline_cents IS NOT NULL');
     }
 
     return { where: clauses.join(' AND '), params };
   };
 
   const sortClause = options.sort === 'price-desc'
-    ? 'c.price_cache_ttl DESC NULLS LAST, c.id'
+    ? 'cpc.headline_cents DESC NULLS LAST, c.id'
     : options.sort === 'price-asc'
-      ? 'c.price_cache_ttl ASC NULLS LAST, c.id'
+      ? 'cpc.headline_cents ASC NULLS LAST, c.id'
       : options.sort === 'name-asc'
         ? 'c.name ASC, c.id'
         : 'c.last_price_fetch DESC NULLS LAST, c.name, c.id';
@@ -215,7 +217,7 @@ export async function searchCards(
         c.rarity,
         c.image_url,
         c.local_image_url,
-        c.price_cache_ttl,
+        cpc.headline_cents,
         c.curation_status,
         json_build_object(
           'id', s.id,
@@ -281,7 +283,7 @@ export async function searchCards(
       number: card.number,
       rarity: card.rarity,
       imageUrl: card.local_image_url || card.image_url,
-      marketPrice: card.price_cache_ttl ? card.price_cache_ttl / 100 : null,
+      marketPrice: card.headline_cents != null && card.headline_cents > 0 ? card.headline_cents / 100 : null,
       slug: card.slug,
       game: game?.slug || 'pokemon',
       curationStatus: card.curation_status || null,
@@ -349,6 +351,7 @@ export async function getSearchSuggestions(
         c.rarity,
         c.image_url,
         c.local_image_url,
+        cpc.headline_cents,
         json_build_object(
           'name', s.name,
           'slug', s.slug,
@@ -357,6 +360,7 @@ export async function getSearchSuggestions(
       FROM cards c
       JOIN sets s ON s.id = c.set_id
       JOIN games g ON g.id = s.game_id
+      LEFT JOIN card_price_current cpc ON cpc.card_id = c.id
       WHERE c.name ILIKE $1 OR c.number ILIKE $1
       LIMIT $2
     `, [searchValue, limit]),
@@ -385,7 +389,7 @@ export async function getSearchSuggestions(
         number: card.number,
         rarity: card.rarity,
         imageUrl: card.local_image_url || card.image_url,
-        marketPrice: null,
+        marketPrice: card.headline_cents != null && card.headline_cents > 0 ? card.headline_cents / 100 : null,
         slug: card.slug,
         game: game?.slug || 'pokemon',
         curationStatus: card.curation_status || null,
