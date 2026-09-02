@@ -43,11 +43,11 @@ const gameStyles: Record<string, { bg: string; text: string; glow: string; borde
     banner: '/images/riftbound-banner.jpg',
   },
   'boboiboy': {
-    bg: 'from-teal-950/40 via-emerald-950/30 to-zinc-950/60',
-    text: 'text-emerald-400',
-    glow: 'group-hover:border-emerald-400/40',
-    border: 'border-emerald-400/20',
-    banner: '',
+    bg: 'from-amber-950/40 via-emerald-950/30 to-zinc-950/60',
+    text: 'text-amber-400',
+    glow: 'group-hover:border-amber-500/40',
+    border: 'border-amber-500/20',
+    banner: '/images/monsta-galaxy-banner.jpg',
   },
 };
 
@@ -116,8 +116,8 @@ export default async function GlobalDecksHub() {
     console.error('Failed to load global deck data:', error);
   }
 
-  // Desired display order: One Piece, Pokémon, Dragon Ball Fusion World, Riftbound
-  const order = ['one-piece', 'pokemon', 'dbfw', 'riftbound'];
+  // Desired display order: One Piece, Pokémon, Dragon Ball Fusion World, Riftbound, Monsta Galaxy
+  const order = ['one-piece', 'pokemon', 'dbfw', 'riftbound', 'boboiboy'];
   games.sort((a, b) => {
     const idxA = order.indexOf(a.slug);
     const idxB = order.indexOf(b.slug);
@@ -184,8 +184,8 @@ export default async function GlobalDecksHub() {
           </p>
         </div>
 
-        {/* 4-Column Dashboard Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+        {/* 5-Column Dashboard Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
           {games.map((game) => {
             const archetypes = tierListsByGame[game.id] || [];
             const style = gameStyles[game.slug] || defaultStyle;
