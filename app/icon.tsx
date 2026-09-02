@@ -13,20 +13,17 @@ export default function Icon() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: 'linear-gradient(135deg, #0f172a 0%, #030712 100%)',
-          borderRadius: '7px',
-          border: '1.5px solid #f97316',
-          boxShadow: '0 0 10px rgba(249, 115, 22, 0.5)',
+          background: 'transparent',
         }}
       >
         <div
           style={{
             color: '#f97316',
             fontWeight: 900,
-            fontSize: 18,
+            fontSize: 26,
             fontStyle: 'italic',
             fontFamily: 'system-ui, sans-serif',
-            letterSpacing: '-1.5px',
+            letterSpacing: '-2px',
             transform: 'translateX(1px)',
             display: 'flex',
           }}

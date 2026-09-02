@@ -13,21 +13,18 @@ export default function AppleIcon() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: 'linear-gradient(135deg, #0f172a 0%, #030712 100%)',
-          borderRadius: '40px',
-          border: '6px solid #f97316',
-          boxShadow: '0 0 30px rgba(249, 115, 22, 0.6)',
+          background: 'transparent',
         }}
       >
         <div
           style={{
             color: '#f97316',
             fontWeight: 900,
-            fontSize: 104,
+            fontSize: 148,
             fontStyle: 'italic',
             fontFamily: 'system-ui, sans-serif',
-            letterSpacing: '-8px',
-            transform: 'translateX(4px)',
+            letterSpacing: '-12px',
+            transform: 'translateX(6px)',
             display: 'flex',
           }}
         >
