@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { dbQuery, pool } from '../lib/db/client';
+import { POKEMON_JA_SET_NAMES } from './translate-pokemon-ja-sets';
 
 interface TCGdexSetSummary {
   id: string;
@@ -95,8 +96,9 @@ async function seedPokemonJaCatalog() {
           const setSlug = `pokemon-${sanitizeSlug(setDetail.id)}-ja`;
           const releaseDate = setDetail.releaseDate ? new Date(setDetail.releaseDate).toISOString() : null;
           const cardCount = setDetail.cards?.length || setDetail.cardCount?.total || 0;
+          const setName = POKEMON_JA_SET_NAMES[setDetail.id] || `${setDetail.id} : ${setDetail.name}`;
 
-          console.log(`[${overallIndex}/${setsSummaryList.length}] Set: "${setDetail.name}" (${setDetail.id}) [Cards: ${cardCount}]`);
+          console.log(`[${overallIndex}/${setsSummaryList.length}] Set: "${setName}" (${setDetail.id}) [Cards: ${cardCount}]`);
 
           // Upsert Set
           const setRows = await dbQuery<{ id: string }>(
@@ -108,7 +110,7 @@ async function seedPokemonJaCatalog() {
                card_count = EXCLUDED.card_count,
                ppt_set_id = EXCLUDED.ppt_set_id
              RETURNING id`,
-            [gameId, setDetail.name, setSlug, releaseDate, cardCount, setDetail.id],
+            [gameId, setName, setSlug, releaseDate, cardCount, setDetail.id],
           );
 
           const setIdInDb = setRows[0].id;
