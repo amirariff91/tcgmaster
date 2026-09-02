@@ -197,7 +197,7 @@ export function parseSearchQuery(query: string): ParsedQuery {
   // Clean up remaining query for card name
   q = q
     .replace(/\s+/g, ' ')
-    .replace(/[^\w\s'-]/g, '')
+    .replace(/[^\p{L}\p{N}\s'-]/gu, '')
     .trim();
 
   // Use Compromise to extract proper nouns (likely card names)
