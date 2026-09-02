@@ -154,7 +154,7 @@ export function CardImage({
         onLoad={() => setLoadingState('loaded')}
         onError={() => setLoadingState('error')}
         className={cn(
-          'w-full h-auto object-contain rounded-lg transition-all duration-300',
+          'w-full h-auto object-contain rounded-lg transition-all duration-300 [image-rendering:-webkit-optimize-contrast] [image-rendering:crisp-edges]',
           loadingState === 'loading' && 'opacity-0 scale-105',
           loadingState === 'loaded' && 'opacity-100 scale-100'
         )}
