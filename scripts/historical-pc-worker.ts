@@ -83,13 +83,13 @@ async function run() {
         `);
       }
 
-      // Phase 2: Other TCGs (DBFW, Pokemon, and English OP)
+      // Phase 2: Other TCGs (DBFW, Pokemon, Riftbound, and English OP)
       if (cards.length === 0) {
         cards = await dbQuery<QueueCard>(`
           SELECT id, name, slug, number, pricecharting_url, last_price_fetch
           FROM cards
           WHERE pricecharting_url IS NOT NULL
-            AND (slug LIKE 'op-%-en' OR slug LIKE 'fb%' OR slug LIKE 'fs%' OR slug LIKE 'pokemon-%')
+            AND (slug LIKE 'op-%-en' OR slug LIKE 'fb%' OR slug LIKE 'fs%' OR slug LIKE 'pokemon-%' OR slug LIKE 'riftbound-%')
             AND pc_fetched = FALSE
           ORDER BY last_price_fetch ASC NULLS FIRST
           LIMIT 1
