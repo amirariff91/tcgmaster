@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { dbQuery } from '@/lib/db/client';
 import { redis } from '@/lib/redis/client';
 import { formatSetName } from '@/lib/utils';
+import { sortSetsForGame } from '@/lib/sets/sorting';
 
 export async function GET(request: Request) {
   try {
@@ -40,13 +41,12 @@ export async function GET(request: Request) {
       ? [gameRows[0].id, '%-ja']
       : [gameRows[0].id];
 
-    let setsList = await dbQuery<{ id: string; name: string; slug: string; card_count: number | null }>(`
-      SELECT s.id, s.name, s.slug, s.card_count
+    let setsList = await dbQuery<{ id: string; name: string; slug: string; card_count: number | null; release_date: string | null; priority: number | null }>(`
+      SELECT s.id, s.name, s.slug, s.card_count, s.release_date::text AS release_date, s.priority
       FROM sets s
       WHERE s.game_id = $1
         AND s.card_count > 0
         ${languageCondition}
-      ORDER BY s.release_date DESC NULLS LAST, s.name ASC
     `, params);
 
     setsList = setsList.map(s => ({
@@ -54,10 +54,12 @@ export async function GET(request: Request) {
       name: formatSetName(s.name)
     }));
 
-    // Cache for 1 hour
-    await redis.set(cacheKey, setsList, { ex: 3600 });
+    const sortedSets = sortSetsForGame(setsList, game);
 
-    return NextResponse.json({ data: setsList });
+    // Cache for 1 hour
+    await redis.set(cacheKey, sortedSets, { ex: 3600 });
+
+    return NextResponse.json({ data: sortedSets });
   } catch (error) {
     console.error('Error fetching sets:', error);
     return NextResponse.json({ error: 'Failed to fetch sets' }, { status: 500 });

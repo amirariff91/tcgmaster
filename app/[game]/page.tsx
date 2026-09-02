@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatDate, formatPrice, formatSetName, splitCardName } from '@/lib/utils';
 import { latestRecordedAt } from '@/lib/pricing/price-labels';
+import { sortSetsForGame } from '@/lib/sets/sorting';
 // Cookie-free anon client keeps this route statically renderable (see card page).
 import { dbQuery } from '@/lib/db/client';
 import { Badge } from '@/components/ui/badge';
@@ -83,7 +84,7 @@ async function getAllSets(gameId: string): Promise<SetRow[]> {
     SELECT id, name, slug, release_date::text AS release_date, card_count
     FROM sets
     WHERE game_id = $1
-    ORDER BY release_date DESC NULLS LAST, name, id
+    ORDER BY priority DESC NULLS LAST, name, id
   `, [gameId]);
 }
 
@@ -195,16 +196,20 @@ async function getGamePageData(gameSlug: string): Promise<GamePageData | null> {
     return latest;
   }, null);
 
+  const mappedSets = sets.map((set) => {
+    const totals = priceTotalsBySet.get(set.id);
+    const avg_price = totals
+      ? totals.total / totals.count
+      : null;
+
+    return { ...set, avg_price };
+  });
+
+  const sortedSets = sortSetsForGame(mappedSets, gameData.slug);
+
   return {
     game: gameData,
-    sets: sets.map((set) => {
-      const totals = priceTotalsBySet.get(set.id);
-      const avg_price = totals
-        ? totals.total / totals.count
-        : null;
-
-      return { ...set, avg_price };
-    }),
+    sets: sortedSets,
     total_cards: cardsCountRows[0]?.count || 0,
     total_sets: sets.length,
     top_cards: topCards,
