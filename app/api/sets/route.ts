@@ -46,30 +46,13 @@ export async function GET(request: Request) {
       WHERE s.game_id = $1
         AND s.card_count > 0
         ${languageCondition}
-      ORDER BY s.priority DESC NULLS LAST, s.name
+      ORDER BY s.release_date DESC NULLS LAST, s.name ASC
     `, params);
 
-    const getPrefixScore = (name: string) => {
-      if (name.startsWith('OP')) return 1;
-      if (name.startsWith('EB')) return 2;
-      if (name.startsWith('PRB')) return 3;
-      if (name.startsWith('ST')) return 4;
-      return 5;
-    };
-
     setsList = setsList.map(s => ({
-        ...s,
-        name: formatSetName(s.name)
-      }));
-
-    if (game === 'one-piece') {
-      setsList.sort((a, b) => {
-        const scoreA = getPrefixScore(a.name);
-        const scoreB = getPrefixScore(b.name);
-        if (scoreA !== scoreB) return scoreA - scoreB;
-        return a.name.localeCompare(b.name);
-      });
-    }
+      ...s,
+      name: formatSetName(s.name)
+    }));
 
     // Cache for 1 hour
     await redis.set(cacheKey, setsList, { ex: 3600 });
