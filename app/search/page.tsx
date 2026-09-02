@@ -132,8 +132,13 @@ function SearchResults() {
       return;
     }
 
-    const langParam = lang !== 'all' ? `&lang=${lang}` : '';
-    fetch(`/api/sets?game=${game}${langParam}`)
+    if (lang === 'all') {
+      setSetFilters([{ value: 'all', label: 'Select Language First' }]);
+      setCardSet('all');
+      return;
+    }
+
+    fetch(`/api/sets?game=${game}&lang=${lang}`)
       .then(res => res.json())
       .then(json => {
         if (json.data) {
@@ -269,11 +274,17 @@ function SearchResults() {
                 disabled={game === 'all'}
               />
               <Select
-                options={game === 'all' ? [{ value: 'all', label: 'Sets' }] : setFilters}
-                value={game === 'all' ? 'all' : cardSet}
-                onChange={game === 'all' ? () => {} : setCardSet}
-                className="w-48"
-                disabled={game === 'all'}
+                options={
+                  game === 'all'
+                    ? [{ value: 'all', label: 'Sets' }]
+                    : lang === 'all'
+                      ? [{ value: 'all', label: 'Select Language First' }]
+                      : setFilters
+                }
+                value={game === 'all' || lang === 'all' ? 'all' : cardSet}
+                onChange={game === 'all' || lang === 'all' ? () => {} : setCardSet}
+                className="w-52"
+                disabled={game === 'all' || lang === 'all'}
               />
             </div>
             <Select options={sortOptions} value={sort} onChange={setSort} className="w-44" />
@@ -364,10 +375,16 @@ function SearchResults() {
               <div>
                 <label className="mb-2 block text-sm font-medium text-zinc-300">Set</label>
                 <Select
-                  options={game === 'all' ? [{ value: 'all', label: 'Sets' }] : setFilters}
-                  value={game === 'all' ? 'all' : cardSet}
-                  onChange={game === 'all' ? () => {} : setCardSet}
-                  disabled={game === 'all'}
+                  options={
+                    game === 'all'
+                      ? [{ value: 'all', label: 'Sets' }]
+                      : lang === 'all'
+                        ? [{ value: 'all', label: 'Select Language First' }]
+                        : setFilters
+                  }
+                  value={game === 'all' || lang === 'all' ? 'all' : cardSet}
+                  onChange={game === 'all' || lang === 'all' ? () => {} : setCardSet}
+                  disabled={game === 'all' || lang === 'all'}
                 />
               </div>
             </div>
