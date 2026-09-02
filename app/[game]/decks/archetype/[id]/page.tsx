@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { Trophy, Calendar, Users, ChevronRight, Coins } from 'lucide-react';
 import { format } from 'date-fns';
 import { resolveCardImageUrl } from '@/lib/images/cloudflare-loader';
+import { FormattedPrice } from '@/components/ui/formatted-price';
 
 export const revalidate = 60;
 
@@ -132,7 +133,7 @@ export default async function ArchetypePage({ params }: ArchetypePageProps) {
   });
 
   const leaderCardRecord = leaderCard as unknown as CardImageRecord;
-  const averagePrice = decksWithPrice > 0 ? (totalPriceSum / decksWithPrice).toFixed(2) : 'N/A';
+  const rawAvgPrice = decksWithPrice > 0 ? totalPriceSum / decksWithPrice : null;
   const leaderImage = resolveCardImageUrl(
     leaderCardRecord.local_image_url || leaderCardRecord.image_url,
   );
@@ -143,50 +144,39 @@ export default async function ArchetypePage({ params }: ArchetypePageProps) {
   let standardCards: StandardDeckCard[] = [];
   if (standardDeck) {
     try {
-      standardCards = await dbQuery<StandardDeckCard>(`
+      const cardRows = await dbQuery<{ count: number; cards: StandardCardRecord }>(`
         SELECT
           dc.count,
-          CASE WHEN c.id IS NULL THEN NULL ELSE json_build_object(
+          json_build_object(
             'name', c.name,
             'image_url', c.image_url,
             'local_image_url', c.local_image_url
-          ) END AS cards
+          ) AS cards
         FROM deck_cards dc
-        LEFT JOIN cards c ON c.id = dc.card_id
+        JOIN cards c ON c.id = dc.card_id
         WHERE dc.deck_id = $1
-        ORDER BY dc.id
+        ORDER BY c.name ASC
       `, [standardDeck.id]);
-    } catch (error) {
-      console.error('Failed to load standard deck cards:', error);
+      standardCards = cardRows;
+    } catch (e) {
+      console.error('Failed to load standard deck cards:', e);
     }
   }
 
   return (
-    <div className="min-h-screen bg-[#060c18] text-white pt-24 pb-20 relative overflow-hidden">
-      
-      {/* Cinematic Hero Background */}
-      <div className="absolute top-0 inset-x-0 h-[500px] overflow-hidden opacity-20 pointer-events-none">
-        {leaderImage && (
-          <Image 
-            src={leaderImage}
-            alt="Hero Background"
-            fill
-            className="object-cover blur-[80px] transform scale-150"
-          />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#060c18]/80 to-[#060c18]" />
-      </div>
-
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 relative z-10 space-y-16">
+    <div className="min-h-screen bg-[#060c18] text-white pt-24 pb-16">
+      <div className="container mx-auto px-4 max-w-6xl space-y-12">
         
-        {/* Breadcrumb / Back Navigation */}
-        <nav className="flex items-center gap-2 text-sm text-zinc-400 font-medium">
-          <Link href="/decks" className="hover:text-white transition-colors">Global Meta</Link>
-          <ChevronRight className="w-4 h-4" />
-          <Link href={`/${game}/decks`} className="hover:text-white transition-colors capitalize">{game.replace('-', ' ')}</Link>
-          <ChevronRight className="w-4 h-4" />
-          <span className="text-zinc-100">{leaderCardRecord.name}</span>
-        </nav>
+        {/* Navigation / Breadcrumb */}
+        <div className="flex items-center gap-2 text-sm text-zinc-400">
+          <Link href="/decks" className="hover:text-white transition-colors">Decks</Link>
+          <ChevronRight className="w-4 h-4 text-zinc-600" />
+          <Link href={`/${game}/decks`} className="capitalize hover:text-white transition-colors">
+            {game.replace('-', ' ')}
+          </Link>
+          <ChevronRight className="w-4 h-4 text-zinc-600" />
+          <span className="text-zinc-200 font-semibold">{leaderCardRecord.name}</span>
+        </div>
 
         {/* Hero Section */}
         <div className="flex flex-col md:flex-row items-center gap-10">
@@ -228,7 +218,7 @@ export default async function ArchetypePage({ params }: ArchetypePageProps) {
 
               <div className="flex flex-col items-center justify-center bg-black/40 border border-white/5 rounded-2xl p-4 md:p-6 min-w-[120px] md:min-w-[140px] shadow-lg backdrop-blur-md">
                 <Coins className="w-6 h-6 text-emerald-400 mb-2" />
-                <span className="text-2xl md:text-3xl font-black text-white">{averagePrice !== 'N/A' ? `$${averagePrice}` : 'N/A'}</span>
+                <FormattedPrice price={rawAvgPrice} className="text-2xl md:text-3xl font-black text-white" />
                 <span className="text-[10px] md:text-xs font-bold text-zinc-500 uppercase tracking-widest">Avg Cost</span>
               </div>
             </div>
