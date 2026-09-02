@@ -42,6 +42,13 @@ const gameStyles: Record<string, { bg: string; text: string; glow: string; borde
     border: 'border-purple-400/20',
     banner: '/images/riftbound-banner.jpg',
   },
+  'boboiboy': {
+    bg: 'from-teal-950/40 via-emerald-950/30 to-zinc-950/60',
+    text: 'text-emerald-400',
+    glow: 'group-hover:border-emerald-400/40',
+    border: 'border-emerald-400/20',
+    banner: '',
+  },
 };
 
 const defaultStyle = {
