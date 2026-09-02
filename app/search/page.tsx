@@ -112,6 +112,7 @@ function SearchResults() {
             'one-piece': 'One Piece',
             'pokemon': 'Pokémon',
             'riftbound': 'Riftbound',
+            'boboiboy': 'BoBoiBoy Galaxy Card',
           };
           setGameFilters([
             { value: 'all', label: 'TCGs' },

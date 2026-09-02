@@ -86,6 +86,27 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "*.dotgg.gg",
       },
+      // BoBoiBoy Galaxy Card / Monsta CDN
+      {
+        protocol: "https",
+        hostname: "www.boboiboygc.com",
+      },
+      {
+        protocol: "https",
+        hostname: "boboiboygc.com",
+      },
+      {
+        protocol: "http",
+        hostname: "www.boboiboygc.com",
+      },
+      {
+        protocol: "http",
+        hostname: "boboiboygc.com",
+      },
+      {
+        protocol: "https",
+        hostname: "*.monsta.com",
+      },
     ],
   },
   typescript: {

@@ -13,7 +13,7 @@ export interface SetSortItem {
 export function sortSetsForGame<T extends SetSortItem>(sets: T[], gameSlug: string): T[] {
   const sorted = [...sets];
 
-  if (gameSlug === 'pokemon' || gameSlug === 'riftbound') {
+  if (gameSlug === 'pokemon' || gameSlug === 'riftbound' || gameSlug === 'boboiboy') {
     // Pure chronological: Latest release date on top -> Oldest at bottom
     return sorted.sort((a, b) => {
       const dateA = a.release_date ? new Date(a.release_date).getTime() : 0;
