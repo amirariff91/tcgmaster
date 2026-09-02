@@ -53,6 +53,13 @@ export const metadata: Metadata = {
     title: 'TCGMaster - TCG Price Intelligence',
     description: 'Search card prices and compare graded comps where source-backed data exists.',
   },
+  icons: {
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/icon', sizes: '32x32', type: 'image/png' },
+    ],
+    apple: [{ url: '/apple-icon', sizes: '180x180', type: 'image/png' }],
+  },
   robots: {
     index: true,
     follow: true,
