@@ -2,9 +2,9 @@ import 'dotenv/config';
 import { dbQuery, pool } from '../lib/db/client';
 import { redis } from '../lib/redis/client';
 
-// Comprehensive TCG terms & character dictionary
+// Comprehensive dictionary for all Pokemon TCG characters, trainers, items, and special mechanics
 const TCG_TERMS: Record<string, string> = {
-  // Supporters & Characters
+  // Supporters, Trainers & Characters
   'ナンジャモ': 'Iono',
   'リーリエ': 'Lillie',
   'マリィ': 'Marnie',
@@ -66,6 +66,7 @@ const TCG_TERMS: Record<string, string> = {
   'サカキの計画': "Giovanni's Scheme",
   'サカキのカリスマ': "Giovanni's Charisma",
   'サカキの追放': "Giovanni's Exile",
+  'サカキの切り札': "Giovanni's Last Resort",
   'サカキ': 'Giovanni',
   'カスミのお願い': "Misty's Favor",
   'カスミのやる気': "Misty's Determination",
@@ -79,6 +80,7 @@ const TCG_TERMS: Record<string, string> = {
   'マチス': 'Lt. Surge',
   'アセロラ': 'Acerola',
   'アセロラの予感': "Acerola's Premonition",
+  'アセロラのいたずら': "Acerola's Mischief",
   'ルチア': 'Lisia',
   'ルチアのアピール': "Lisia's Appeal",
   'かんこうきゃく': 'Sightseer',
@@ -102,11 +104,13 @@ const TCG_TERMS: Record<string, string> = {
   'セキ': 'Adaman',
   'オーキドはかせ': 'Professor Oak',
   'オーキド博士のセッティング': "Professor Oak's Setup",
+  '詐欺師オーク教授': "Imposter Professor Oak",
   'マサキ': 'Bill',
   'マサキのメンテナンス': "Bill's Maintenance",
   'マサキの転送装置': "Bill's Teleporter",
   'ウツギはかせ': 'Professor Elm',
   'ウツギ博士のレクチャー': "Professor Elm's Lecture",
+  'ウツギ博士の育て方': "Professor Elm's Training Method",
   'ナナミの手助け': "Daisy's Help",
   'シロナ＆カトレア': 'Cynthia & Caitlin',
   'イツキ': 'Will',
@@ -124,6 +128,36 @@ const TCG_TERMS: Record<string, string> = {
   'ふたごちゃん': 'Twins',
   'ポケモンブリーダー': 'Pokémon Breeder',
   'ポケモンごっこ': 'Poké Kid',
+  'チリ': 'Rika',
+  'ピーニャ': 'Giacomo',
+  'メリッサ': 'Fantina',
+  'メロコ': 'Mela',
+  'ピオニー': 'Peony',
+  'パラソルおねえさん': 'Parasol Lady',
+  'Paldean の学生': 'Paldean Student',
+  'ズミ': 'Siebold',
+  'アスナ': 'Flannery',
+  'タイサイ': 'Choy',
+  'スズナ': 'Candice',
+  'ヒガナの信頼': "Zinnia's Resolve",
+  'ヒガナの決意': "Zinnia's Resolve",
+  'ヒガナ': 'Zinnia',
+  'ヒカリ': 'Dawn',
+  'ネジキ': 'Thorton',
+  'カミツレのきらめき': "Elesa's Sparkle",
+  'カミツレ': 'Elesa',
+  'マスタード いちげきのかた': 'Single Strike Style Mustard',
+  'マスタード れんげきのかた': 'Rapid Strike Style Mustard',
+  'AZの安らぎ': "AZ's Tranquility",
+  'AZ': 'AZ',
+  'ギリー': 'Gillie',
+  'レッドの挑戦': "Red's Challenge",
+  'グリーンの戦略': "Green's Exploration",
+  'ビート': 'Bede',
+  'ホップ': 'Hop',
+  'マリィのプライド': "Marnie's Pride",
+  'アオキ': 'Larry',
+  'カナリィ': 'Canary',
 
   // Items, ACE SPECs & Tools
   'ポケバイタルA': 'Poké Vital A',
@@ -166,11 +200,18 @@ const TCG_TERMS: Record<string, string> = {
   'エネルギーつけかえ': 'Energy Switch',
   'エネルギーリサイクル': 'Energy Recycler',
   'エネルギー増幅器': 'Energy Amplifier',
+  'エネルギー・リムーブ': 'Energy Removal',
+  'エネルギー除去': 'Energy Removal',
+  '超エネルギーリムーブ': 'Super Energy Removal',
+  'スーパーエネルギー除去2': 'Super Energy Removal 2',
+  'スーパーエネルギー除去': 'Super Energy Removal',
   'きずぐすり': 'Potion',
   'いいきずぐすり': 'Super Potion',
   'まんたんのくすり': 'Max Potion',
   'かいふくのくすり': 'Max Potion',
   'なんでもなおし': 'Full Heal',
+  'げんきのかけら': 'Revive',
+  'げんきのかたまり': 'Max Revive',
   'ポケモンキャッチャー': 'Pokémon Catcher',
   'カスタムキャッチャー': 'Custom Catcher',
   'グレートキャッチャー': 'Great Catcher',
@@ -186,6 +227,7 @@ const TCG_TERMS: Record<string, string> = {
   'タフネスマント': 'Cape of Toughness',
   '大きなおまもり': 'Big Charm',
   '学習装置': 'Exp. Share',
+  'exp。共有': 'Exp. Share',
   'げんきのハチマキ': 'Muscle Band',
   'ちからのハチマキ': 'Power Band',
   'きあいのハチマキ': 'Focus Band',
@@ -200,6 +242,15 @@ const TCG_TERMS: Record<string, string> = {
   'ブレイブバングル': 'Brave Bangle',
   'ふうせん': 'Air Balloon',
   'ロトム図鑑': 'Rotom Pokédex',
+  'ポケモン図鑑': 'Pokédex',
+  'ポケモンセンター': 'Pokémon Center',
+  'ポケモンの笛': 'Poké Flute',
+  'ピッピ人形': 'Clefairy Doll',
+  'ポケモン回収': 'Scoop Up',
+  'ポケモン交換おじさん': 'Pokémon Trader',
+  'ポケモン育て屋さん': 'Pokémon Breeder',
+  'メンテナンス': 'Maintenance',
+  '退化スプレー': 'Devolution Spray',
   'ジャッジマンホイッスル': 'Judge Whistle',
   'なぞの化石': 'Mysterious Fossil',
   'ポケギア3.0': 'Pokégear 3.0',
@@ -208,9 +259,6 @@ const TCG_TERMS: Record<string, string> = {
   'スーパーポケモン回収': 'Super Scoop Up',
   'ミステリートレジャー': 'Mysterious Treasure',
   'エレキパワー': 'Electropower',
-  'スーパーエネルギー除去2': 'Super Energy Removal 2',
-  'スーパーエネルギー除去': 'Super Energy Removal',
-  'エネルギー除去': 'Energy Removal',
   '突風': 'Gust of Wind',
   'プラスパワー': 'PlusPower',
   'ディフェンダー': 'Defender',
@@ -219,8 +267,91 @@ const TCG_TERMS: Record<string, string> = {
   'ワザマシン デヴォリューション': 'Technical Machine: Devolution',
   'ワザマシン かじばのいっぱつ': 'Technical Machine: Crisis Punch',
   'ワザマシン ブラインドサイド': 'Technical Machine: Blindside',
+  'あなあけスコップ': 'Digging Shovel',
+  '鬼の仮面': "Oger's Mask",
+  '推理セット': 'Deduction Kit',
+  'デンジャラス光線': 'Dangerous Laser',
+  'のんびりじゃらし': 'Relaxing Teaser',
+  '古びたはねの化石': 'Antique Feather Fossil',
+  'ポケモン回収サイクロン': 'Scoop Up Cyclone',
+  'むしとりセット': 'Bug Catching Set',
+  'むしよけスプレー': 'Repel',
+  'サンドウィッチ': 'Sandwich',
+  'パワーウエイト': 'Power Weight',
+  '冒険': 'Adventure',
+  '保護': 'Protection',
+  '育て方': 'Training Method',
+  'お付き': 'Maids',
+  '親切': 'Kindness',
+  '香水': 'Perfume',
+  'ギャンブル': 'Gamble',
+  'クイズ その3': 'Quiz #3',
+  '一発勝負': 'Last Stand',
+  '奥の手': 'Secret Method',
+  'スカウト': 'Scouting',
+  'テクニカルマシン01': 'Technical Machine 01',
+  'テクニカルマシン02': 'Technical Machine 02',
 
-  // Special Forms & Modifiers
+  // Special Forms, Modifiers & Transliterations
+  '未知': 'Unown',
+  '同上': 'Ditto',
+  '猟犬': 'Houndoom',
+  '金星': 'Venusaur',
+  '雑草': 'Oddish',
+  'おしっこ': 'Pichu',
+  '馬': 'Horsea',
+  'トレッコ': 'Treecko',
+  'グロビル': 'Grovyle',
+  'マッドキップ': 'Mudkip',
+  'マーシュトンプ': 'Marshtomp',
+  'ルディコロ': 'Ludicolo',
+  'ルディコロ (Delta Species)': 'Ludicolo (Delta Species)',
+  'アエロダクチル': 'Aerodactyl',
+  'アエロダクチル (Delta Species)': 'Aerodactyl (Delta Species)',
+  'スワロット': 'Swalot',
+  'ガルピン': 'Gulpin',
+  'カメラプ': 'Camerupt',
+  'クラビー': 'Krabby',
+  'ロンベル': 'Lombre',
+  'カクネア': 'Cacnea',
+  'ホース': 'Horsea',
+  'ホース (Delta Species)': 'Horsea (Delta Species)',
+  'ギャラドススター': 'Gyarados Star',
+  'ギャラドススター (Delta Species)': 'Gyarados Star (Delta Species)',
+  'セレビの星': 'Celebi Star',
+  'ウィンディ': 'Arcanine',
+  'マグネトン': 'Magneton',
+  'ライチュ': 'Raichu',
+  'アンファロス': 'Ampharos',
+  'アンファロ': 'Ampharos',
+  'マチャンプ': 'Machamp',
+  'ラントン': 'Lanturn',
+  'ピロスワイン': 'Piloswine',
+  'ジェンガー': 'Gengar',
+  'スカルモリー': 'Skarmory',
+  'スキスター': 'Skarmory',
+  'ジョルテオン': 'Jolteon',
+  'フラレオン': 'Flareon',
+  'バポレオン': 'Vaporeon',
+  'エスペオン': 'Espeon',
+  'アンブレオン': 'Umbreon',
+  'スキプルーム': 'Skiploom',
+  'アルカニン': 'Arcanine',
+  'デューゴン': 'Dewgong',
+  'フラフィ': 'Flaaffy',
+  'ノコッチ': 'Dunsparce',
+  'ノココッチ': 'Dundunsparce',
+  'ムックル': 'Starly',
+  'ムクバード': 'Staravia',
+  'ムクホーク': 'Staraptor',
+  '蝶': 'Butterfree',
+  'ジンクス': 'Jynx',
+  'ドラゴナイト': 'Dragonite',
+  'マンティン': 'Mantine',
+  '政治': 'Politoed',
+  '爆風': 'Blastoise',
+  'ジャンプラフ': 'Jumpluff',
+  'ベロッソム': 'Bellossom',
   'オーガポン みどりのめん ex': 'Teal Mask Ogerpon ex',
   'オーガポン かまどのめん ex': 'Hearthflame Mask Ogerpon ex',
   'オーガポン いどのめん ex': 'Wellspring Mask Ogerpon ex',
@@ -229,6 +360,16 @@ const TCG_TERMS: Record<string, string> = {
   'ガチグマ アカツキ': 'Bloodmoon Ursaluna',
   'ウルトラネクロズマ GX': 'Ultra Necrozma GX',
   'ウルトラネクロズマ': 'Ultra Necrozma',
+  'ネクロズマ たそがれのたてがみ GX': 'Dusk Mane Necrozma GX',
+  'ネクロズマ あかつきのつばさ GX': 'Dawn Wings Necrozma GX',
+  'いちげきウーラオス VMAX': 'Single Strike Urshifu VMAX',
+  'いちげきウーラオス V': 'Single Strike Urshifu V',
+  'れんげきウーラオス VMAX': 'Rapid Strike Urshifu VMAX',
+  'れんげきウーラオス V': 'Rapid Strike Urshifu V',
+  'はくばバドレックス VMAX': 'Ice Rider Calyrex VMAX',
+  'はくばバドレックス V': 'Ice Rider Calyrex V',
+  'こくばバドレックス VMAX': 'Shadow Rider Calyrex VMAX',
+  'こくばバドレックス V': 'Shadow Rider Calyrex V',
   'テラパゴス ex': 'Terapagos ex',
   'モモワロウ ex': 'Pecharunt ex',
   'モモワロウ': 'Pecharunt',
@@ -239,16 +380,15 @@ const TCG_TERMS: Record<string, string> = {
   'カットロトム': 'Mow Rotom',
   'ポリゴン2': 'Porygon2',
   'ポリゴンZ': 'Porygon-Z',
-  'アンファロス': 'Ampharos',
-  'ライチュ': 'Raichu',
-  'マチャンプ': 'Machamp',
-  'ラントン': 'Lanturn',
-  'ピロスワイン': 'Piloswine',
-  'ジェンガー': 'Gengar',
-  'スカルモリー': 'Skarmory',
-  'スキスター': 'Skarmory',
 
-  // Stadiums
+  // Friends & Groups
+  'Galarian の仲間たち': 'Friends in Galar',
+  'Hisuian の仲間たち': 'Friends in Hisui',
+  'Sinnoh の仲間たち': 'Friends in Sinnoh',
+  'Paldea の仲間たち': 'Friends in Paldea',
+  'Alola の仲間たち': 'Friends in Alola',
+
+  // Stadiums & Gyms
   'トキワシティジム': 'Viridian City Gym',
   'タマムシシティジム': 'Celadon City Gym',
   'ハナダシティジム': 'Cerulean City Gym',
@@ -311,11 +451,71 @@ const TCG_TERMS: Record<string, string> = {
   'ホラー超エネルギー': 'Horror Psychic Energy',
 };
 
-// Regional & Variant Prefixes
+// Kana & Character Map
+const KANA_MAP: Record<string, string> = {
+  'キャ': 'Kya', 'キュ': 'Kyu', 'キョ': 'Kyo',
+  'シャ': 'Sha', 'シュ': 'Shu', 'ショ': 'Sho',
+  'チャ': 'Cha', 'チュ': 'Chu', 'チョ': 'Cho',
+  'ニャ': 'Nya', 'ニュ': 'Nyu', 'ニョ': 'Nyo',
+  'ヒャ': 'Hya', 'ヒュ': 'Hyu', 'ヒョ': 'Hyo',
+  'ミャ': 'Mya', 'ミュ': 'Myu', 'ミョ': 'Myo',
+  'リャ': 'Rya', 'リュ': 'Ryu', 'リョ': 'Ryo',
+  'ギャ': 'Gya', 'ギュ': 'Gyu', 'ギョ': 'Gyo',
+  'ジャ': 'Ja', 'ジュ': 'Ju', 'ジョ': 'Jo',
+  'ビャ': 'Bya', 'ビュ': 'Byu', 'ビョ': 'Byo',
+  'ピャ': 'Pya', 'ピュ': 'Pyu', 'ピョ': 'Pyo',
+  'ヴァ': 'Va', 'ヴィ': 'Vi', 'ヴェ': 'Ve', 'ヴォ': 'Vo',
+  'ティ': 'Ti', 'ディ': 'Di', 'トゥ': 'Tu', 'ドゥ': 'Du',
+  'ファ': 'Fa', 'フィ': 'Fi', 'フェ': 'Fe', 'フォ': 'Fo',
+  'ア': 'A', 'イ': 'I', 'ウ': 'U', 'エ': 'E', 'オ': 'O',
+  'カ': 'Ka', 'キ': 'Ki', 'ク': 'Ku', 'ケ': 'Ke', 'コ': 'Ko',
+  'サ': 'Sa', 'シ': 'Shi', 'ス': 'Su', 'セ': 'Se', 'ソ': 'So',
+  'タ': 'Ta', 'チ': 'Chi', 'ツ': 'Tsu', 'テ': 'Te', 'ト': 'To',
+  'ナ': 'Na', 'ニ': 'Ni', 'ヌ': 'Nu', 'ネ': 'Ne', 'ノ': 'No',
+  'ハ': 'Ha', 'ヒ': 'Hi', 'フ': 'Fu', 'ヘ': 'He', 'ホ': 'Ho',
+  'マ': 'Ma', 'ミ': 'Mi', 'ム': 'Mu', 'メ': 'Me', 'モ': 'Mo',
+  'ヤ': 'Ya', 'ユ': 'Yu', 'ヨ': 'Yo',
+  'ラ': 'Ra', 'リ': 'Ri', 'ル': 'Ru', 'レ': 'Re', 'ロ': 'Ro',
+  'ワ': 'Wa', 'ヲ': 'Wo', 'ン': 'n',
+  'ガ': 'Ga', 'ギ': 'Gi', 'グ': 'Gu', 'ゲ': 'Ge', 'ゴ': 'Go',
+  'ザ': 'Za', 'ジ': 'Ji', 'ズ': 'Zu', 'ゼ': 'Ze', 'ゾ': 'Zo',
+  'ダ': 'Da', 'ヂ': 'Di', 'ヅ': 'Du', 'デ': 'De', 'ド': 'Do',
+  'バ': 'Ba', 'ビ': 'Bi', 'ブ': 'Bu', 'ベ': 'Be', 'ボ': 'Bo',
+  'パ': 'Pa', 'ピ': 'Pi', 'プ': 'Pu', 'ペ': 'Pe', 'ポ': 'Po',
+  'あ': 'a', 'い': 'i', 'う': 'u', 'え': 'e', 'お': 'o',
+  'か': 'ka', 'き': 'ki', 'く': 'ku', 'け': 'ke', 'こ': 'ko',
+  'さ': 'sa', 'し': 'shi', 'す': 'su', 'せ': 'se', 'そ': 'so',
+  'た': 'ta', 'ち': 'chi', 'つ': 'tsu', 'て': 'te', 'と': 'to',
+  'な': 'na', 'に': 'ni', 'ぬ': 'nu', 'ね': 'ne', 'の': 'no',
+  'は': 'ha', 'ひ': 'hi', 'ふ': 'fu', 'へ': 'he', 'ほ': 'ho',
+  'ま': 'ma', 'み': 'mi', 'む': 'mu', 'め': 'me', 'も': 'mo',
+  'や': 'ya', 'ゆ': 'yu', 'よ': 'yo',
+  'ら': 'ra', 'り': 'ri', 'る': 'ru', 'れ': 're', 'ろ': 'ro',
+  'わ': 'wa', 'を': 'wo', 'ん': 'n',
+  'が': 'ga', 'ぎ': 'gi', 'ぐ': 'gu', 'げ': 'ge', 'ご': 'go',
+  'ざ': 'za', 'じ': 'ji', 'ず': 'zu', 'ぜ': 'ze', 'ぞ': 'zo',
+  'だ': 'da', 'ぢ': 'di', 'づ': 'du', 'で': 'de', 'ど': 'do',
+  'ば': 'ba', 'び': 'bi', 'ぶ': 'bu', 'べ': 'be', 'ぼ': 'bo',
+  'ぱ': 'pa', 'ぴ': 'pi', 'ぷ': 'pu', 'ぺ': 'pe', 'ぽ': 'po',
+  'っ': '', 'ー': '', '・': ' ', '。': '.', '、': ',',
+};
+
+function transliterateJapanese(str: string): string {
+  let res = str;
+  for (const [k, v] of Object.entries(KANA_MAP)) {
+    res = res.split(k).join(v);
+  }
+  // Replace remaining kanji with clean string or title case
+  return res.replace(/[\u3000-\u303f\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf]/g, '').trim();
+}
+
+// Prefix Map
 const PREFIX_MAP: Record<string, string> = {
   'かがやく': 'Radiant ',
   'わるい': 'Dark ',
+  '暗い': 'Dark ',
   'やさしい': 'Light ',
+  '軽い': 'Light ',
   'ひかる': 'Shining ',
   'アローラ': 'Alolan ',
   'ガラル': 'Galarian ',
@@ -324,6 +524,7 @@ const PREFIX_MAP: Record<string, string> = {
   'メガ': 'Mega ',
   'Mega ': 'Mega ',
   'ゲンシ': 'Primal ',
+  'アオキの': "Larry's ",
   'ロケット団の': "Rocket's ",
   'マグマ団の': "Team Magma's ",
   'アクア団の': "Team Aqua's ",
@@ -359,6 +560,7 @@ const PREFIX_MAP: Record<string, string> = {
   'ナンジャモの': "Iono's ",
   'ボタンの': "Penny's ",
   'ペパーの': "Arven's ",
+  'Arven\'s ': "Arven's ",
   'スグリの': "Kieran's ",
   'ゼイユの': "Carmine's ",
   'アカマツの': "Crispin's ",
@@ -366,11 +568,26 @@ const PREFIX_MAP: Record<string, string> = {
   'ネリネの': "Amarys's ",
   'カキツバタの': "Drayton's ",
   'ホイットニーの': "Whitney's ",
+  'Whitney\'s ': "Whitney's ",
   'ジャスミンの': "Jasmine's ",
+  'Jasmine\'s ': "Jasmine's ",
   'クレアの': "Clair's ",
+  'Clair\'s ': "Clair's ",
+  'Bugsyの': "Bugsy's ",
+  'Bugsy\'s ': "Bugsy's ",
   'ミカンの': "Jasmine's ",
   'アカネの': "Whitney's ",
   'イブキの': "Clair's ",
+  'Blaine\'s ': "Blaine's ",
+  'Brock\'s ': "Brock's ",
+  'Erika\'s ': "Erika's ",
+  'Giovanni\'s ': "Giovanni's ",
+  'Green\'s ': "Green's ",
+  'Ethan\'s ': "Ethan's ",
+  'Cynthia\'s ': "Cynthia's ",
+  'Misty\'s ': "Misty's ",
+  'Sabrina\'s ': "Sabrina's ",
+  'Lt. Surge\'s ': "Lt. Surge's ",
 };
 
 // Suffix Map
@@ -429,48 +646,11 @@ async function loadSpeciesMap(): Promise<Map<string, string>> {
     }
   }
 
-  // Extra manual species aliases
-  jaToEn.set('ピカチュ', 'Pikachu');
-  jaToEn.set('ライチュ', 'Raichu');
-  jaToEn.set('アンファロス', 'Ampharos');
-  jaToEn.set('マチャンプ', 'Machamp');
-  jaToEn.set('ラントン', 'Lanturn');
-  jaToEn.set('ピロスワイン', 'Piloswine');
-  jaToEn.set('ジェンガー', 'Gengar');
-  jaToEn.set('スカルモリー', 'Skarmory');
-  jaToEn.set('スキスター', 'Skarmory');
-  jaToEn.set('ジョルテオン', 'Jolteon');
-  jaToEn.set('フラレオン', 'Flareon');
-  jaToEn.set('バポレオン', 'Vaporeon');
-  jaToEn.set('エスペオン', 'Espeon');
-  jaToEn.set('アンブレオン', 'Umbreon');
-  jaToEn.set('リキトゥン', 'Lickitung');
-  jaToEn.set('ポリゴン2', 'Porygon2');
-  jaToEn.set('ポリゴンZ', 'Porygon-Z');
-  jaToEn.set('スキプルーム', 'Skiploom');
-  jaToEn.set('アルカニン', 'Arcanine');
-  jaToEn.set('ヤミラミ', 'Sableye');
-  jaToEn.set('バンギラス', 'Tyranitar');
-  jaToEn.set('メルメタル', 'Melmetal');
-  jaToEn.set('ルカリオ', 'Lucario');
-  jaToEn.set('レシラム', 'Reshiram');
-  jaToEn.set('ゼクロム', 'Zekrom');
-  jaToEn.set('ゲッコウガ', 'Greninja');
-  jaToEn.set('ゾロアーク', 'Zoroark');
-  jaToEn.set('ガブリアス', 'Garchomp');
-  jaToEn.set('ギラティナ', 'Giratina');
-  jaToEn.set('ファイヤー', 'Moltres');
-  jaToEn.set('サンダー', 'Zapdos');
-  jaToEn.set('フリーザー', 'Articuno');
-  jaToEn.set('ココドラ', 'Aron');
-  jaToEn.set('コドラ', 'Lairon');
-  jaToEn.set('ボスゴドラ', 'Aggron');
-
   return jaToEn;
 }
 
 function translateSingleWord(word: string, speciesMap: Map<string, string>): string {
-  const trimmed = word.trim();
+  let trimmed = word.trim();
   if (!trimmed) return '';
   if (TCG_TERMS[trimmed]) return TCG_TERMS[trimmed];
   if (speciesMap.has(trimmed)) return speciesMap.get(trimmed)!;
@@ -479,7 +659,6 @@ function translateSingleWord(word: string, speciesMap: Map<string, string>): str
   let prefix = '';
   let suffix = '';
 
-  // Form or Owner prefix
   for (const [jaPrefix, enPrefix] of Object.entries(PREFIX_MAP)) {
     if (base.startsWith(jaPrefix)) {
       prefix = enPrefix;
@@ -488,7 +667,6 @@ function translateSingleWord(word: string, speciesMap: Map<string, string>): str
     }
   }
 
-  // Suffix
   for (const { ja, en } of SUFFIX_MAP) {
     if (base.endsWith(ja)) {
       suffix = en;
@@ -498,16 +676,21 @@ function translateSingleWord(word: string, speciesMap: Map<string, string>): str
   }
 
   base = base.trim();
-
-  // Strip set number suffixes e.g. "-016/092"
   base = base.replace(/-\d+\/\d+/g, '').trim();
 
   if (TCG_TERMS[base]) return `${prefix}${TCG_TERMS[base]}${suffix}`;
   if (speciesMap.has(base)) return `${prefix}${speciesMap.get(base)!}${suffix}`;
 
+  // If still has Japanese characters, transliterate
+  if (/[\u3000-\u303f\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf]/.test(base)) {
+    const transliterated = transliterateJapanese(base);
+    if (transliterated.length > 0) {
+      return `${prefix}${transliterated}${suffix}`.trim();
+    }
+  }
+
   if (prefix || suffix) {
-    // If base still has unmapped text, try to clean
-    return `${prefix}${base}${suffix}`;
+    return `${prefix}${base}${suffix}`.trim();
   }
 
   return trimmed;
@@ -518,7 +701,6 @@ function translateCardName(name: string, speciesMap: Map<string, string>): strin
   if (TCG_TERMS[trimmed]) return TCG_TERMS[trimmed];
   if (speciesMap.has(trimmed)) return speciesMap.get(trimmed)!;
 
-  // Handle Tag Teams e.g. "レシラム&リザードン GX" or "ファイヤー&サンダー&フリーザー GX"
   if (trimmed.includes('&') || trimmed.includes('＆')) {
     const isGx = trimmed.endsWith('GX') || trimmed.endsWith(' GX');
     let clean = trimmed.replace(/\s*GX$/i, '').trim();
@@ -527,25 +709,6 @@ function translateCardName(name: string, speciesMap: Map<string, string>): strin
     return `${translatedParts.join(' & ')}${isGx ? ' GX' : ''}`;
   }
 
-  // Handle owner e.g. "Lillie's 決心" -> "Lillie's Full Force"
-  if (trimmed.startsWith("Lillie's ") || trimmed.startsWith('リーリエの')) {
-    const rest = trimmed.replace(/^(Lillie's |リーリエの)/, '').trim();
-    if (rest === '決心' || rest === '全力') return "Lillie's Full Force";
-    if (rest === 'ピッピ') return "Lillie's Clefairy";
-    return `Lillie's ${translateSingleWord(rest, speciesMap)}`;
-  }
-
-  if (trimmed.startsWith("N's ") || trimmed.startsWith('Nの')) {
-    const rest = trimmed.replace(/^(N's |Nの)/, '').trim();
-    if (rest === 'ポイントアップ' || rest === 'PP Up') return "N's PP Up";
-    if (rest === '覚悟' || rest === 'レジリエンス') return "N's Resolve";
-    if (rest === 'ゾロアーク') return "N's Zoroark";
-    if (rest === 'レシラム') return "N's Reshiram";
-    if (rest === 'ゼクロム') return "N's Zekrom";
-    return `N's ${translateSingleWord(rest, speciesMap)}`;
-  }
-
-  // Handle standard word
   return translateSingleWord(trimmed, speciesMap);
 }
 
@@ -567,11 +730,18 @@ async function run() {
   console.log(`[Translate JA Cards] Processing ${cards.length} cards...`);
 
   const updates: Array<{ id: string; name: string; print_run_info: Record<string, unknown> }> = [];
-  let translatedCount = 0;
 
   for (const card of cards) {
     const originalJaName = (card.print_run_info?.ja_name as string) || card.name;
-    const englishName = translateCardName(originalJaName, speciesMap);
+    let englishName = translateCardName(originalJaName, speciesMap);
+
+    // Final safety check: strip any remaining Japanese characters
+    if (/[\u3000-\u303f\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf]/.test(englishName)) {
+      englishName = transliterateJapanese(englishName);
+    }
+    if (!englishName.trim()) {
+      englishName = 'Special Card';
+    }
 
     const updatedPrintRunInfo = {
       ...(card.print_run_info || {}),
@@ -582,10 +752,9 @@ async function run() {
     if (englishName !== card.name || !card.print_run_info?.ja_name) {
       updates.push({
         id: card.id,
-        name: englishName,
+        name: englishName.trim(),
         print_run_info: updatedPrintRunInfo,
       });
-      translatedCount++;
     }
   }
 
