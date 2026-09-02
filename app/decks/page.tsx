@@ -2,43 +2,53 @@ import { Metadata } from 'next';
 import { dbQuery } from '@/lib/db/client';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Trophy, ChevronRight, Loader2 } from 'lucide-react';
+import { Trophy, ChevronRight, Loader2, Crown, Flame, Sparkles } from 'lucide-react';
 import { resolveCardImageUrl } from '@/lib/images/cloudflare-loader';
 
 export const metadata: Metadata = {
-  title: 'Global Meta Tier List | TCGMaster',
-  description: 'Explore the top winning deck archetypes across all your favorite Trading Card Games.',
+  title: 'Global Meta Tier List & Top Decks | TCGMaster',
+  description: 'Explore the top winning deck archetypes, tournament statistics, and meta shares across all Trading Card Games.',
 };
 
 export const revalidate = 60; // Revalidate every minute
 
-// Map slugs to dynamic background gradients for the headers
-const gameStyles: Record<string, { bg: string; text: string; banner: string }> = {
+// Map slugs to dynamic theme styles, colors, and banners
+const gameStyles: Record<string, { bg: string; text: string; glow: string; border: string; banner: string }> = {
   'one-piece': {
-    bg: 'from-orange-900/40 to-red-900/40 border-orange-500/30',
-    text: 'text-orange-500',
+    bg: 'from-orange-950/40 via-red-950/30 to-zinc-950/60',
+    text: 'text-orange-400',
+    glow: 'group-hover:border-orange-500/40',
+    border: 'border-orange-500/20',
     banner: '/images/one-piece-banner.jpg',
   },
   'pokemon': {
-    bg: 'from-blue-900/40 to-yellow-900/40 border-blue-400/30',
+    bg: 'from-blue-950/40 via-amber-950/20 to-zinc-950/60',
     text: 'text-blue-400',
+    glow: 'group-hover:border-blue-400/40',
+    border: 'border-blue-400/20',
     banner: '/images/pokemon-banner.jpg',
   },
   'dbfw': {
-    bg: 'from-amber-900/40 to-orange-900/40 border-amber-400/30',
+    bg: 'from-amber-950/40 via-orange-950/30 to-zinc-950/60',
     text: 'text-amber-400',
+    glow: 'group-hover:border-amber-400/40',
+    border: 'border-amber-400/20',
     banner: '/images/dbfw-banner.jpg',
   },
   'riftbound': {
-    bg: 'from-violet-900/40 to-purple-900/40 border-purple-400/30',
+    bg: 'from-violet-950/40 via-purple-950/30 to-zinc-950/60',
     text: 'text-purple-400',
+    glow: 'group-hover:border-purple-400/40',
+    border: 'border-purple-400/20',
     banner: '/images/riftbound-banner.jpg',
   },
 };
 
 const defaultStyle = {
-  bg: 'from-zinc-800/40 to-zinc-900/40 border-emerald-400/30',
+  bg: 'from-zinc-900/40 via-zinc-950/40 to-black/60',
   text: 'text-emerald-400',
+  glow: 'group-hover:border-emerald-400/40',
+  border: 'border-emerald-400/20',
   banner: '',
 };
 
@@ -69,7 +79,6 @@ type GlobalDeckRow = {
 };
 
 export default async function GlobalDecksHub() {
-  // 1. Fetch all active games
   let games: GameRow[] = [];
   let allDecks: GlobalDeckRow[] = [];
 
@@ -80,7 +89,6 @@ export default async function GlobalDecksHub() {
       WHERE is_active = true
     `);
 
-    // JOIN the tournament/game relation and rebuild the nested embed shape.
     allDecks = await dbQuery<GlobalDeckRow>(`
       SELECT
         d.leader_card_id,
@@ -101,8 +109,8 @@ export default async function GlobalDecksHub() {
     console.error('Failed to load global deck data:', error);
   }
 
-  // Enforce strict order: One Piece (left), DBFW (middle), Pokemon (right)
-  const order = ['one-piece', 'dbfw', 'pokemon'];
+  // Desired display order: One Piece, Pokémon, Dragon Ball Fusion World, Riftbound
+  const order = ['one-piece', 'pokemon', 'dbfw', 'riftbound'];
   games.sort((a, b) => {
     const idxA = order.indexOf(a.slug);
     const idxB = order.indexOf(b.slug);
@@ -112,7 +120,7 @@ export default async function GlobalDecksHub() {
     return idxA - idxB;
   });
 
-  // 2. Aggregate Data in JS
+  // Aggregate Data in JS
   const groupedData: Record<string, Record<string, ArchetypeData>> = {};
 
   for (const deck of allDecks) {
@@ -150,150 +158,156 @@ export default async function GlobalDecksHub() {
 
   return (
     <div className="min-h-screen bg-[#060c18] text-white pt-24 pb-20 relative overflow-hidden">
-      {/* Background ambient glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-[400px] bg-indigo-500/10 rounded-[100%] blur-[120px] pointer-events-none" />
+      {/* Background ambient glow effects */}
+      <div className="absolute top-0 left-1/4 w-[600px] h-[350px] bg-blue-600/10 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute top-10 right-1/4 w-[600px] h-[350px] bg-orange-600/10 rounded-full blur-[140px] pointer-events-none" />
 
-      <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8 relative z-10 space-y-16">
+      <div className="mx-auto max-w-[1800px] px-4 sm:px-6 lg:px-8 relative z-10 space-y-12">
         
         {/* Hero Section */}
-        <div className="text-center max-w-3xl mx-auto space-y-6">
-          <h1 className="text-4xl md:text-7xl font-black uppercase tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-zinc-100 to-zinc-500 drop-shadow-sm">
+        <div className="text-center max-w-4xl mx-auto space-y-4">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.04] border border-white/10 text-xs font-bold uppercase tracking-widest text-zinc-300">
+            <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Live Tournament Meta Tier Lists
+          </div>
+          <h1 className="text-4xl sm:text-5xl lg:text-7xl font-black uppercase tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-white via-zinc-200 to-zinc-500 drop-shadow-md">
             Global Meta Tier List
           </h1>
-          <p className="text-xl text-zinc-400 font-medium">
-            Explore the top-performing deck archetypes dominating the competitive scene across all your favorite games.
+          <p className="text-base sm:text-lg text-zinc-400 max-w-2xl mx-auto font-medium">
+            Explore the top-performing deck archetypes dominating competitive tournaments across all major TCG ecosystems.
           </p>
         </div>
 
-        {/* 3-Column Dashboard */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* 4-Column Dashboard Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
           {games.map((game) => {
             const archetypes = tierListsByGame[game.id] || [];
             const style = gameStyles[game.slug] || defaultStyle;
             const maxTops = archetypes.length > 0 ? archetypes[0].tops : 1; 
 
-            // Calculate how many skeleton slots we need to reach 10
-            const numSkeletons = 10 - archetypes.length;
+            // Calculate safe skeletons count (never negative)
+            const numSkeletons = Math.max(0, 8 - archetypes.length);
             const skeletons = Array.from({ length: numSkeletons });
 
             return (
-              <div key={game.id} className="flex flex-col">
+              <div key={game.id} className="flex flex-col bg-zinc-950/40 border border-white/5 rounded-3xl overflow-hidden shadow-2xl backdrop-blur-sm">
                 
                 {/* Game Category Header Banner */}
-                <div className="relative h-48 flex flex-col items-center justify-end text-center p-6 rounded-t-3xl border-t border-x border-white/5 overflow-hidden group bg-zinc-900">
+                <div className="relative h-44 flex flex-col items-center justify-end text-center p-5 overflow-hidden group bg-zinc-900 border-b border-white/5">
                   {/* Banner Image */}
                   {style.banner && (
                     <Image 
                       src={style.banner}
                       alt={game.display_name}
                       fill
-                      className="object-cover object-top opacity-70 group-hover:scale-110 group-hover:opacity-100 transition-all duration-700 z-0"
+                      className="object-cover object-top opacity-60 group-hover:scale-105 group-hover:opacity-85 transition-all duration-700 z-0"
                     />
                   )}
                   {/* Gradient Overlay for Text Readability */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#060c18] via-[#060c18]/50 to-transparent z-10" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#060c18] via-[#060c18]/60 to-transparent z-10" />
 
                   <div className="relative z-20 flex flex-col items-center mt-auto w-full">
-                    <h2 className="text-3xl font-black tracking-tight text-white drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)] mb-1 uppercase">
+                    <h2 className="text-2xl font-black tracking-tight text-white drop-shadow-[0_4px_8px_rgba(0,0,0,0.9)] mb-1 uppercase">
                       {game.display_name}
                     </h2>
                     <Link 
                       href={`/${game.slug}/decks`}
-                      className={`text-sm font-black flex items-center justify-center gap-1 drop-shadow-lg hover:underline transition-colors ${style.text}`}
+                      className={`text-xs font-black flex items-center justify-center gap-1 drop-shadow hover:underline transition-colors ${style.text}`}
                     >
-                      View Tournaments <ChevronRight className="w-4 h-4" />
+                      View Tournaments <ChevronRight className="w-3.5 h-3.5" />
                     </Link>
                   </div>
                 </div>
 
-                {/* Fixed Height Archetypes List (Top 10) */}
-                {/* lg:h-[900px] provides a permanent, flawless layout column on desktop, while h-[450px] prevents massive scrolling on mobile */}
-                <div className="relative h-[450px] lg:h-[900px]">
-                  {/* Empty / Ingesting Overlay */}
+                {/* Fixed Height Archetypes List */}
+                <div className="relative h-[550px] lg:h-[750px]">
+                  {/* Empty / Ingesting Overlay for games without decks */}
                   {archetypes.length === 0 && (
-                    <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm rounded-b-3xl">
-                      <div className="bg-[#060c18]/90 border border-indigo-500/30 px-6 py-3 rounded-2xl shadow-[0_0_30px_rgba(99,102,241,0.2)] flex items-center justify-center transform -translate-y-12">
-                        <span className="font-bold text-white tracking-wide uppercase text-sm">Tournaments Ingesting Soon</span>
+                    <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm p-6 text-center">
+                      <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-3">
+                        <Flame className="w-6 h-6 text-purple-400" />
                       </div>
+                      <span className="font-black text-white tracking-wider uppercase text-sm mb-1">Circuit Launching Soon</span>
+                      <p className="text-zinc-400 text-xs max-w-[200px]">Competitive tournament reporting begins with upcoming regional qualifiers.</p>
                     </div>
                   )}
 
-                  <div className="h-full flex flex-col gap-3 p-4 bg-black/20 border border-white/5 rounded-b-3xl overflow-y-auto custom-scrollbar">
-                    {archetypes.map((arch, index) => (
-                      <Link 
-                        key={arch.leaderCardId} 
-                        href={`/${arch.gameSlug}/decks/archetype/${arch.leaderCardId}`}
-                        className="group relative flex items-center h-[76px] p-3 rounded-2xl border border-white/5 bg-white/[0.03] overflow-hidden shrink-0 transition-all hover:bg-white/10 hover:border-white/20"
+                  <div className="h-full flex flex-col gap-2.5 p-3.5 bg-black/20 overflow-y-auto custom-scrollbar">
+                    {archetypes.map((arch, index) => {
+                      // Rank badge styling
+                      const isRank1 = index === 0;
+                      const isRank2 = index === 1;
+                      const isRank3 = index === 2;
+
+                      let rankBadgeColor = 'text-zinc-500 bg-white/[0.04] border-white/5';
+                      if (isRank1) rankBadgeColor = 'text-amber-300 bg-amber-500/10 border-amber-500/30 shadow-[0_0_12px_rgba(245,158,11,0.2)]';
+                      else if (isRank2) rankBadgeColor = 'text-slate-200 bg-slate-300/10 border-slate-300/30';
+                      else if (isRank3) rankBadgeColor = 'text-amber-600 bg-amber-700/10 border-amber-700/30';
+
+                      return (
+                        <Link 
+                          key={arch.leaderCardId} 
+                          href={`/${arch.gameSlug}/decks/archetype/${arch.leaderCardId}`}
+                          className={`group relative flex items-center h-[72px] px-3 py-2 rounded-2xl border border-white/5 bg-white/[0.02] overflow-hidden shrink-0 transition-all hover:bg-white/[0.06] ${style.glow}`}
+                        >
+                          {/* Rank Badge */}
+                          <div className={`shrink-0 w-7 h-7 rounded-xl border flex items-center justify-center font-black text-xs mr-3 ${rankBadgeColor}`}>
+                            {isRank1 ? <Crown className="w-3.5 h-3.5 text-amber-400" /> : `#${index + 1}`}
+                          </div>
+
+                          {/* Leader Image */}
+                          <div className="relative shrink-0 w-11 h-11 rounded-full overflow-hidden border border-white/10 shadow-md bg-black/80 mr-3">
+                            {arch.leaderCardImage ? (
+                              <Image
+                                src={resolveCardImageUrl(arch.leaderCardImage) ?? arch.leaderCardImage}
+                                alt={arch.leaderCardName}
+                                fill
+                                className="object-cover object-top group-hover:scale-110 transition-transform duration-500"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-[9px] text-zinc-500 font-bold bg-zinc-900">N/A</div>
+                            )}
+                          </div>
+
+                          {/* Details */}
+                          <div className="flex-1 min-w-0 pr-1">
+                            <h3 className="font-bold text-sm text-white truncate mb-1 group-hover:text-amber-300 transition-colors">
+                              {arch.leaderCardName}
+                            </h3>
+                            
+                            {/* Meta Share Bar */}
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 h-1.5 bg-black/50 rounded-full overflow-hidden border border-white/5">
+                                <div 
+                                  className="h-full bg-gradient-to-r from-amber-500 to-yellow-400 rounded-full transition-all duration-700 ease-out"
+                                  style={{ width: `${Math.max(8, (arch.tops / maxTops) * 100)}%` }}
+                                />
+                              </div>
+                              <div className="shrink-0 flex items-center gap-1 text-[10px] uppercase font-black text-zinc-400">
+                                <Trophy className="w-3 h-3 text-amber-500" />
+                                {arch.tops} tops
+                              </div>
+                            </div>
+                          </div>
+                        </Link>
+                      );
+                    })}
+
+                    {/* Skeletons for empty slots */}
+                    {skeletons.map((_, i) => (
+                      <div 
+                        key={`skeleton-${i}`} 
+                        className="relative flex items-center h-[72px] px-3 py-2 rounded-2xl border border-white/5 bg-white/[0.01] overflow-hidden shrink-0 opacity-40"
                       >
-                      {/* Rank Number Background */}
-                      <div className="absolute -left-2 top-1/2 -translate-y-1/2 text-6xl font-black italic text-white/[0.02] group-hover:text-white/[0.04] transition-colors pointer-events-none z-0">
-                        #{index + 1}
-                      </div>
-
-                      {/* Leader Image */}
-                      <div className="relative z-10 shrink-0 w-12 h-12 rounded-full overflow-hidden border-2 border-white/10 shadow-lg bg-black/80 mr-4">
-                        {arch.leaderCardImage ? (
-                          <Image
-                            src={resolveCardImageUrl(arch.leaderCardImage) ?? arch.leaderCardImage}
-                            alt={arch.leaderCardName}
-                            fill
-                            className="object-cover object-top group-hover:scale-110 transition-transform duration-500"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-[10px] text-zinc-500 font-bold bg-zinc-900">N/A</div>
-                        )}
-                      </div>
-
-                      {/* Details */}
-                      <div className="relative z-10 flex-1 min-w-0 pr-2">
-                        <h3 className="font-bold text-base text-white truncate mb-1.5 group-hover:text-amber-400 transition-colors">
-                          {arch.leaderCardName}
-                        </h3>
-                        
-                        {/* Progress Bar for Meta Share */}
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 h-1.5 bg-black/50 rounded-full overflow-hidden border border-white/5">
-                            <div 
-                              className={`h-full bg-gradient-to-r ${style.text.replace('text', 'from').replace('-500', '-600')} to-amber-400 rounded-full transition-all duration-1000 ease-out`}
-                              style={{ width: `${(arch.tops / maxTops) * 100}%` }}
-                            />
-                          </div>
-                          <div className="shrink-0 flex items-center gap-1 text-[10px] uppercase tracking-wider font-black text-zinc-400">
-                            <Trophy className="w-3 h-3 text-amber-500" />
-                            {arch.tops}
-                          </div>
+                        <div className="shrink-0 w-7 h-7 rounded-xl bg-white/[0.02] mr-3" />
+                        <div className="shrink-0 w-11 h-11 rounded-full bg-white/[0.02] mr-3" />
+                        <div className="flex-1 space-y-2">
+                          <div className="h-3.5 bg-white/[0.03] rounded-md w-3/4" />
+                          <div className="h-1.5 bg-white/[0.02] rounded-full w-full" />
                         </div>
                       </div>
-                    </Link>
-                  ))}
-
-                  {/* Skeletons to maintain fixed 10-item layout */}
-                  {skeletons.map((_, i) => (
-                    <div 
-                      key={`skeleton-${i}`} 
-                      className="relative flex items-center h-[76px] p-3 rounded-2xl border border-white/5 bg-white/[0.01] overflow-hidden shrink-0 opacity-50"
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.02] to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
-                      
-                      <div className="shrink-0 w-12 h-12 rounded-full border-2 border-white/5 bg-white/[0.02] mr-4" />
-                      
-                      <div className="flex-1 space-y-3">
-                        <div className="h-4 bg-white/[0.03] rounded-md w-3/4" />
-                        <div className="h-1.5 bg-white/[0.02] rounded-full w-full" />
-                      </div>
-                    </div>
-                  ))}
-                  
-                  {archetypes.length === 0 && (
-                    <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 flex flex-col items-center text-center">
-                      <Loader2 className="w-8 h-8 text-zinc-600 animate-spin mb-3" />
-                      <p className="text-zinc-500 font-bold text-sm">Waiting for Tournament Data...</p>
-                      <p className="text-zinc-600 text-xs mt-1">Scraper integration pending</p>
-                    </div>
-                  )}
-
+                    ))}
+                  </div>
                 </div>
-              </div>
 
               </div>
             );
@@ -303,9 +317,6 @@ export default async function GlobalDecksHub() {
       </div>
 
       <style dangerouslySetInnerHTML={{__html: `
-        @keyframes shimmer {
-          100% { transform: translateX(100%); }
-        }
         .custom-scrollbar::-webkit-scrollbar {
           width: 4px;
         }
@@ -313,11 +324,11 @@ export default async function GlobalDecksHub() {
           background: transparent;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(255,255,255,0.1);
+          background: rgba(255,255,255,0.08);
           border-radius: 4px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(255,255,255,0.2);
+          background: rgba(255,255,255,0.18);
         }
       `}} />
     </div>
