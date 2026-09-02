@@ -68,6 +68,24 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "en.onepiece-cardgame.com",
       },
+      // Scrydex CDN
+      {
+        protocol: "https",
+        hostname: "images.scrydex.com",
+      },
+      {
+        protocol: "https",
+        hostname: "*.scrydex.com",
+      },
+      // DotGG CDN
+      {
+        protocol: "https",
+        hostname: "static.dotgg.gg",
+      },
+      {
+        protocol: "https",
+        hostname: "*.dotgg.gg",
+      },
     ],
   },
   typescript: {
