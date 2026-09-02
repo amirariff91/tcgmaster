@@ -155,7 +155,7 @@ export async function searchCards(
 
     if (parsed.cardName && parsed.cardName.length >= 2) {
       const value = addParam(`%${parsed.cardName}%`);
-      clauses.push(`(c.name ILIKE ${value} OR c.number ILIKE ${value})`);
+      clauses.push(`(c.name ILIKE ${value} OR c.number ILIKE ${value} OR c.print_run_info ILIKE ${value})`);
     }
 
     if (parsed.setName) {
@@ -361,7 +361,7 @@ export async function getSearchSuggestions(
       JOIN sets s ON s.id = c.set_id
       JOIN games g ON g.id = s.game_id
       LEFT JOIN card_price_current cpc ON cpc.card_id = c.id
-      WHERE c.name ILIKE $1 OR c.number ILIKE $1
+      WHERE c.name ILIKE $1 OR c.number ILIKE $1 OR c.print_run_info ILIKE $1
       LIMIT $2
     `, [searchValue, limit]),
     dbQuery<SetRow>(`
