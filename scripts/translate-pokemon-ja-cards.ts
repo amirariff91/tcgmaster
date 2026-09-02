@@ -2,7 +2,7 @@ import 'dotenv/config';
 import { dbQuery, pool } from '../lib/db/client';
 import { redis } from '../lib/redis/client';
 
-// Common Trainers, Supporters, Items, Stadiums, and Energy Dictionary
+// Comprehensive TCG terms & character dictionary
 const TCG_TERMS: Record<string, string> = {
   // Supporters & Characters
   'ナンジャモ': 'Iono',
@@ -21,6 +21,8 @@ const TCG_TERMS: Record<string, string> = {
   'シロナの覇気': "Cynthia's Ambition",
   'ボスの指令': "Boss's Orders",
   '博士の研究': "Professor's Research",
+  '博士の研究（フトゥー博士）': "Professor Turo's Scenario",
+  '博士の研究（オーリム博士）': "Professor Sada's Vitality",
   'ペパー': 'Arven',
   'ボタン': 'Penny',
   'ミモザ': 'Miriam',
@@ -33,8 +35,37 @@ const TCG_TERMS: Record<string, string> = {
   'アカマツ': 'Crispin',
   'カキツバタ': 'Drayton',
   'ネリネ': 'Amarys',
+  'ルザミーネ': 'Lusamine',
+  'グズマ': 'Guzma',
+  'グズマ＆ハラ': 'Guzma & Hala',
+  'ネモ': 'Nemona',
+  'トウコ': 'Hilda',
+  'トウヤ': 'Hilbert',
+  'おじょうさま': 'Lady',
+  'モノマネむすめ': 'Copycat',
+  'アクロマの実験': "Colress's Experiment",
+  'アクロマ': 'Colress',
+  'スイレンのお世話': "Lana's Aid",
+  'スイレン': 'Lana',
+  'マオ': 'Mallow',
+  'マオ＆スイレン': 'Mallow & Lana',
+  'アイリスの闘志': "Iris's Fighting Spirit",
+  'アイリス': 'Iris',
+  'カエデ': 'Katy',
+  'サワロ': 'Saguaro',
+  'ジニア': 'Jacq',
+  'ポピー': 'Poppy',
+  'レホール': 'Raifort',
+  'さぎょういん': 'Worker',
+  'ザクロ': 'Grant',
+  'マーレイン': 'Molayne',
+  'ホイットニー': 'Whitney',
+  'ジャスミン': 'Jasmine',
+  'クレア': 'Clair',
+  'ブルーの探索': "Blue's Tact",
   'サカキの計画': "Giovanni's Scheme",
   'サカキのカリスマ': "Giovanni's Charisma",
+  'サカキの追放': "Giovanni's Exile",
   'サカキ': 'Giovanni',
   'カスミのお願い': "Misty's Favor",
   'カスミのやる気': "Misty's Determination",
@@ -66,18 +97,18 @@ const TCG_TERMS: Record<string, string> = {
   'メロン': 'Melony',
   'ツツジ': 'Roxanne',
   'ナタネの活気': "Gardenia's Vigor",
+  'ナタネ': 'Gardenia',
   'ウォロ': 'Volo',
   'セキ': 'Adaman',
   'オーキドはかせ': 'Professor Oak',
   'オーキド博士のセッティング': "Professor Oak's Setup",
   'マサキ': 'Bill',
+  'マサキのメンテナンス': "Bill's Maintenance",
+  'マサキの転送装置': "Bill's Teleporter",
   'ウツギはかせ': 'Professor Elm',
+  'ウツギ博士のレクチャー': "Professor Elm's Lecture",
   'ナナミの手助け': "Daisy's Help",
-  'スイレン': 'Lana',
-  'マオ': 'Mallow',
-  'マオ＆スイレン': 'Mallow & Lana',
   'シロナ＆カトレア': 'Cynthia & Caitlin',
-  'グズマ＆ハラ': 'Guzma & Hala',
   'イツキ': 'Will',
   'カリン': 'Karen',
   'キョウ': 'Koga',
@@ -85,24 +116,35 @@ const TCG_TERMS: Record<string, string> = {
   'MCの盛り上げ': 'MC Hype',
   'ジャッジマン': 'Judge',
   'クラッシュハンマー': 'Crushing Hammer',
+  '改造ハンマー': 'Enhanced Hammer',
   'とりつかい': 'Bird Keeper',
+  'やまおとこ': 'Hiker',
+  'たんぱんこぞう': 'Youngster',
+  'ミニスカート': 'Lass',
+  'ふたごちゃん': 'Twins',
+  'ポケモンブリーダー': 'Pokémon Breeder',
+  'ポケモンごっこ': 'Poké Kid',
 
-  // Items & Tools
+  // Items, ACE SPECs & Tools
+  'ポケバイタルA': 'Poké Vital A',
+  'アンフェアスタンプ': 'Unfair Stamp',
+  'プライムキャッチャー': 'Prime Catcher',
+  'カウンターキャッチャー': 'Counter Catcher',
+  'カウンターゲイン': 'Counter Gain',
+  'マスターボール': 'Master Ball',
   'ネストボール': 'Nest Ball',
   'ハイパーボール': 'Ultra Ball',
   'スーパーボール': 'Great Ball',
   'モンスターボール': 'Poké Ball',
-  'マスターボール': 'Master Ball',
   'クイックボール': 'Quick Ball',
   'レベルボール': 'Level Ball',
   'ヘビーボール': 'Heavy Ball',
   'ヒスイのヘビーボール': 'Hisuian Heavy Ball',
   'フェザーボール': 'Feather Ball',
+  'プレシャスボール': 'Precious Ball',
   'ふしぎなアメ': 'Rare Candy',
   '大地の器': 'Earthen Vessel',
   'なかよしポフィン': 'Buddy-Buddy Poffin',
-  'プライムキャッチャー': 'Prime Catcher',
-  'カウンターキャッチャー': 'Counter Catcher',
   'すごいつりざお': 'Super Rod',
   'ともだちてちょう': 'Pal Pad',
   '夜のタンカ': 'Night Stretcher',
@@ -110,20 +152,28 @@ const TCG_TERMS: Record<string, string> = {
   '緊急ボード': 'Emergency Board',
   '森の封印石': 'Forest Seal Stone',
   '空の封印石': 'Sky Seal Stone',
+  '大地の封印石': 'Earthen Seal Stone',
   'ロストスイーパー': 'Lost Vacuum',
   'ポケモンいれかえ': 'Switch',
   'あなぬけのヒモ': 'Escape Rope',
   'バトルVIPパス': 'Battle VIP Pass',
   'ダークパッチ': 'Dark Patch',
+  'アクアパッチ': 'Aqua Patch',
+  'メタルソーサー': 'Metal Saucer',
   'エネルギー転送': 'Energy Search',
   'エネルギー回収': 'Energy Retrieval',
   'スーパーエネルギー回収': 'Superior Energy Retrieval',
   'エネルギーつけかえ': 'Energy Switch',
+  'エネルギーリサイクル': 'Energy Recycler',
+  'エネルギー増幅器': 'Energy Amplifier',
   'きずぐすり': 'Potion',
   'いいきずぐすり': 'Super Potion',
   'まんたんのくすり': 'Max Potion',
+  'かいふくのくすり': 'Max Potion',
   'なんでもなおし': 'Full Heal',
   'ポケモンキャッチャー': 'Pokémon Catcher',
+  'カスタムキャッチャー': 'Custom Catcher',
+  'グレートキャッチャー': 'Great Catcher',
   'ポケモン通信': 'Pokémon Communication',
   'パソコン通信': 'Computer Search',
   'ダウジングマシーン': 'Dowsing Machine',
@@ -139,20 +189,79 @@ const TCG_TERMS: Record<string, string> = {
   'げんきのハチマキ': 'Muscle Band',
   'ちからのハチマキ': 'Power Band',
   'きあいのハチマキ': 'Focus Band',
+  'きあいのタスキ': 'Focus Sash',
   'ゴージャスマント': 'Gorgeous Cloak',
   'ヒーローマント': 'Hero’s Cape',
   '覚醒のドラム': 'Awakening Drum',
   'リブートポッド': 'Reboot Pod',
-  'アンフェアスタンプ': 'Unfair Stamp',
   'シークレットボックス': 'Secret Box',
   'プレシャスキャリー': 'Precious Carrier',
   'ミラクルヘッドフォン': 'Miracle Headset',
+  'ブレイブバングル': 'Brave Bangle',
+  'ふうせん': 'Air Balloon',
+  'ロトム図鑑': 'Rotom Pokédex',
+  'ジャッジマンホイッスル': 'Judge Whistle',
+  'なぞの化石': 'Mysterious Fossil',
+  'ポケギア3.0': 'Pokégear 3.0',
+  'ゴツゴツメット': 'Rocky Helmet',
+  'フィールドブロアー': 'Field Blower',
+  'スーパーポケモン回収': 'Super Scoop Up',
+  'ミステリートレジャー': 'Mysterious Treasure',
+  'エレキパワー': 'Electropower',
+  'スーパーエネルギー除去2': 'Super Energy Removal 2',
+  'スーパーエネルギー除去': 'Super Energy Removal',
+  'エネルギー除去': 'Energy Removal',
+  '突風': 'Gust of Wind',
+  'プラスパワー': 'PlusPower',
+  'ディフェンダー': 'Defender',
+  'ワザマシン': 'Technical Machine',
+  'ワザマシン エヴォリューション': 'Technical Machine: Evolution',
+  'ワザマシン デヴォリューション': 'Technical Machine: Devolution',
+  'ワザマシン かじばのいっぱつ': 'Technical Machine: Crisis Punch',
+  'ワザマシン ブラインドサイド': 'Technical Machine: Blindside',
+
+  // Special Forms & Modifiers
+  'オーガポン みどりのめん ex': 'Teal Mask Ogerpon ex',
+  'オーガポン かまどのめん ex': 'Hearthflame Mask Ogerpon ex',
+  'オーガポン いどのめん ex': 'Wellspring Mask Ogerpon ex',
+  'オーガポン いしずえのめん ex': 'Cornerstone Mask Ogerpon ex',
+  'ガチグマ アカツキ ex': 'Bloodmoon Ursaluna ex',
+  'ガチグマ アカツキ': 'Bloodmoon Ursaluna',
+  'ウルトラネクロズマ GX': 'Ultra Necrozma GX',
+  'ウルトラネクロズマ': 'Ultra Necrozma',
+  'テラパゴス ex': 'Terapagos ex',
+  'モモワロウ ex': 'Pecharunt ex',
+  'モモワロウ': 'Pecharunt',
+  'スピンロトム': 'Fan Rotom',
+  'ヒートロトム': 'Heat Rotom',
+  'ウォッシュロトム': 'Wash Rotom',
+  'フロストロトム': 'Frost Rotom',
+  'カットロトム': 'Mow Rotom',
+  'ポリゴン2': 'Porygon2',
+  'ポリゴンZ': 'Porygon-Z',
+  'アンファロス': 'Ampharos',
+  'ライチュ': 'Raichu',
+  'マチャンプ': 'Machamp',
+  'ラントン': 'Lanturn',
+  'ピロスワイン': 'Piloswine',
+  'ジェンガー': 'Gengar',
+  'スカルモリー': 'Skarmory',
+  'スキスター': 'Skarmory',
 
   // Stadiums
+  'トキワシティジム': 'Viridian City Gym',
+  'タマムシシティジム': 'Celadon City Gym',
+  'ハナダシティジム': 'Cerulean City Gym',
+  'ニビシティジム': 'Pewter City Gym',
+  'クチバシティジム': 'Vermilion City Gym',
+  'ヤマブキシティジム': 'Saffron City Gym',
+  'セキチクシティジム': 'Fuchsia City Gym',
+  'グレンタウンジム': 'Cinnabar City Gym',
+  '無人発電所': 'Power Plant',
   'ポケストップ': 'PokéStop',
   '崩れたスタジアム': 'Collapsed Stadium',
   '頂への雪道': 'Path to the Peak',
-  'ボウルタウン': 'Mesagoza',
+  'ボウルタウン': 'Artazon',
   'テーブルシティ': 'Mesagoza',
   'ビーチコート': 'Beach Court',
   'タウンデパート': 'Town Store',
@@ -167,6 +276,7 @@ const TCG_TERMS: Record<string, string> = {
   'せせらぎの丘': 'Brooklet Hill',
 
   // Energy
+  'カウンターエネルギー': 'Counter Energy',
   '基本草エネルギー': 'Basic Grass Energy',
   '基本炎エネルギー': 'Basic Fire Energy',
   '基本水エネルギー': 'Basic Water Energy',
@@ -201,9 +311,22 @@ const TCG_TERMS: Record<string, string> = {
   'ホラー超エネルギー': 'Horror Psychic Energy',
 };
 
-// Owner prefix mappings
-const OWNER_PREFIXES: Record<string, string> = {
+// Regional & Variant Prefixes
+const PREFIX_MAP: Record<string, string> = {
+  'かがやく': 'Radiant ',
+  'わるい': 'Dark ',
+  'やさしい': 'Light ',
+  'ひかる': 'Shining ',
+  'アローラ': 'Alolan ',
+  'ガラル': 'Galarian ',
+  'ヒスイ': 'Hisuian ',
+  'パルデア': 'Paldean ',
+  'メガ': 'Mega ',
+  'Mega ': 'Mega ',
+  'ゲンシ': 'Primal ',
   'ロケット団の': "Rocket's ",
+  'マグマ団の': "Team Magma's ",
+  'アクア団の': "Team Aqua's ",
   'シロナの': "Cynthia's ",
   'カスミの': "Misty's ",
   'タケシの': "Brock's ",
@@ -221,7 +344,10 @@ const OWNER_PREFIXES: Record<string, string> = {
   'レッドの': "Red's ",
   'グリーンの': "Green's ",
   'リーリエの': "Lillie's ",
+  'Lillie\'s ': "Lillie's ",
   'Nの': "N's ",
+  'N\'s ': "N's ",
+  'Koga\'s ': "Koga's ",
   'マリィの': "Marnie's ",
   'ダンデの': "Leon's ",
   'キバナの': "Raihan's ",
@@ -239,24 +365,21 @@ const OWNER_PREFIXES: Record<string, string> = {
   'タロの': "Lacey's ",
   'ネリネの': "Amarys's ",
   'カキツバタの': "Drayton's ",
+  'ホイットニーの': "Whitney's ",
+  'ジャスミンの': "Jasmine's ",
+  'クレアの': "Clair's ",
+  'ミカンの': "Jasmine's ",
+  'アカネの': "Whitney's ",
+  'イブキの': "Clair's ",
 };
 
-// Form prefixes
-const FORM_PREFIXES: Record<string, string> = {
-  'かがやく': 'Radiant ',
-  'わるい': 'Dark ',
-  'やさしい': 'Light ',
-  'ひかる': 'Shining ',
-  'アローラ': 'Alolan ',
-  'ガラル': 'Galarian ',
-  'ヒスイ': 'Hisuian ',
-  'パルデア': 'Paldean ',
-  'メガ': 'Mega ',
-  'ゲンシ': 'Primal ',
-};
-
-// Suffixes
-const SUFFIXES: Array<{ ja: string; en: string }> = [
+// Suffix Map
+const SUFFIX_MAP: Array<{ ja: string; en: string }> = [
+  { ja: ' (デルタ種)', en: ' (Delta Species)' },
+  { ja: '（デルタ種）', en: ' (Delta Species)' },
+  { ja: '(デルタ種)', en: ' (Delta Species)' },
+  { ja: ' (δ種)', en: ' (Delta Species)' },
+  { ja: ' (δ)', en: ' (Delta Species)' },
   { ja: 'V-UNION', en: ' V-UNION' },
   { ja: 'VMAX', en: ' VMAX' },
   { ja: 'VSTAR', en: ' VSTAR' },
@@ -277,14 +400,11 @@ const SUFFIXES: Array<{ ja: string; en: string }> = [
   { ja: 'SP', en: ' SP' },
 ];
 
-async function loadPokemonSpeciesMap(): Promise<Map<string, string>> {
-  console.log('[Translate] Fetching official Pokemon species dictionary from PokeAPI...');
+async function loadSpeciesMap(): Promise<Map<string, string>> {
+  console.log('[Translate] Loading species CSV from PokeAPI...');
   const csvRes = await fetch(
     'https://raw.githubusercontent.com/PokeAPI/pokeapi/master/data/v2/csv/pokemon_species_names.csv',
   );
-  if (!csvRes.ok) {
-    throw new Error(`Failed to fetch species CSV: ${csvRes.statusText}`);
-  }
   const text = await csvRes.text();
   const lines = text.split('\n');
   const jaToEn = new Map<string, string>();
@@ -295,7 +415,7 @@ async function loadPokemonSpeciesMap(): Promise<Map<string, string>> {
     if (parts.length < 3) continue;
     const id = parts[0];
     const lang = parts[1];
-    const name = parts[2];
+    const name = parts[2].trim();
 
     if (!idToNames.has(id)) idToNames.set(id, {});
     const entry = idToNames.get(id)!;
@@ -309,29 +429,58 @@ async function loadPokemonSpeciesMap(): Promise<Map<string, string>> {
     }
   }
 
-  console.log(`[Translate] Loaded ${jaToEn.size} official Pokemon species translations.`);
+  // Extra manual species aliases
+  jaToEn.set('ピカチュ', 'Pikachu');
+  jaToEn.set('ライチュ', 'Raichu');
+  jaToEn.set('アンファロス', 'Ampharos');
+  jaToEn.set('マチャンプ', 'Machamp');
+  jaToEn.set('ラントン', 'Lanturn');
+  jaToEn.set('ピロスワイン', 'Piloswine');
+  jaToEn.set('ジェンガー', 'Gengar');
+  jaToEn.set('スカルモリー', 'Skarmory');
+  jaToEn.set('スキスター', 'Skarmory');
+  jaToEn.set('ジョルテオン', 'Jolteon');
+  jaToEn.set('フラレオン', 'Flareon');
+  jaToEn.set('バポレオン', 'Vaporeon');
+  jaToEn.set('エスペオン', 'Espeon');
+  jaToEn.set('アンブレオン', 'Umbreon');
+  jaToEn.set('リキトゥン', 'Lickitung');
+  jaToEn.set('ポリゴン2', 'Porygon2');
+  jaToEn.set('ポリゴンZ', 'Porygon-Z');
+  jaToEn.set('スキプルーム', 'Skiploom');
+  jaToEn.set('アルカニン', 'Arcanine');
+  jaToEn.set('ヤミラミ', 'Sableye');
+  jaToEn.set('バンギラス', 'Tyranitar');
+  jaToEn.set('メルメタル', 'Melmetal');
+  jaToEn.set('ルカリオ', 'Lucario');
+  jaToEn.set('レシラム', 'Reshiram');
+  jaToEn.set('ゼクロム', 'Zekrom');
+  jaToEn.set('ゲッコウガ', 'Greninja');
+  jaToEn.set('ゾロアーク', 'Zoroark');
+  jaToEn.set('ガブリアス', 'Garchomp');
+  jaToEn.set('ギラティナ', 'Giratina');
+  jaToEn.set('ファイヤー', 'Moltres');
+  jaToEn.set('サンダー', 'Zapdos');
+  jaToEn.set('フリーザー', 'Articuno');
+  jaToEn.set('ココドラ', 'Aron');
+  jaToEn.set('コドラ', 'Lairon');
+  jaToEn.set('ボスゴドラ', 'Aggron');
+
   return jaToEn;
 }
 
-function translateCardName(jaName: string, speciesMap: Map<string, string>): string {
-  const trimmed = jaName.trim();
-
-  // 1. Direct TCG term match (Trainer/Item/Energy)
-  if (TCG_TERMS[trimmed]) {
-    return TCG_TERMS[trimmed];
-  }
-
-  // 2. Direct species match
-  if (speciesMap.has(trimmed)) {
-    return speciesMap.get(trimmed)!;
-  }
+function translateSingleWord(word: string, speciesMap: Map<string, string>): string {
+  const trimmed = word.trim();
+  if (!trimmed) return '';
+  if (TCG_TERMS[trimmed]) return TCG_TERMS[trimmed];
+  if (speciesMap.has(trimmed)) return speciesMap.get(trimmed)!;
 
   let base = trimmed;
   let prefix = '';
   let suffix = '';
 
-  // Check form prefixes
-  for (const [jaPrefix, enPrefix] of Object.entries(FORM_PREFIXES)) {
+  // Form or Owner prefix
+  for (const [jaPrefix, enPrefix] of Object.entries(PREFIX_MAP)) {
     if (base.startsWith(jaPrefix)) {
       prefix = enPrefix;
       base = base.slice(jaPrefix.length);
@@ -339,19 +488,8 @@ function translateCardName(jaName: string, speciesMap: Map<string, string>): str
     }
   }
 
-  // Check owner prefixes
-  if (!prefix) {
-    for (const [jaOwner, enOwner] of Object.entries(OWNER_PREFIXES)) {
-      if (base.startsWith(jaOwner)) {
-        prefix = enOwner;
-        base = base.slice(jaOwner.length);
-        break;
-      }
-    }
-  }
-
-  // Check suffixes
-  for (const { ja, en } of SUFFIXES) {
+  // Suffix
+  for (const { ja, en } of SUFFIX_MAP) {
     if (base.endsWith(ja)) {
       suffix = en;
       base = base.slice(0, -ja.length);
@@ -359,33 +497,62 @@ function translateCardName(jaName: string, speciesMap: Map<string, string>): str
     }
   }
 
-  // Clean base
   base = base.trim();
 
-  // Check if base is a known Pokemon species
-  if (speciesMap.has(base)) {
-    return `${prefix}${speciesMap.get(base)!}${suffix}`;
-  }
+  // Strip set number suffixes e.g. "-016/092"
+  base = base.replace(/-\d+\/\d+/g, '').trim();
 
-  // Check if base is a known TCG term
-  if (TCG_TERMS[base]) {
-    return `${prefix}${TCG_TERMS[base]}${suffix}`;
-  }
+  if (TCG_TERMS[base]) return `${prefix}${TCG_TERMS[base]}${suffix}`;
+  if (speciesMap.has(base)) return `${prefix}${speciesMap.get(base)!}${suffix}`;
 
-  // Return formatted name if suffix/prefix applied
   if (prefix || suffix) {
+    // If base still has unmapped text, try to clean
     return `${prefix}${base}${suffix}`;
   }
 
   return trimmed;
 }
 
+function translateCardName(name: string, speciesMap: Map<string, string>): string {
+  const trimmed = name.trim();
+  if (TCG_TERMS[trimmed]) return TCG_TERMS[trimmed];
+  if (speciesMap.has(trimmed)) return speciesMap.get(trimmed)!;
+
+  // Handle Tag Teams e.g. "レシラム&リザードン GX" or "ファイヤー&サンダー&フリーザー GX"
+  if (trimmed.includes('&') || trimmed.includes('＆')) {
+    const isGx = trimmed.endsWith('GX') || trimmed.endsWith(' GX');
+    let clean = trimmed.replace(/\s*GX$/i, '').trim();
+    const parts = clean.split(/[&＆]/);
+    const translatedParts = parts.map(p => translateSingleWord(p, speciesMap));
+    return `${translatedParts.join(' & ')}${isGx ? ' GX' : ''}`;
+  }
+
+  // Handle owner e.g. "Lillie's 決心" -> "Lillie's Full Force"
+  if (trimmed.startsWith("Lillie's ") || trimmed.startsWith('リーリエの')) {
+    const rest = trimmed.replace(/^(Lillie's |リーリエの)/, '').trim();
+    if (rest === '決心' || rest === '全力') return "Lillie's Full Force";
+    if (rest === 'ピッピ') return "Lillie's Clefairy";
+    return `Lillie's ${translateSingleWord(rest, speciesMap)}`;
+  }
+
+  if (trimmed.startsWith("N's ") || trimmed.startsWith('Nの')) {
+    const rest = trimmed.replace(/^(N's |Nの)/, '').trim();
+    if (rest === 'ポイントアップ' || rest === 'PP Up') return "N's PP Up";
+    if (rest === '覚悟' || rest === 'レジリエンス') return "N's Resolve";
+    if (rest === 'ゾロアーク') return "N's Zoroark";
+    if (rest === 'レシラム') return "N's Reshiram";
+    if (rest === 'ゼクロム') return "N's Zekrom";
+    return `N's ${translateSingleWord(rest, speciesMap)}`;
+  }
+
+  // Handle standard word
+  return translateSingleWord(trimmed, speciesMap);
+}
+
 async function run() {
-  console.log('[Pokemon JA Card Translate] Starting translation of Japanese Pokemon card names...');
+  console.log('[Translate JA Cards] Loading dictionaries...');
+  const speciesMap = await loadSpeciesMap();
 
-  const speciesMap = await loadPokemonSpeciesMap();
-
-  // Fetch all Japanese cards
   const cards = await dbQuery<{
     id: string;
     name: string;
@@ -397,7 +564,7 @@ async function run() {
     WHERE s.slug LIKE 'pokemon-%-ja'
   `);
 
-  console.log(`[Pokemon JA Card Translate] Found ${cards.length} Japanese cards in database.`);
+  console.log(`[Translate JA Cards] Processing ${cards.length} cards...`);
 
   const updates: Array<{ id: string; name: string; print_run_info: Record<string, unknown> }> = [];
   let translatedCount = 0;
@@ -418,15 +585,12 @@ async function run() {
         name: englishName,
         print_run_info: updatedPrintRunInfo,
       });
-      if (englishName !== originalJaName) {
-        translatedCount++;
-      }
+      translatedCount++;
     }
   }
 
-  console.log(`[Pokemon JA Card Translate] Prepared ${updates.length} updates (${translatedCount} translated to English).`);
+  console.log(`[Translate JA Cards] Executing ${updates.length} updates...`);
 
-  // Batch update in chunks of 500
   const batchSize = 500;
   for (let i = 0; i < updates.length; i += batchSize) {
     const chunk = updates.slice(i, i + batchSize);
@@ -440,31 +604,20 @@ async function run() {
       ) AS v
       WHERE c.id = v.id
     `, [JSON.stringify(chunk)]);
-
-    console.log(`[Pokemon JA Card Translate] Updated ${Math.min(i + batchSize, updates.length)} / ${updates.length} cards...`);
   }
 
-  console.log(`\n========================================`);
-  console.log(`[Pokemon JA Card Translate] Successfully Translated Japanese Cards!`);
-  console.log(`Total Cards Updated: ${updates.length}`);
-  console.log(`========================================\n`);
+  console.log(`[Translate JA Cards] Finished translating cards!`);
 
-  // Flush Redis caches
-  const cacheKeys = [
-    'api:search:trending',
-    'api:sets:pokemon',
-    'api:sets:pokemon:ja',
-    'api:games:all',
-  ];
-  for (const key of cacheKeys) {
-    await redis.del(key);
-  }
-  console.log('[Pokemon JA Card Translate] Flushed Redis search caches.');
+  // Flush search cache
+  await redis.del('api:search:trending');
+  const searchKeys = await redis.keys('search:*');
+  for (const k of searchKeys) await redis.del(k);
+  console.log(`[Translate JA Cards] Flushed Redis caches.`);
 }
 
 run()
-  .catch((err) => {
-    console.error('[Pokemon JA Card Translate] Fatal Error:', err);
+  .catch((e) => {
+    console.error(e);
     process.exit(1);
   })
   .finally(async () => {

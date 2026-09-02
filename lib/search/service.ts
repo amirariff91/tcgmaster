@@ -187,12 +187,12 @@ export async function searchCards(
   };
 
   const sortClause = options.sort === 'price-desc'
-    ? 'cpc.headline_cents DESC NULLS LAST, c.id'
+    ? '(c.image_url IS NOT NULL) DESC, cpc.headline_cents DESC NULLS LAST, c.id'
     : options.sort === 'price-asc'
-      ? 'cpc.headline_cents ASC NULLS LAST, c.id'
+      ? '(c.image_url IS NOT NULL) DESC, cpc.headline_cents ASC NULLS LAST, c.id'
       : options.sort === 'name-asc'
-        ? 'c.name ASC, c.id'
-        : 'c.last_price_fetch DESC NULLS LAST, c.name, c.id';
+        ? '(c.image_url IS NOT NULL) DESC, c.name ASC, c.id'
+        : '(c.image_url IS NOT NULL) DESC, c.last_price_fetch DESC NULLS LAST, c.name, c.id';
 
   const countCards = async (extraWhere = '') => {
     const filters = buildFilters();
