@@ -133,13 +133,16 @@ function SearchResults() {
       return;
     }
 
-    if (lang === 'all') {
+    const isMultiLangGame = game === 'pokemon';
+
+    if (isMultiLangGame && lang === 'all') {
       setSetFilters([{ value: 'all', label: 'Select Language First' }]);
       setCardSet('all');
       return;
     }
 
-    fetch(`/api/sets?game=${game}&lang=${lang}`)
+    const langParam = isMultiLangGame ? `&lang=${lang}` : '';
+    fetch(`/api/sets?game=${game}${langParam}`)
       .then(res => res.json())
       .then(json => {
         if (json.data) {
@@ -266,26 +269,26 @@ function SearchResults() {
 
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-2">
-              <Select options={gameFilters} value={game} onChange={setGame} className="w-64" />
+              <Select options={gameFilters} value={game} onChange={(val) => { setGame(val); setCardSet('all'); }} className="w-64" />
               <Select
-                options={game === 'all' ? [{ value: 'all', label: 'Language' }] : [{ value: 'all', label: 'All Languages' }, { value: 'en', label: 'English' }, { value: 'ja', label: 'Japanese' }]}
-                value={game === 'all' ? 'all' : lang}
-                onChange={game === 'all' ? () => {} : setLang}
+                options={game === 'all' || game !== 'pokemon' ? [{ value: 'all', label: 'Language' }] : [{ value: 'all', label: 'All Languages' }, { value: 'en', label: 'English' }, { value: 'ja', label: 'Japanese' }]}
+                value={game === 'all' || game !== 'pokemon' ? 'all' : lang}
+                onChange={game === 'all' || game !== 'pokemon' ? () => {} : setLang}
                 className="w-40"
-                disabled={game === 'all'}
+                disabled={game === 'all' || game !== 'pokemon'}
               />
               <Select
                 options={
                   game === 'all'
                     ? [{ value: 'all', label: 'Sets' }]
-                    : lang === 'all'
+                    : game === 'pokemon' && lang === 'all'
                       ? [{ value: 'all', label: 'Select Language First' }]
                       : setFilters
                 }
-                value={game === 'all' || lang === 'all' ? 'all' : cardSet}
-                onChange={game === 'all' || lang === 'all' ? () => {} : setCardSet}
+                value={game === 'all' || (game === 'pokemon' && lang === 'all') ? 'all' : cardSet}
+                onChange={game === 'all' || (game === 'pokemon' && lang === 'all') ? () => {} : setCardSet}
                 className="w-52"
-                disabled={game === 'all' || lang === 'all'}
+                disabled={game === 'all' || (game === 'pokemon' && lang === 'all')}
               />
             </div>
             <Select options={sortOptions} value={sort} onChange={setSort} className="w-44" />
@@ -362,15 +365,15 @@ function SearchResults() {
             <div className="space-y-4">
               <div>
                 <label className="mb-2 block text-sm font-medium text-zinc-300">Game</label>
-                <Select options={gameFilters} value={game} onChange={setGame} />
+                <Select options={gameFilters} value={game} onChange={(val) => { setGame(val); setCardSet('all'); }} />
               </div>
               <div>
                 <label className="mb-2 block text-sm font-medium text-zinc-300">Language</label>
                 <Select
-                  options={game === 'all' ? [{ value: 'all', label: 'Language' }] : [{ value: 'all', label: 'All Languages' }, { value: 'en', label: 'English' }, { value: 'ja', label: 'Japanese' }]}
-                  value={game === 'all' ? 'all' : lang}
-                  onChange={game === 'all' ? () => {} : setLang}
-                  disabled={game === 'all'}
+                  options={game === 'all' || game !== 'pokemon' ? [{ value: 'all', label: 'Language' }] : [{ value: 'all', label: 'All Languages' }, { value: 'en', label: 'English' }, { value: 'ja', label: 'Japanese' }]}
+                  value={game === 'all' || game !== 'pokemon' ? 'all' : lang}
+                  onChange={game === 'all' || game !== 'pokemon' ? () => {} : setLang}
+                  disabled={game === 'all' || game !== 'pokemon'}
                 />
               </div>
               <div>
@@ -379,13 +382,13 @@ function SearchResults() {
                   options={
                     game === 'all'
                       ? [{ value: 'all', label: 'Sets' }]
-                      : lang === 'all'
+                      : game === 'pokemon' && lang === 'all'
                         ? [{ value: 'all', label: 'Select Language First' }]
                         : setFilters
                   }
-                  value={game === 'all' || lang === 'all' ? 'all' : cardSet}
-                  onChange={game === 'all' || lang === 'all' ? () => {} : setCardSet}
-                  disabled={game === 'all' || lang === 'all'}
+                  value={game === 'all' || (game === 'pokemon' && lang === 'all') ? 'all' : cardSet}
+                  onChange={game === 'all' || (game === 'pokemon' && lang === 'all') ? () => {} : setCardSet}
+                  disabled={game === 'all' || (game === 'pokemon' && lang === 'all')}
                 />
               </div>
             </div>
