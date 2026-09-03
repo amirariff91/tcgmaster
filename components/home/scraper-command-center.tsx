@@ -3,6 +3,7 @@
 import React from 'react';
 import { 
   Cpu, 
+  Database,
   Sparkles, 
   ShieldCheck,
   Globe
@@ -220,7 +221,7 @@ export function ScraperCommandCenter() {
               </div>
 
               <div className="text-2xl sm:text-3xl font-black text-white font-mono mb-1">
-                {cardsProcessed.toLocaleString()}
+                50,795
               </div>
               <div className="text-[11px] text-zinc-400 mb-4 font-medium">
                 Verified Cards across 5 TCG ecosystems
