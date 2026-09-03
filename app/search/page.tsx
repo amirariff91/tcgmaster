@@ -126,6 +126,9 @@ function SearchResults() {
       .catch(console.error);
   }, []);
 
+  const MULTI_LANG_GAMES = React.useMemo(() => new Set(['pokemon', 'one-piece', 'dbfw', 'riftbound']), []);
+  const isLangSupported = game !== 'all' && MULTI_LANG_GAMES.has(game);
+
   React.useEffect(() => {
     if (game === 'all') {
       setSetFilters([{ value: 'all', label: 'Sets' }]);
@@ -133,15 +136,7 @@ function SearchResults() {
       return;
     }
 
-    const isMultiLangGame = game === 'pokemon';
-
-    if (isMultiLangGame && lang === 'all') {
-      setSetFilters([{ value: 'all', label: 'Select Language First' }]);
-      setCardSet('all');
-      return;
-    }
-
-    const langParam = isMultiLangGame ? `&lang=${lang}` : '';
+    const langParam = lang !== 'all' ? `&lang=${lang}` : '';
     fetch(`/api/sets?game=${game}${langParam}`)
       .then(res => res.json())
       .then(json => {
@@ -269,26 +264,20 @@ function SearchResults() {
 
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-2">
-              <Select options={gameFilters} value={game} onChange={(val) => { setGame(val); setCardSet('all'); }} className="w-64" />
+              <Select options={gameFilters} value={game} onChange={(val) => { setGame(val); setCardSet('all'); setLang('all'); }} className="w-64" />
               <Select
-                options={game === 'all' || game !== 'pokemon' ? [{ value: 'all', label: 'Language' }] : [{ value: 'all', label: 'All Languages' }, { value: 'en', label: 'English' }, { value: 'ja', label: 'Japanese' }]}
-                value={game === 'all' || game !== 'pokemon' ? 'all' : lang}
-                onChange={game === 'all' || game !== 'pokemon' ? () => {} : setLang}
+                options={!isLangSupported ? [{ value: 'all', label: 'All Languages' }] : [{ value: 'all', label: 'All Languages' }, { value: 'en', label: 'English' }, { value: 'ja', label: 'Japanese' }]}
+                value={isLangSupported ? lang : 'all'}
+                onChange={isLangSupported ? setLang : () => {}}
                 className="w-40"
-                disabled={game === 'all' || game !== 'pokemon'}
+                disabled={!isLangSupported}
               />
               <Select
-                options={
-                  game === 'all'
-                    ? [{ value: 'all', label: 'Sets' }]
-                    : game === 'pokemon' && lang === 'all'
-                      ? [{ value: 'all', label: 'Select Language First' }]
-                      : setFilters
-                }
-                value={game === 'all' || (game === 'pokemon' && lang === 'all') ? 'all' : cardSet}
-                onChange={game === 'all' || (game === 'pokemon' && lang === 'all') ? () => {} : setCardSet}
+                options={game === 'all' ? [{ value: 'all', label: 'Sets' }] : setFilters}
+                value={game === 'all' ? 'all' : cardSet}
+                onChange={game === 'all' ? () => {} : setCardSet}
                 className="w-52"
-                disabled={game === 'all' || (game === 'pokemon' && lang === 'all')}
+                disabled={game === 'all'}
               />
             </div>
             <Select options={sortOptions} value={sort} onChange={setSort} className="w-44" />
@@ -378,26 +367,20 @@ function SearchResults() {
             <div>
               <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-zinc-400">Language</label>
               <Select
-                options={game === 'all' || game !== 'pokemon' ? [{ value: 'all', label: 'Language (Pokémon only)' }] : [{ value: 'all', label: 'All Languages' }, { value: 'en', label: 'English' }, { value: 'ja', label: 'Japanese' }]}
-                value={game === 'all' || game !== 'pokemon' ? 'all' : lang}
-                onChange={game === 'all' || game !== 'pokemon' ? () => {} : setLang}
-                disabled={game === 'all' || game !== 'pokemon'}
+                options={!isLangSupported ? [{ value: 'all', label: 'All Languages' }] : [{ value: 'all', label: 'All Languages' }, { value: 'en', label: 'English' }, { value: 'ja', label: 'Japanese' }]}
+                value={isLangSupported ? lang : 'all'}
+                onChange={isLangSupported ? setLang : () => {}}
+                disabled={!isLangSupported}
                 className="w-full"
               />
             </div>
             <div>
               <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-zinc-400">Set / Expansion</label>
               <Select
-                options={
-                  game === 'all'
-                    ? [{ value: 'all', label: 'Sets (Select Game First)' }]
-                    : game === 'pokemon' && lang === 'all'
-                      ? [{ value: 'all', label: 'Select Language First' }]
-                      : setFilters
-                }
-                value={game === 'all' || (game === 'pokemon' && lang === 'all') ? 'all' : cardSet}
-                onChange={game === 'all' || (game === 'pokemon' && lang === 'all') ? () => {} : setCardSet}
-                disabled={game === 'all' || (game === 'pokemon' && lang === 'all')}
+                options={game === 'all' ? [{ value: 'all', label: 'Sets (Select Game First)' }] : setFilters}
+                value={game === 'all' ? 'all' : cardSet}
+                onChange={game === 'all' ? () => {} : setCardSet}
+                disabled={game === 'all'}
                 className="w-full"
               />
             </div>
