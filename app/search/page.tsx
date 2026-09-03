@@ -338,59 +338,68 @@ function SearchResults() {
           <SearchBar size="sm" placeholder="Search any card..." />
         </div>
 
-        {/* Controls: Filter Icon & Sort Dropdown */}
+        {/* Controls: Filter Icon & Primary TCGs Dropdown */}
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => setShowFilters(!showFilters)}
             className={cn(
-              "flex h-10 items-center justify-center rounded-lg border border-white/10 bg-[#0b1329]/80 backdrop-blur-sm px-3 text-sm ring-offset-[#060c18] transition-all hover:bg-white/5 hover:border-orange-500/30 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2",
+              "flex h-10 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-[#0b1329]/80 backdrop-blur-sm px-3.5 text-sm ring-offset-[#060c18] transition-all hover:bg-white/5 hover:border-orange-500/30 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2",
               showFilters && "ring-2 ring-orange-500 ring-offset-2 border-orange-500/50"
             )}
+            title="More Filters"
           >
             <SlidersHorizontal className={cn("h-4 w-4 transition-colors", showFilters ? "text-orange-400" : "text-zinc-400")} />
-            {activeFilters.length > 0 && (
-              <Badge variant="default" className="ml-1.5 h-5 w-5 rounded-full p-0 flex items-center justify-center">
-                {activeFilters.length}
+            {(cardSet !== 'all' || (lang !== 'all' && game !== 'all') || sort !== 'price-desc') && (
+              <Badge variant="default" className="ml-1.5 h-4 min-w-4 px-1 rounded-full text-[10px] p-0 flex items-center justify-center bg-orange-500 text-white font-bold">
+                {[cardSet !== 'all', (lang !== 'all' && game !== 'all'), sort !== 'price-desc'].filter(Boolean).length}
               </Badge>
             )}
           </button>
 
-          <Select options={sortOptions} value={sort} onChange={setSort} className="w-52" />
+          {/* Primary Mobile Filter: TCGs Game Selector */}
+          <div className="flex-1 min-w-0">
+            <Select 
+              options={gameFilters} 
+              value={game} 
+              onChange={(val) => { setGame(val); setCardSet('all'); }} 
+              className="w-full"
+            />
+          </div>
         </div>
 
-        {/* Expansion Panel (Mobile Filters) */}
+        {/* Expansion Panel (Secondary Mobile Filters: Sort, Language, Set) */}
         {showFilters && (
-          <div className="rounded-lg border border-white/10 bg-[#0b1329]/80 backdrop-blur-sm p-4">
-            <div className="space-y-4">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-zinc-300">Game</label>
-                <Select options={gameFilters} value={game} onChange={(val) => { setGame(val); setCardSet('all'); }} />
-              </div>
-              <div>
-                <label className="mb-2 block text-sm font-medium text-zinc-300">Language</label>
-                <Select
-                  options={game === 'all' || game !== 'pokemon' ? [{ value: 'all', label: 'Language' }] : [{ value: 'all', label: 'All Languages' }, { value: 'en', label: 'English' }, { value: 'ja', label: 'Japanese' }]}
-                  value={game === 'all' || game !== 'pokemon' ? 'all' : lang}
-                  onChange={game === 'all' || game !== 'pokemon' ? () => {} : setLang}
-                  disabled={game === 'all' || game !== 'pokemon'}
-                />
-              </div>
-              <div>
-                <label className="mb-2 block text-sm font-medium text-zinc-300">Set</label>
-                <Select
-                  options={
-                    game === 'all'
-                      ? [{ value: 'all', label: 'Sets' }]
-                      : game === 'pokemon' && lang === 'all'
-                        ? [{ value: 'all', label: 'Select Language First' }]
-                        : setFilters
-                  }
-                  value={game === 'all' || (game === 'pokemon' && lang === 'all') ? 'all' : cardSet}
-                  onChange={game === 'all' || (game === 'pokemon' && lang === 'all') ? () => {} : setCardSet}
-                  disabled={game === 'all' || (game === 'pokemon' && lang === 'all')}
-                />
-              </div>
+          <div className="rounded-xl border border-white/10 bg-[#0b1329]/95 backdrop-blur-md p-4 shadow-2xl space-y-4">
+            <div>
+              <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-zinc-400">Sort By</label>
+              <Select options={sortOptions} value={sort} onChange={setSort} className="w-full" />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-zinc-400">Language</label>
+              <Select
+                options={game === 'all' || game !== 'pokemon' ? [{ value: 'all', label: 'Language (Pokémon only)' }] : [{ value: 'all', label: 'All Languages' }, { value: 'en', label: 'English' }, { value: 'ja', label: 'Japanese' }]}
+                value={game === 'all' || game !== 'pokemon' ? 'all' : lang}
+                onChange={game === 'all' || game !== 'pokemon' ? () => {} : setLang}
+                disabled={game === 'all' || game !== 'pokemon'}
+                className="w-full"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-zinc-400">Set / Expansion</label>
+              <Select
+                options={
+                  game === 'all'
+                    ? [{ value: 'all', label: 'Sets (Select Game First)' }]
+                    : game === 'pokemon' && lang === 'all'
+                      ? [{ value: 'all', label: 'Select Language First' }]
+                      : setFilters
+                }
+                value={game === 'all' || (game === 'pokemon' && lang === 'all') ? 'all' : cardSet}
+                onChange={game === 'all' || (game === 'pokemon' && lang === 'all') ? () => {} : setCardSet}
+                disabled={game === 'all' || (game === 'pokemon' && lang === 'all')}
+                className="w-full"
+              />
             </div>
           </div>
         )}
