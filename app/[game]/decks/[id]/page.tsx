@@ -111,8 +111,8 @@ export default async function DeckDetailPage({
           Back to Meta
         </Link>
 
-        {/* Header Hero Section */}
-        <div className="relative rounded-3xl overflow-hidden border border-white/10 shadow-2xl bg-[#0d1834] p-8 md:p-12">
+        {/* Header Hero Section (Compact & Responsive on Mobile) */}
+        <div className="relative rounded-2xl md:rounded-3xl overflow-hidden border border-white/10 shadow-2xl bg-[#0d1834] p-4 sm:p-6 md:p-10">
           {/* Background Leader Blur */}
           {(leaderCard?.image_url || leaderCard?.local_image_url) && (
             <div className="absolute inset-0 opacity-20 pointer-events-none">
@@ -125,69 +125,95 @@ export default async function DeckDetailPage({
             </div>
           )}
 
-          <div className="relative z-10 flex flex-col md:flex-row gap-8 items-start md:items-center">
-            {/* Leader Image */}
-            <div className="shrink-0 rounded-2xl overflow-hidden shadow-2xl border-4 border-white/10 w-40 md:w-56 aspect-[2.5/3.5] bg-black/50">
-               {(leaderCard?.image_url || leaderCard?.local_image_url) ? (
-                  <Image
-                    src={resolveCardImageUrl(leaderCard.local_image_url || leaderCard.image_url) ?? ''}
-                    alt={leaderCard.name || 'Leader'}
-                    width={224}
-                    height={314}
-                    className="object-cover w-full h-full"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-zinc-600 font-bold p-4 text-center">
-                    Leader Not Found
-                  </div>
-                )}
+          <div className="relative z-10 flex flex-col md:flex-row gap-4 sm:gap-6 md:gap-8 items-start md:items-center">
+            
+            {/* Top Row on Mobile: Leader Image + Core Details Side-by-Side */}
+            <div className="flex gap-4 sm:gap-5 md:gap-8 items-start w-full md:w-auto">
+              {/* Leader Image */}
+              <div className="shrink-0 rounded-xl md:rounded-2xl overflow-hidden shadow-xl border-2 md:border-4 border-white/10 w-24 sm:w-32 md:w-52 aspect-[2.5/3.5] bg-black/50">
+                 {(leaderCard?.image_url || leaderCard?.local_image_url) ? (
+                    <Image
+                      src={resolveCardImageUrl(leaderCard.local_image_url || leaderCard.image_url) ?? ''}
+                      alt={leaderCard.name || 'Leader'}
+                      width={224}
+                      height={314}
+                      className="object-cover w-full h-full"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-zinc-600 font-bold p-2 text-center text-xs">
+                      Leader Not Found
+                    </div>
+                  )}
+              </div>
+
+              {/* Mobile Core Info (Adjacent to Image) */}
+              <div className="flex-1 min-w-0 space-y-1.5 sm:space-y-2 md:space-y-3">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/40 border border-white/10 text-[11px] sm:text-xs font-semibold text-zinc-300 max-w-full">
+                  <Trophy className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                  <span className="truncate">{deck.placement} Place at {deck.tournaments?.name || 'Tournament'}</span>
+                </div>
+                
+                <h1 className="text-lg sm:text-2xl md:text-4xl lg:text-5xl font-black italic tracking-tight text-white drop-shadow-md leading-tight line-clamp-2 sm:line-clamp-none">
+                  {leaderCard?.name || 'Unknown Leader'} Deck
+                </h1>
+                
+                <p className="text-xs sm:text-sm md:text-lg text-zinc-300 font-medium flex items-center gap-1.5">
+                  <span>Piloted by</span>
+                  <span className="text-emerald-400 font-bold truncate">{deck.player_name || 'Anonymous'}</span>
+                </p>
+
+                {/* Desktop/Tablet Action Buttons */}
+                <div className="hidden md:flex flex-wrap gap-3 pt-2">
+                  <button className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl text-xs font-bold transition-colors">
+                    <Copy className="w-3.5 h-3.5" />
+                    Export Deck
+                  </button>
+                  <a 
+                    href={deck.source_url ?? undefined}
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 bg-black/40 hover:bg-black/60 border border-white/10 px-4 py-2 rounded-xl text-xs font-bold transition-colors"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    View Source
+                  </a>
+                </div>
+              </div>
             </div>
 
-            {/* Deck Info */}
-            <div className="flex-1 space-y-4">
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-black/40 border border-white/10 text-sm font-medium">
-                <Trophy className="w-4 h-4 text-amber-500" />
-                {deck.placement} Place at {deck.tournaments?.name}
-              </div>
-              
-              <h1 className="text-4xl md:text-5xl font-black italic tracking-tight text-white drop-shadow-lg">
-                {leaderCard?.name || 'Unknown Leader'} Deck
-              </h1>
-              
-              <p className="text-xl text-zinc-300 font-medium flex items-center gap-2">
-                Piloted by <span className="text-emerald-400">{deck.player_name}</span>
-              </p>
-
-              <div className="pt-4 flex flex-wrap gap-4">
-                <button className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-6 py-3 rounded-xl font-bold transition-colors">
-                  <Copy className="w-4 h-4" />
-                  Export Deck
-                </button>
-                <a 
-                  href={deck.source_url ?? undefined}
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 bg-black/40 hover:bg-black/60 border border-white/10 px-6 py-3 rounded-xl font-bold transition-colors"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  View Source
-                </a>
-              </div>
+            {/* Mobile Action Buttons Bar */}
+            <div className="flex md:hidden items-center gap-2 w-full pt-1">
+              <button className="flex-1 flex items-center justify-center gap-1.5 bg-white/10 hover:bg-white/20 py-2 px-3 rounded-lg text-xs font-bold transition-colors">
+                <Copy className="w-3.5 h-3.5" />
+                Export
+              </button>
+              <a 
+                href={deck.source_url ?? undefined}
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex-1 flex items-center justify-center gap-1.5 bg-black/40 hover:bg-black/60 border border-white/10 py-2 px-3 rounded-lg text-xs font-bold transition-colors"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                Source
+              </a>
             </div>
 
             {/* Total Price Widget */}
-            <div className="shrink-0 bg-black/40 backdrop-blur-md rounded-2xl p-6 border border-white/10 text-center min-w-[200px]">
-              <p className="text-zinc-400 text-sm font-bold uppercase tracking-widest mb-2">Total Deck Value</p>
-              {deck.total_price ? (
-                <FormattedPrice price={deck.total_price} className="text-4xl font-black text-emerald-400" />
-              ) : (
-                <span className="text-2xl font-bold text-zinc-500">Syncing...</span>
-              )}
-              <button className="mt-4 w-full flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-bold transition-colors">
-                <ShoppingCart className="w-4 h-4" />
-                Buy on TCGPlayer
+            <div className="w-full md:w-auto md:shrink-0 bg-black/40 backdrop-blur-md rounded-xl md:rounded-2xl p-3 sm:p-4 md:p-6 border border-white/10 flex md:flex-col items-center justify-between md:justify-center gap-3 min-w-[180px] md:min-w-[200px]">
+              <div className="text-left md:text-center">
+                <p className="text-zinc-400 text-[10px] sm:text-xs font-bold uppercase tracking-widest">Total Deck Value</p>
+                {deck.total_price ? (
+                  <FormattedPrice price={deck.total_price} className="text-xl sm:text-2xl md:text-4xl font-black text-emerald-400 font-mono" />
+                ) : (
+                  <span className="text-base sm:text-lg font-bold text-zinc-500">Syncing...</span>
+                )}
+              </div>
+              <button className="flex items-center justify-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-colors shrink-0">
+                <ShoppingCart className="w-3.5 h-3.5" />
+                <span>Buy on TCGPlayer</span>
               </button>
             </div>
+
           </div>
         </div>
 
