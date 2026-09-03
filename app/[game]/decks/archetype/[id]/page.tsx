@@ -305,14 +305,62 @@ export default async function ArchetypePage({ params }: ArchetypePageProps) {
           </div>
 
           <div className="bg-black/40 backdrop-blur-md border border-white/5 rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl">
-            <div className="overflow-x-auto">
+            {/* Mobile View: Compact List Rows (Zero Horizontal Scrolling) */}
+            <div className="block md:hidden divide-y divide-white/5">
+              {decks.map((deck) => (
+                <div key={deck.id} className="p-3 flex items-center justify-between gap-3 hover:bg-white/[0.02] transition-colors">
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <div className="w-7 h-7 rounded-full bg-orange-500/20 border border-orange-500/30 flex items-center justify-center text-orange-400 font-bold text-xs shrink-0">
+                      {deck.player_name ? deck.player_name.charAt(0).toUpperCase() : '?'}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-bold text-xs sm:text-sm text-white truncate">
+                        {deck.player_name || 'Unknown Player'}
+                      </div>
+                      <div className="text-[10px] sm:text-xs text-zinc-400 truncate flex items-center gap-1 mt-0.5">
+                        <span className="truncate max-w-[140px] sm:max-w-[200px]">{deck.tournaments?.name || 'Tournament'}</span>
+                        {deck.tournaments?.date && (
+                          <>
+                            <span className="text-zinc-600">&bull;</span>
+                            <span className="text-zinc-500 shrink-0">{format(new Date(deck.tournaments.date), 'MMM d')}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-400 font-bold text-[10px] sm:text-xs border border-amber-500/20">
+                      <Trophy className="w-3 h-3" />
+                      <span>{deck.placement}</span>
+                    </div>
+
+                    <Link
+                      href={`/${game}/decks/${deck.id}`}
+                      className="inline-flex items-center justify-center px-2.5 py-1 text-xs font-bold text-orange-400 bg-orange-500/10 hover:bg-orange-500/20 rounded-lg transition-colors border border-orange-500/30"
+                    >
+                      View
+                    </Link>
+                  </div>
+                </div>
+              ))}
+
+              {decks.length === 0 && (
+                <div className="p-8 text-center text-zinc-500 text-xs font-medium">
+                  No decklists found for this archetype.
+                </div>
+              )}
+            </div>
+
+            {/* Desktop View: Full Spacious Table */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-white/[0.02] border-b border-white/5 text-[11px] sm:text-xs uppercase tracking-wider text-zinc-400 font-bold">
-                    <th className="px-3.5 sm:px-6 py-3 sm:py-4 whitespace-nowrap">Player</th>
-                    <th className="px-3.5 sm:px-6 py-3 sm:py-4 whitespace-nowrap">Placement</th>
-                    <th className="px-3.5 sm:px-6 py-3 sm:py-4 whitespace-nowrap">Tournament</th>
-                    <th className="px-3.5 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right">Action</th>
+                  <tr className="bg-white/[0.02] border-b border-white/5 text-xs uppercase tracking-wider text-zinc-400 font-bold">
+                    <th className="px-6 py-4 whitespace-nowrap">Player</th>
+                    <th className="px-6 py-4 whitespace-nowrap">Placement</th>
+                    <th className="px-6 py-4 whitespace-nowrap">Tournament</th>
+                    <th className="px-6 py-4 whitespace-nowrap text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
@@ -320,10 +368,10 @@ export default async function ArchetypePage({ params }: ArchetypePageProps) {
                     <tr key={deck.id} className="group hover:bg-white/[0.02] transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 font-black shrink-0">
+                          <div className="w-8 h-8 rounded-full bg-orange-500/20 border border-orange-500/30 flex items-center justify-center text-orange-400 font-black shrink-0">
                             {deck.player_name ? deck.player_name.charAt(0).toUpperCase() : '?'}
                           </div>
-                          <span className="font-bold text-white group-hover:text-indigo-400 transition-colors">
+                          <span className="font-bold text-white group-hover:text-orange-400 transition-colors">
                             {deck.player_name || 'Unknown Player'}
                           </span>
                         </div>
@@ -351,7 +399,7 @@ export default async function ArchetypePage({ params }: ArchetypePageProps) {
                       <td className="px-6 py-4 whitespace-nowrap text-right">
                         <Link
                           href={`/${game}/decks/${deck.id}`}
-                          className="inline-flex items-center justify-center px-4 py-2 text-sm font-bold text-white bg-indigo-600/80 hover:bg-indigo-500 rounded-xl transition-colors shadow-lg hover:shadow-indigo-500/25 border border-indigo-500/50"
+                          className="inline-flex items-center justify-center px-4 py-2 text-sm font-bold text-white bg-orange-600/80 hover:bg-orange-500 rounded-xl transition-colors shadow-lg hover:shadow-orange-500/25 border border-orange-500/50"
                         >
                           View List
                         </Link>
