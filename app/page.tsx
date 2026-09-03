@@ -21,11 +21,11 @@ const marketMovers: { gainers: MarketMover[]; losers: MarketMover[] } = {
 };
 
 const categories: Category[] = [
-  { name: 'One Piece', slug: 'one-piece', description: 'Romance Dawn, Pillars of Strength, Manga Rares', cardCount: '10,000+', change: '+12.4%', topMover: 'Manga Shanks PSA 10' },
-  { name: 'Pokémon', slug: 'pokemon', description: 'Base Set, 151, Vintage Holos, Special Illustration Rares', cardCount: '20,000+', change: '+14.2%', topMover: 'Charizard Base Set' },
-  { name: 'Riftbound', slug: 'riftbound', description: 'Origins, Spiritforged, Unleashed, Vendetta, Champions', cardCount: '1,400+', change: '+8.9%', topMover: 'Ahri Legendary' },
-  { name: 'Dragon Ball', slug: 'dbfw', description: 'Fusion World, Awakened Pulse, Super Rares', cardCount: '5,200+', change: '+5.7%', topMover: 'Goku SCR' },
-  { name: 'Monsta Galaxy', slug: 'boboiboy', description: 'Pek Fusion, Pek Adiwira, Pek Elemental, Pek Versus', cardCount: '630+', change: '+10.5%', topMover: 'BoBoiBoy FrostFire' },
+  { name: 'One Piece', slug: 'one-piece', description: 'Romance Dawn, Pillars of Strength, Manga Rares', cardCount: '10,000+' },
+  { name: 'Pokémon', slug: 'pokemon', description: 'Base Set, 151, Vintage Holos, Special Illustration Rares', cardCount: '20,000+' },
+  { name: 'Riftbound', slug: 'riftbound', description: 'Origins, Spiritforged, Unleashed, Vendetta, Champions', cardCount: '1,400+' },
+  { name: 'Dragon Ball', slug: 'dbfw', description: 'Fusion World, Awakened Pulse, Super Rares', cardCount: '5,200+' },
+  { name: 'Monsta Galaxy', slug: 'boboiboy', description: 'Pek Fusion, Pek Adiwira, Pek Elemental, Pek Versus', cardCount: '630+' },
 ];
 
 // Without this the page has no dynamic API left after the cookie-free client swap, so
