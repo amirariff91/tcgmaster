@@ -481,8 +481,9 @@ export function CollectrChart({ priceHistory, gradeInfos, marketUrls = {}, class
         <div className="divide-y divide-white/10">
           {latestPricesList.map((item) => {
             const s = item.source.toLowerCase();
+            const isCarousell = s.includes('carousell');
+            const isSnkrdunk = s.includes('snkrdunk');
             const logo = MARKET_LOGOS.find(m => s.includes(m.match))?.logo ?? null;
-            const needsWhitePlate = !s.includes('snkrdunk') && !s.includes('carousell');
             const href = marketUrls[item.source] ?? null;
 
             const body = (
@@ -492,11 +493,14 @@ export function CollectrChart({ priceHistory, gradeInfos, marketUrls = {}, class
                     <img
                       src={logo}
                       alt={formatSourceName(item.source)}
-                      className={`w-8 h-8 rounded-md border border-white/10 shadow-sm ${
-                        needsWhitePlate
-                          ? 'bg-white object-contain p-1'
-                          : 'bg-white/5 object-cover p-0 overflow-hidden'
-                      }`}
+                      className={cn(
+                        "w-8 h-8 rounded-md border border-white/10 shadow-sm",
+                        isCarousell
+                          ? "bg-[#ff2636] object-cover p-0 overflow-hidden"
+                          : isSnkrdunk
+                            ? "bg-white/5 object-cover p-0 overflow-hidden"
+                            : "bg-white object-contain p-1"
+                      )}
                     />
                   ) : (
                     <div className="w-8 h-8 rounded-md border border-white/10 shadow-sm bg-white/5 flex items-center justify-center text-zinc-400">
