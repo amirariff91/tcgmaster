@@ -22,11 +22,11 @@ const marketMovers: { gainers: MarketMover[]; losers: MarketMover[] } = {
 };
 
 const categories: Category[] = [
-  { name: 'One Piece', slug: 'one-piece', description: 'Romance Dawn, Pillars of Strength, Manga Rares', cardCount: '10,000+' },
-  { name: 'Pokémon', slug: 'pokemon', description: 'Base Set, 151, Vintage Holos, Special Illustration Rares', cardCount: '20,000+' },
-  { name: 'Riftbound', slug: 'riftbound', description: 'Origins, Spiritforged, Unleashed, Vendetta, Champions', cardCount: '1,400+' },
-  { name: 'Dragon Ball', slug: 'dbfw', description: 'Fusion World, Awakened Pulse, Super Rares', cardCount: '5,200+' },
-  { name: 'Monsta Galaxy', slug: 'boboiboy', description: 'Pek Fusion, Pek Adiwira, Pek Elemental, Pek Versus', cardCount: '630+' },
+  { name: 'One Piece', slug: 'one-piece', cardCount: '10,000+' },
+  { name: 'Pokémon', slug: 'pokemon', cardCount: '20,000+' },
+  { name: 'Riftbound', slug: 'riftbound', cardCount: '1,400+' },
+  { name: 'Dragon Ball', slug: 'dbfw', cardCount: '5,200+' },
+  { name: 'Monsta Galaxy', slug: 'boboiboy', cardCount: '630+' },
 ];
 
 // Without this the page has no dynamic API left after the cookie-free client swap, so
@@ -201,11 +201,7 @@ export default async function HomePage() {
 
         {/* Categories */}
         <section className="mb-24">
-           <div className="text-center mb-12">
-            <h3 className="text-3xl font-bold text-white tracking-tight">Explore <span className="text-orange-500">Tcgs</span></h3>
-          </div>
-
-           <CategoryCards categories={categories} />
+          <CategoryCards categories={categories} />
         </section>
 
       </div>

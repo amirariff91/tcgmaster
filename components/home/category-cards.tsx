@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils';
 export interface Category {
   name: string;
   slug: string;
-  description: string;
+  description?: string;
   cardCount: string;
 }
 
@@ -86,9 +86,9 @@ export function CategoryCards({ categories }: CategoryCardsProps) {
           <div className="flex items-center gap-2 mb-1">
             <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-black uppercase tracking-widest bg-orange-500/10 border border-orange-500/30 text-orange-400">
               <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-ping" />
-              Verified Ecosystems
+              Ecosystems
             </span>
-            <span className="text-xs font-semibold text-zinc-400">5 Active Card Universes</span>
+            <span className="text-xs font-semibold text-zinc-400">5 Active TCGs Universes</span>
           </div>
           <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
             Explore <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-amber-400">TCGs</span>
@@ -116,7 +116,7 @@ export function CategoryCards({ categories }: CategoryCardsProps) {
               key={category.slug}
               href={`/search?game=${category.slug}`}
               className={cn(
-                "group relative block overflow-hidden rounded-2xl border border-white/10 bg-[#080e1e]/90 p-5 md:p-6 backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5",
+                "group relative block overflow-hidden rounded-2xl border border-white/10 bg-[#080e1e]/90 p-4 sm:p-5 md:p-6 backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5",
                 theme.borderGlow
               )}
             >
@@ -128,39 +128,34 @@ export function CategoryCards({ categories }: CategoryCardsProps) {
                 )} 
               />
 
-              <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 
-                {/* Game Title, Icon & Description */}
-                <div className="flex items-start sm:items-center gap-4 min-w-0">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-black/40 shadow-inner group-hover:scale-105 transition-transform">
+                {/* Game Title & Icon */}
+                <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
+                  <div className="flex h-11 w-11 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-black/40 shadow-inner group-hover:scale-105 transition-transform">
                     {theme.icon}
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2.5 flex-wrap">
-                      <h3 className="text-lg font-black text-white group-hover:text-orange-400 transition-colors">
-                        {category.name}
-                      </h3>
-                      <span className={cn("px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold border", theme.badge)}>
-                        {theme.pipelineStatus}
-                      </span>
-                    </div>
-                    <p className="text-xs sm:text-sm text-zinc-400 mt-1 line-clamp-1">
-                      {category.description}
-                    </p>
+                  <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
+                    <h3 className="text-base sm:text-lg font-black text-white group-hover:text-orange-400 transition-colors">
+                      {category.name}
+                    </h3>
+                    <span className={cn("px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold border shrink-0", theme.badge)}>
+                      {theme.pipelineStatus}
+                    </span>
                   </div>
                 </div>
 
                 {/* Right Side: Indexed Count & Tactical Explore Action */}
-                <div className="flex items-center justify-between md:justify-end gap-6 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-white/5">
-                  <div className="text-left md:text-right">
+                <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-6 shrink-0 pt-2.5 sm:pt-0 border-t sm:border-t-0 border-white/5">
+                  <div className="text-left sm:text-right">
                     <p className="text-[10px] uppercase font-bold tracking-widest text-zinc-500">Indexed Catalog</p>
-                    <p className="font-mono text-base font-black text-white tracking-tight">
+                    <p className="font-mono text-sm sm:text-base font-black text-white tracking-tight">
                       {category.cardCount} <span className="text-xs text-zinc-400 font-medium">cards</span>
                     </p>
                   </div>
 
                   {/* Tactical Action Button */}
-                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/[0.04] border border-white/10 text-xs font-bold text-white group-hover:bg-gradient-to-r group-hover:from-orange-600 group-hover:to-amber-500 group-hover:border-transparent group-hover:shadow-[0_0_20px_rgba(249,115,22,0.4)] transition-all">
+                  <div className="inline-flex items-center gap-2 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-white/[0.04] border border-white/10 text-xs font-bold text-white group-hover:bg-gradient-to-r group-hover:from-orange-600 group-hover:to-amber-500 group-hover:border-transparent group-hover:shadow-[0_0_20px_rgba(249,115,22,0.4)] transition-all">
                     <span>Enter Market</span>
                     <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
                   </div>
