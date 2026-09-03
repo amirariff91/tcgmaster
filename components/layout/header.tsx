@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Menu, X, Settings, LogOut, Briefcase, Bell, Trophy, FolderOpen } from 'lucide-react';
+import { Menu, X, Settings, LogOut, Briefcase, Bell, Trophy, FolderOpen, ChevronRight, TrendingUp, Layers } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
@@ -256,69 +256,113 @@ export function Header() {
       {isMobileMenuOpen && (
         <div
           id="mobile-navigation-menu"
-          className="fixed inset-0 z-40 bg-black/80 backdrop-blur-md pt-24 px-6 md:hidden overflow-y-auto"
+          className="fixed inset-0 z-40 bg-black/70 backdrop-blur-md pt-20 px-4 md:hidden overflow-y-auto"
+          onClick={() => setIsMobileMenuOpen(false)}
         >
-          <nav ref={mobileMenuRef} className="flex flex-col items-end gap-6 text-right pb-12">
-            
-            <div className="flex flex-col items-end gap-4">
-              {mainNavItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="text-2xl font-bold text-white hover:text-orange-400 transition-colors"
-                >
-                  {item.label}
-                </Link>
-              ))}
+          {/* Clean Floating Card Container */}
+          <div 
+            ref={mobileMenuRef as any}
+            className="w-full max-w-sm mx-auto rounded-3xl border border-white/15 bg-[#0b1329]/95 backdrop-blur-xl p-5 shadow-2xl space-y-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Navigation Section */}
+            <div className="space-y-1">
+              <p className="px-3 text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-2">Navigation</p>
+              
+              <Link
+                href="/search"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex items-center justify-between px-3.5 py-3 rounded-2xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 hover:border-orange-500/30 transition-all group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-400 group-hover:scale-105 transition-transform">
+                    <TrendingUp className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="text-base font-bold text-white group-hover:text-orange-400 transition-colors">Prices</span>
+                    <p className="text-[11px] text-zinc-400">Search 50,000+ cards & market sales</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-zinc-500 group-hover:text-white transition-colors" />
+              </Link>
+
+              <Link
+                href="/decks"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex items-center justify-between px-3.5 py-3 rounded-2xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 hover:border-orange-500/30 transition-all group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 group-hover:scale-105 transition-transform">
+                    <Layers className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="text-base font-bold text-white group-hover:text-amber-400 transition-colors">Decks</span>
+                    <p className="text-[11px] text-zinc-400">Tournament decklists & meta tiers</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-zinc-500 group-hover:text-white transition-colors" />
+              </Link>
             </div>
 
-            <div className="w-16 h-px bg-white/10 my-2" />
+            {/* Divider */}
+            <div className="h-px bg-white/10" />
 
-            {/* User & Settings */}
-            <div className="flex flex-col items-end gap-5 w-full">
-              <CurrencyToggle />
+            {/* Currency & User Actions */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between px-1">
+                <span className="text-xs font-semibold text-zinc-400">Currency</span>
+                <CurrencyToggle />
+              </div>
 
               {!isAuthLoading && (
                 user ? (
-                  <>
-                    <div className="text-sm text-zinc-500 mb-2 truncate max-w-full">{user.email}</div>
-                    {userMenuItems.map((item) => {
-                      const Icon = item.icon;
-                      return (
-                        <Link
-                          key={item.href}
-                          href={item.href}
-                          onClick={() => setIsMobileMenuOpen(false)}
-                          className="flex items-center justify-end gap-3 text-lg font-medium text-zinc-300 transition-colors hover:text-white w-full"
-                        >
-                          {item.label}
-                          <Icon className="h-5 w-5" aria-hidden="true" />
-                        </Link>
-                      );
-                    })}
+                  <div className="space-y-2 pt-2 border-t border-white/5">
+                    <div className="px-2 text-xs text-zinc-400 truncate">Signed in as <strong className="text-white">{user.email}</strong></div>
+                    <div className="grid grid-cols-2 gap-1.5 pt-1">
+                      {userMenuItems.slice(0, 4).map((item) => {
+                        const Icon = item.icon;
+                        return (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            onClick={() => setIsMobileMenuOpen(false)}
+                            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.02] hover:bg-white/10 text-xs font-medium text-zinc-300 hover:text-white transition-colors"
+                          >
+                            <Icon className="w-3.5 h-3.5 text-zinc-400" />
+                            <span>{item.label}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
                     <button
                       type="button"
                       onClick={() => {
                         handleSignOut();
                         setIsMobileMenuOpen(false);
                       }}
-                      className="flex items-center justify-end gap-3 text-lg font-medium text-zinc-300 transition-colors hover:text-white mt-2 w-full"
+                      className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-xs font-bold text-red-300 hover:bg-red-500/20 transition-all mt-2"
                     >
+                      <LogOut className="w-3.5 h-3.5" />
                       Sign Out
-                      <LogOut className="h-5 w-5" aria-hidden="true" />
                     </button>
-                  </>
+                  </div>
                 ) : (
-                  <Link href="/login" onClick={() => setIsMobileMenuOpen(false)} className="mt-4 w-full flex justify-end">
-                    <Button size="lg" className="rounded-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-white font-bold tracking-wide shadow-[0_0_15px_rgba(249,115,22,0.4)] border-none px-8">
+                  <Link 
+                    href="/login" 
+                    onClick={() => setIsMobileMenuOpen(false)} 
+                    className="block w-full pt-1"
+                  >
+                    <Button 
+                      size="lg" 
+                      className="w-full rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-white font-bold tracking-wide shadow-[0_0_20px_rgba(249,115,22,0.4)] border-none py-3"
+                    >
                       Sign In
                     </Button>
                   </Link>
                 )
               )}
             </div>
-          </nav>
+          </div>
         </div>
       )}
     </>
