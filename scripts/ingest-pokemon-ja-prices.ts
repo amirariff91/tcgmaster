@@ -75,11 +75,11 @@ async function ingestPokemonJaPrices() {
 
         const headlineCents = Math.round(bestPrice * 100);
 
-        // Record observation in price_history
+        // Record observation in price_history using canonical schema
         await dbQuery(`
-          INSERT INTO price_history (card_id, source, raw_price, price_usd, condition, is_foil, timestamp)
-          VALUES ($1, 'tcgplayer', $2, $3, 'Near Mint', false, NOW())
-        `, [dbCard.id, bestPrice, bestPrice]);
+          INSERT INTO price_history (card_id, price, source, grade, price_native, currency, price_kind, recorded_at)
+          VALUES ($1, $2, 'tcgplayer', 'raw', $2, 'USD', 'market', NOW())
+        `, [dbCard.id, bestPrice]);
 
         totalObservations++;
 
@@ -88,13 +88,11 @@ async function ingestPokemonJaPrices() {
           headline_cents: headlineCents,
           source_prices: {
             tcgplayer: {
-              market: p.marketPrice || null,
-              low: p.lowPrice || null,
-              mid: p.midPrice || null,
-              high: p.highPrice || null,
-              direct_low: p.directLowPrice || null,
-              sub_type: p.subTypeName || 'Normal',
-              updated_at: new Date().toISOString(),
+              usd: bestPrice,
+              native: bestPrice,
+              currency: 'USD',
+              kind: 'market',
+              recorded_at: new Date().toISOString(),
             },
           },
         });
@@ -112,11 +110,13 @@ async function ingestPokemonJaPrices() {
     for (const u of batch) {
       await dbQuery(`
         INSERT INTO card_price_current (card_id, source_prices, headline_cents, headline_source, headline_kind, headline_currency, computed_at)
-        VALUES ($1, $2, $3, 'tcgplayer', 'active_listing', 'USD', NOW())
+        VALUES ($1, $2, $3, 'tcgplayer', 'market', 'USD', NOW())
         ON CONFLICT (card_id) DO UPDATE
         SET source_prices = card_price_current.source_prices || EXCLUDED.source_prices,
             headline_cents = EXCLUDED.headline_cents,
             headline_source = 'tcgplayer',
+            headline_kind = 'market',
+            headline_currency = 'USD',
             computed_at = NOW()
       `, [u.card_id, JSON.stringify(u.source_prices), u.headline_cents]);
     }
