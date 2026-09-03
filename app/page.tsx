@@ -24,6 +24,7 @@ const categories: Category[] = [
   { name: 'Pokémon', slug: 'pokemon', description: 'Base Set, 151, Vintage Holos, Special Illustration Rares', cardCount: '20,000+', change: '+14.2%', topMover: 'Charizard Base Set' },
   { name: 'Riftbound', slug: 'riftbound', description: 'Origins, Spiritforged, Unleashed, Vendetta, Champions', cardCount: '1,400+', change: '+8.9%', topMover: 'Ahri Legendary' },
   { name: 'Dragon Ball', slug: 'dbfw', description: 'Fusion World, Awakened Pulse, Super Rares', cardCount: '5,200+', change: '+5.7%', topMover: 'Goku SCR' },
+  { name: 'Monsta Galaxy', slug: 'boboiboy', description: 'Pek Fusion, Pek Adiwira, Pek Elemental, Pek Versus', cardCount: '630+', change: '+10.5%', topMover: 'BoBoiBoy FrostFire' },
 ];
 
 // Without this the page has no dynamic API left after the cookie-free client swap, so
@@ -78,6 +79,7 @@ export default async function HomePage() {
     const isDB = slug.startsWith('dbfw-');
     const isPokemon = slug.startsWith('pokemon-');
     const isRiftbound = slug.startsWith('riftbound-');
+    const isBoboiboy = slug.startsWith('boboiboy/');
 
     if (isOP) {
       // For One Piece: SP, Manga, Tournament, Wanted, SEC
@@ -94,6 +96,10 @@ export default async function HomePage() {
     if (isRiftbound) {
       // For Riftbound: Legendary, Epic, Rare
       return rarity.includes('legendary') || rarity.includes('epic') || rarity.includes('rare');
+    }
+    if (isBoboiboy) {
+      // For Monsta Galaxy: Super Rare, Special, Fusion, Elemental
+      return rarity.includes('rare') || rarity.includes('special') || name.includes('frostfire') || name.includes('supra') || name.includes('glacier') || name.includes('solar');
     }
     return false;
   });
