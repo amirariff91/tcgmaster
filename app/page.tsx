@@ -2,6 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { HeroCardsAnimation } from '@/components/home/hero-cards-animation';
 import { MarketMovers, type MarketMover } from '@/components/home/market-movers';
+import { ScraperCommandCenter } from '@/components/home/scraper-command-center';
 import { CategoryCards, type Category } from '@/components/home/category-cards';
 import { CardsMarquee } from '@/components/home/cards-marquee';
 import { dbQuery } from '@/lib/db/client';
@@ -154,16 +155,9 @@ export default async function HomePage() {
       {/* Streamlined Content Sections - Adapted for Dark Theme */}
       <div className="container mx-auto px-4 mt-24 relative z-30">
 
-        {/* Market Movers */}
+        {/* Live Scraper & Mapper Command Center (Replacing static Market Movers) */}
         <section className="mb-24">
-          <div className="text-center mb-12">
-            <h3 className="text-3xl font-bold text-white tracking-tight">Market <span className="text-orange-500">Movers</span></h3>
-            <p className="text-zinc-400 mt-2">Track the biggest gainers and losers in real-time.</p>
-          </div>
-
-          <div className="bg-[#0b1329]/80 border border-white/10 rounded-3xl p-6 md:p-8 backdrop-blur-md shadow-2xl">
-             <MarketMovers gainers={marketMovers.gainers} losers={marketMovers.losers} />
-          </div>
+          <ScraperCommandCenter gainers={marketMovers.gainers} losers={marketMovers.losers} />
         </section>
 
         {/* Dynamic Cards Marquee */}
