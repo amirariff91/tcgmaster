@@ -4,7 +4,7 @@ import { assertIdentity, type MatchEvidence } from './identity';
 import { checkSelfConsistency } from './guards';
 import { markForReverification, type SourceMapping, upsertMapping } from './mapping';
 
-export type PriceSource = 'tcgplayer' | 'pricecharting' | 'yuyutei' | 'cardrush' | 'snkrdunk' | 'cardmarket';
+export type PriceSource = 'tcgplayer' | 'pricecharting' | 'yuyutei' | 'cardrush' | 'snkrdunk' | 'cardmarket' | 'carousell_my' | 'monsta_official';
 export type PriceKind = 'market' | 'lowest_listing' | 'retail_sell' | 'sold_guide' | 'marketplace_ask';
 
 export const SOURCE_KIND: Record<PriceSource, PriceKind> = {
@@ -14,15 +14,19 @@ export const SOURCE_KIND: Record<PriceSource, PriceKind> = {
   cardrush: 'lowest_listing',
   snkrdunk: 'sold_guide',
   cardmarket: 'market',
+  carousell_my: 'sold_guide',
+  monsta_official: 'retail_sell',
 };
 
-export const SOURCE_CURRENCY: Record<PriceSource, 'USD' | 'JPY' | 'EUR'> = {
+export const SOURCE_CURRENCY: Record<PriceSource, 'USD' | 'JPY' | 'EUR' | 'MYR'> = {
   tcgplayer: 'USD',
   pricecharting: 'USD',
   yuyutei: 'JPY',
   cardrush: 'JPY',
   snkrdunk: 'USD',
   cardmarket: 'EUR',
+  carousell_my: 'MYR',
+  monsta_official: 'MYR',
 };
 
 export const SOURCE_SCOPED_UPDATE_COLUMNS: Record<string, PriceSource> = {
@@ -35,7 +39,7 @@ export interface PriceObservation {
   grade: CanonicalGrade;
   priceUsd: number;
   priceNative: number | null;
-  currency: 'USD' | 'JPY' | 'EUR';
+  currency: 'USD' | 'JPY' | 'EUR' | 'MYR';
   evidence: MatchEvidence;
   recordedAt?: string;
 }
@@ -99,7 +103,7 @@ export type GradedPrices = Record<string, GradedPrice>;
 export interface CurrentSourcePrice {
   usd: number;
   native: number | null;
-  currency: 'USD' | 'JPY' | 'EUR';
+  currency: 'USD' | 'JPY' | 'EUR' | 'MYR';
   kind: PriceKind;
   recorded_at: string;
 }
@@ -296,12 +300,15 @@ export async function persistObservations(
   const acceptedObservations: PriceObservation[] = [];
   const quarantineRows: Record<string, unknown>[] = [];
   const mappingsBySource = new Map(mappings.map((mapping) => [mapping.source, mapping]));
-  const identityVerdicts = obs.map((observation) => (
-    assertIdentity({ number: card.number, name: card.name }, observation.evidence, observation.source !== 'yuyutei')
-  ));
+  const identityVerdicts = obs.map((observation) => {
+    if (observation.source === 'carousell_my' || observation.source === 'monsta_official') {
+      return { ok: true as const };
+    }
+    return assertIdentity({ number: card.number, name: card.name }, observation.evidence, observation.source !== 'yuyutei');
+  });
   const identityApprovedObservations = obs.filter((observation, index) => (
     identityVerdicts[index]?.ok === true
-    && (observation.evidence.inStock !== false || observation.source === 'yuyutei')
+    && (observation.evidence.inStock !== false || observation.source === 'yuyutei' || observation.source === 'carousell_my')
     && !hasSetDrift(observation, mappingsBySource.get(observation.source))
   ));
   for (const [index, observation] of obs.entries()) {
