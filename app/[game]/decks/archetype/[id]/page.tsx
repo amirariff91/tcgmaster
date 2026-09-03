@@ -178,77 +178,87 @@ export default async function ArchetypePage({ params }: ArchetypePageProps) {
           <span className="text-zinc-200 font-semibold">{leaderCardRecord.name}</span>
         </div>
 
-        {/* Hero Section */}
-        <div className="flex flex-col md:flex-row items-center gap-10">
-          {/* Leader Card Image */}
-          <div className="shrink-0 relative w-40 h-[220px] md:w-64 md:h-88 rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-white/10 transform hover:scale-105 transition-transform duration-500 mx-auto md:mx-0">
-            {leaderImage ? (
-              <Image 
-                src={leaderImage}
-                alt={leaderCardRecord.name || 'Leader'}
-                width={256}
-                height={352}
-                className="w-full h-auto object-cover"
-              />
-            ) : (
-              <div className="w-full h-full bg-zinc-900 flex items-center justify-center text-zinc-500 font-bold">No Image</div>
-            )}
-          </div>
-
-          {/* Leader Stats & Details */}
-          <div className="flex-1 space-y-6 text-center md:text-left">
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs font-bold tracking-widest uppercase mb-4">
-                Meta Archetype
-              </div>
-              <h1 className="text-3xl md:text-6xl font-black tracking-tight text-white drop-shadow-md mb-2">
-                {leaderCardRecord.name}
-              </h1>
-              <p className="text-xl text-zinc-400 font-medium max-w-2xl">
-                Explore the top-performing decklists and tournament results for this archetype.
-              </p>
+        {/* Hero Section (Compact & Responsive on Mobile) */}
+        <div className="flex flex-col md:flex-row items-start md:items-center gap-4 sm:gap-6 md:gap-10 bg-[#080e1e]/90 p-4 sm:p-6 md:p-8 rounded-2xl md:rounded-3xl border border-white/10 shadow-2xl">
+          
+          <div className="flex gap-4 sm:gap-6 md:gap-8 items-start w-full md:w-auto">
+            {/* Leader Card Image */}
+            <div className="shrink-0 relative w-24 sm:w-32 md:w-56 aspect-[2.5/3.5] rounded-xl md:rounded-2xl overflow-hidden shadow-xl border-2 md:border-4 border-white/10 transform hover:scale-105 transition-transform duration-500 bg-black/50">
+              {leaderImage ? (
+                <Image 
+                  src={leaderImage}
+                  alt={leaderCardRecord.name || 'Leader'}
+                  fill
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-zinc-900 flex items-center justify-center text-zinc-500 font-bold text-xs">No Image</div>
+              )}
             </div>
 
-            <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 pt-4">
-              <div className="flex flex-col items-center justify-center bg-black/40 border border-white/5 rounded-2xl p-4 md:p-6 min-w-[120px] md:min-w-[140px] shadow-lg backdrop-blur-md">
-                <Trophy className="w-6 h-6 text-amber-400 mb-2" />
-                <span className="text-2xl md:text-3xl font-black text-white">{totalTops}</span>
-                <span className="text-[10px] md:text-xs font-bold text-zinc-500 uppercase tracking-widest">Total Tops</span>
+            {/* Leader Stats & Details */}
+            <div className="flex-1 min-w-0 space-y-2 sm:space-y-3">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] sm:text-xs font-bold tracking-widest uppercase">
+                Meta Archetype
+              </div>
+              
+              <h1 className="text-xl sm:text-3xl md:text-5xl font-black tracking-tight text-white drop-shadow-md leading-tight line-clamp-2 sm:line-clamp-none">
+                {leaderCardRecord.name}
+              </h1>
+              
+              <p className="text-xs sm:text-sm md:text-base text-zinc-400 font-medium max-w-2xl line-clamp-2">
+                Explore the top-performing decklists and tournament results for this archetype.
+              </p>
+
+              {/* Stats Bar */}
+              <div className="flex items-center gap-2 sm:gap-3 pt-1">
+                <div className="flex items-center gap-2 bg-black/40 border border-white/5 rounded-xl px-3 py-1.5 sm:px-4 sm:py-2 backdrop-blur-md">
+                  <Trophy className="w-4 h-4 text-amber-400 shrink-0" />
+                  <div>
+                    <div className="text-sm sm:text-lg md:text-xl font-black text-white leading-none">{totalTops}</div>
+                    <div className="text-[9px] sm:text-[10px] font-bold text-zinc-500 uppercase tracking-wider mt-0.5">Total Tops</div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 bg-black/40 border border-white/5 rounded-xl px-3 py-1.5 sm:px-4 sm:py-2 backdrop-blur-md">
+                  <Coins className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <div>
+                    <div className="text-sm sm:text-lg md:text-xl font-black text-emerald-400 leading-none">
+                      <FormattedPrice price={rawAvgPrice} />
+                    </div>
+                    <div className="text-[9px] sm:text-[10px] font-bold text-zinc-500 uppercase tracking-wider mt-0.5">Avg Cost</div>
+                  </div>
+                </div>
               </div>
 
-              <div className="flex flex-col items-center justify-center bg-black/40 border border-white/5 rounded-2xl p-4 md:p-6 min-w-[120px] md:min-w-[140px] shadow-lg backdrop-blur-md">
-                <Coins className="w-6 h-6 text-emerald-400 mb-2" />
-                <FormattedPrice price={rawAvgPrice} className="text-2xl md:text-3xl font-black text-white" />
-                <span className="text-[10px] md:text-xs font-bold text-zinc-500 uppercase tracking-widest">Avg Cost</span>
-              </div>
             </div>
           </div>
         </div>
 
         {/* Standard Build (Visual Grid) */}
         {standardCards.length > 0 && (
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-3">
-                  <Trophy className="w-6 h-6 text-amber-400" />
+                <h2 className="text-lg sm:text-2xl font-black tracking-tight text-white flex items-center gap-2 sm:gap-3">
+                  <Trophy className="w-5 h-5 sm:w-6 sm:h-6 text-amber-400" />
                   Standard Build
                 </h2>
-                <p className="text-sm text-zinc-400 font-medium mt-1">
+                <p className="text-xs sm:text-sm text-zinc-400 font-medium mt-0.5 sm:mt-1">
                   Based on a recent top-performing decklist ({standardDeck?.player_name})
                 </p>
               </div>
             </div>
 
-            <div className="bg-black/40 backdrop-blur-md border border-white/5 rounded-3xl p-6 shadow-2xl">
-              <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-3 md:gap-4">
+            <div className="bg-black/40 backdrop-blur-md border border-white/5 rounded-2xl md:rounded-3xl p-3 sm:p-5 md:p-6 shadow-2xl">
+              <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-2 sm:gap-3 md:gap-4">
                 {standardCards.map((dc, i) => {
                   const card = dc.cards;
                   const imgUrl = resolveCardImageUrl(card?.local_image_url || card?.image_url);
                   
                   return (
                     <div key={i} className="relative group">
-                      <div className="relative aspect-[2.5/3.5] rounded-xl overflow-hidden border border-white/10 shadow-lg transform group-hover:scale-105 transition-transform duration-300">
+                      <div className="relative aspect-[2.5/3.5] rounded-lg sm:rounded-xl overflow-hidden border border-white/10 shadow-md transform group-hover:scale-105 transition-transform duration-300">
                         {imgUrl ? (
                           <Image 
                             src={imgUrl} 
@@ -257,24 +267,25 @@ export default async function ArchetypePage({ params }: ArchetypePageProps) {
                             className="object-cover"
                           />
                         ) : (
-                          <div className="w-full h-full bg-zinc-800 flex items-center justify-center text-xs text-center text-zinc-500 p-2">
+                          <div className="w-full h-full bg-zinc-800 flex items-center justify-center text-[10px] text-center text-zinc-500 p-1">
                             {card?.name || 'Unknown'}
                           </div>
                         )}
                       </div>
-                      <div className="absolute -bottom-2 -right-2 bg-indigo-600 text-white text-xs font-black px-2.5 py-1 rounded-full shadow-lg border-2 border-[#060c18] z-10">
+                      <div className="absolute -bottom-1 -right-1 sm:-bottom-2 sm:-right-2 bg-orange-600 text-white text-[10px] sm:text-xs font-black px-1.5 py-0.5 sm:px-2 sm:py-0.5 rounded-full shadow-lg border-2 border-[#060c18] z-10">
                         x{dc.count}
                       </div>
                     </div>
                   );
                 })}
               </div>
-              <div className="mt-6 flex justify-end">
+              <div className="mt-4 sm:mt-6 flex justify-end">
                  <Link
                     href={`/${game}/decks/${standardDeck?.id}`}
-                    className="inline-flex items-center gap-2 text-sm font-bold text-indigo-400 hover:text-indigo-300 transition-colors"
+                    className="inline-flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-bold text-orange-400 hover:text-orange-300 transition-colors"
                   >
-                    View Full Decklist Details <ChevronRight className="w-4 h-4" />
+                    <span>View Full Decklist Details</span>
+                    <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                  </Link>
               </div>
             </div>
@@ -282,26 +293,26 @@ export default async function ArchetypePage({ params }: ArchetypePageProps) {
         )}
 
         {/* Recent Decklists Table */}
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-3">
-              <Calendar className="w-6 h-6 text-indigo-400" />
+            <h2 className="text-lg sm:text-2xl font-black tracking-tight text-white flex items-center gap-2 sm:gap-3">
+              <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-orange-400" />
               Recent Winning Decklists
             </h2>
-            <span className="text-sm font-bold text-zinc-500 bg-white/5 px-3 py-1 rounded-lg">
+            <span className="text-xs sm:text-sm font-bold text-zinc-400 bg-white/5 px-2.5 py-1 rounded-lg">
               {decks.length} Decks Found
             </span>
           </div>
 
-          <div className="bg-black/40 backdrop-blur-md border border-white/5 rounded-3xl overflow-hidden shadow-2xl">
+          <div className="bg-black/40 backdrop-blur-md border border-white/5 rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-white/[0.02] border-b border-white/5 text-xs uppercase tracking-wider text-zinc-500 font-bold">
-                    <th className="px-6 py-4 whitespace-nowrap">Player</th>
-                    <th className="px-6 py-4 whitespace-nowrap">Placement</th>
-                    <th className="px-6 py-4 whitespace-nowrap">Tournament</th>
-                    <th className="px-6 py-4 whitespace-nowrap text-right">Action</th>
+                  <tr className="bg-white/[0.02] border-b border-white/5 text-[11px] sm:text-xs uppercase tracking-wider text-zinc-400 font-bold">
+                    <th className="px-3.5 sm:px-6 py-3 sm:py-4 whitespace-nowrap">Player</th>
+                    <th className="px-3.5 sm:px-6 py-3 sm:py-4 whitespace-nowrap">Placement</th>
+                    <th className="px-3.5 sm:px-6 py-3 sm:py-4 whitespace-nowrap">Tournament</th>
+                    <th className="px-3.5 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
