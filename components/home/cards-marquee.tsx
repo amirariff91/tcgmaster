@@ -142,7 +142,7 @@ export function CardsMarquee({ cards }: CardsMarqueeProps) {
   };
 
   return (
-    <div className="relative w-screen left-1/2 -translate-x-1/2 overflow-hidden py-32 sm:py-48 bg-[#060c18] pointer-events-auto min-h-[600px] sm:min-h-[800px] flex items-center justify-center">
+    <div className="relative w-screen left-1/2 -translate-x-1/2 overflow-hidden py-20 sm:py-36 md:py-48 bg-[#060c18] pointer-events-auto min-h-[420px] sm:min-h-[650px] md:min-h-[800px] flex items-center justify-center">
       {/* Dark fade edges to seamlessly blend into background */}
       <div className="absolute top-0 left-0 w-[15vw] h-full bg-gradient-to-r from-[#060c18] via-[#060c18]/80 to-transparent z-20 pointer-events-none" />
       <div className="absolute top-0 right-0 w-[15vw] h-full bg-gradient-to-l from-[#060c18] via-[#060c18]/80 to-transparent z-20 pointer-events-none" />
@@ -151,7 +151,9 @@ export function CardsMarquee({ cards }: CardsMarqueeProps) {
       <div className="relative w-full flex flex-col items-center justify-center -rotate-[8deg] scale-[1.2] sm:scale-[1.15]">
         {renderRow(row1Cards, 'animate-marquee-left')}
         {renderRow(row2Cards, 'animate-marquee-right')}
-        {renderRow(row3Cards, 'animate-marquee-left')}
+        <div className="hidden sm:block">
+          {renderRow(row3Cards, 'animate-marquee-left')}
+        </div>
       </div>
     </div>
   );

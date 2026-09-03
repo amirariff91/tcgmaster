@@ -5,12 +5,12 @@ import { motion } from 'framer-motion';
 import Image from 'next/image';
 
 const CARDS = [
-  { id: 1, src: 'https://images.tcgmaster.com/one-piece/op-op05-119_p2-ja.png', alt: 'Card 1', rot: -25, y: 34, x: -136 },
-  { id: 2, src: 'https://images.tcgmaster.com/dbfw/promotion/E-10.webp', alt: 'Card 2', rot: -15, y: 13, x: -82 },
-  { id: 3, src: 'https://images.tcgmaster.com/one-piece/569106/OP06-001_p1.png', alt: 'Card 3', rot: -5, y: 0, x: -27 },
-  { id: 4, src: 'https://images.tcgmaster.com/dbfw/promotion/FB01-096-p2.webp', alt: 'Card 4', rot: 5, y: 0, x: 27 },
-  { id: 5, src: 'https://images.tcgmaster.com/one-piece/op-op13-118_p3-ja.png', alt: 'Card 5', rot: 15, y: 13, x: 82 },
-  { id: 6, src: 'https://images.tcgmaster.com/dbfw/fb04/dbfw-fb04-129-p2-ja.webp', alt: 'Card 6', rot: 25, y: 34, x: 136 },
+  { id: 1, src: 'https://images.tcgmaster.com/one-piece/op-op05-119_p2-ja.png', alt: 'One Piece Manga Shanks', rot: -25, y: 34, x: -140 },
+  { id: 2, src: 'https://images.pokemontcg.io/base1/4_hires.png', alt: 'Pokemon Charizard Holo', rot: -15, y: 13, x: -84 },
+  { id: 3, src: '/images/cards/boboiboy/boboiboy-pek-versus-049-boboiboy-frostfire.jpg', alt: 'Monsta Galaxy BoBoiBoy FrostFire', rot: -5, y: 0, x: -28 },
+  { id: 4, src: 'https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/1cea41a2b9c3de59a1c95ceacc59950be1d01907-744x1039.png?accountingTag=RB', alt: 'Riftbound Evelynn Entrancing', rot: 5, y: 0, x: 28 },
+  { id: 5, src: 'https://images.tcgmaster.com/dbfw/promotion/FB01-096-p2.webp', alt: 'Dragon Ball Son Goku SCR', rot: 15, y: 13, x: 84 },
+  { id: 6, src: 'https://images.tcgmaster.com/one-piece/op-op13-118_p3-ja.png', alt: 'One Piece Wanted Gold', rot: 25, y: 34, x: 140 },
 ];
 
 export function HeroCardsAnimation() {

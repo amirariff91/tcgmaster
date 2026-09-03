@@ -325,24 +325,24 @@ export function ScraperCommandCenter() {
         }
         @keyframes minionWalk1 {
           0% {
-            transform: translate3d(-10%, 0, 0);
+            transform: translate3d(-5%, 0, 0);
           }
           50% {
-            transform: translate3d(240px, 0, 0);
+            transform: translate3d(min(260px, calc(100vw - 160px)), 0, 0);
           }
           100% {
-            transform: translate3d(-10%, 0, 0);
+            transform: translate3d(-5%, 0, 0);
           }
         }
         @keyframes minionWalk2 {
           0% {
-            transform: translate3d(250px, 0, 0);
+            transform: translate3d(min(260px, calc(100vw - 160px)), 0, 0);
           }
           50% {
             transform: translate3d(-5%, 0, 0);
           }
           100% {
-            transform: translate3d(250px, 0, 0);
+            transform: translate3d(min(260px, calc(100vw - 160px)), 0, 0);
           }
         }
         @keyframes minionWalk3 {
@@ -350,7 +350,7 @@ export function ScraperCommandCenter() {
             transform: translate3d(0%, 0, 0);
           }
           50% {
-            transform: translate3d(220px, 0, 0);
+            transform: translate3d(min(230px, calc(100vw - 180px)), 0, 0);
           }
           100% {
             transform: translate3d(0%, 0, 0);

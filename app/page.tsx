@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
+import { Search } from 'lucide-react';
 import { HeroCardsAnimation } from '@/components/home/hero-cards-animation';
 import { MarketMovers, type MarketMover } from '@/components/home/market-movers';
 import { ScraperCommandCenter } from '@/components/home/scraper-command-center';
@@ -143,12 +144,45 @@ export default async function HomePage() {
           <HeroCardsAnimation />
         </div>
 
-        {/* Discover Action Button */}
-        <div className="relative z-30 mt-[-60px] mb-12">
-          <Link href="/search" className="group relative inline-flex items-center justify-center px-8 py-3 font-bold text-white transition-all duration-200 bg-gradient-to-r from-orange-600 to-amber-500 rounded-full hover:from-orange-500 hover:to-amber-400 hover:shadow-[0_0_40px_rgba(249,115,22,0.6)] hover:-translate-y-1">
-            DISCOVER
-            <svg className="w-5 h-5 ml-2 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+        {/* Tactile Quick-Search & 1-Tap Game Launchpad */}
+        <div className="relative z-30 mt-[-55px] sm:mt-[-65px] mb-12 w-full max-w-xl px-4">
+          <Link 
+            href="/search" 
+            className="group relative flex items-center justify-between w-full px-5 py-3.5 rounded-full bg-black/60 border border-white/20 hover:border-orange-500/50 backdrop-blur-xl shadow-[0_0_30px_rgba(0,0,0,0.6)] hover:shadow-[0_0_30px_rgba(249,115,22,0.3)] transition-all duration-300"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <Search className="w-4 h-4 text-orange-400 shrink-0 group-hover:scale-110 transition-transform" />
+              <span className="text-xs sm:text-sm text-zinc-400 font-medium truncate">
+                Search 50,000+ cards across 5 games...
+              </span>
+            </div>
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-gradient-to-r from-orange-600 to-amber-500 text-xs font-bold text-white shrink-0 group-hover:shadow-[0_0_15px_rgba(249,115,22,0.5)] transition-all">
+              Discover
+              <svg className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+            </span>
           </Link>
+
+          {/* 1-Tap Quick Filter Pills */}
+          <div className="flex items-center justify-center gap-1.5 sm:gap-2 mt-3 overflow-x-auto py-1 no-scrollbar text-[11px] font-semibold">
+            <Link href="/search" className="px-2.5 py-1 rounded-full bg-white/5 hover:bg-orange-500 hover:text-white border border-white/10 text-zinc-300 transition-all shrink-0">
+              All
+            </Link>
+            <Link href="/search?game=one-piece" className="px-2.5 py-1 rounded-full bg-white/5 hover:bg-rose-500/20 hover:border-rose-500/40 hover:text-rose-300 border border-white/10 text-zinc-300 transition-all shrink-0">
+              One Piece
+            </Link>
+            <Link href="/search?game=pokemon" className="px-2.5 py-1 rounded-full bg-white/5 hover:bg-cyan-500/20 hover:border-cyan-500/40 hover:text-cyan-300 border border-white/10 text-zinc-300 transition-all shrink-0">
+              Pokémon
+            </Link>
+            <Link href="/search?game=boboiboy" className="px-2.5 py-1 rounded-full bg-white/5 hover:bg-teal-500/20 hover:border-teal-500/40 hover:text-teal-300 border border-white/10 text-zinc-300 transition-all shrink-0">
+              Monsta Galaxy
+            </Link>
+            <Link href="/search?game=dbfw" className="px-2.5 py-1 rounded-full bg-white/5 hover:bg-amber-500/20 hover:border-amber-500/40 hover:text-amber-300 border border-white/10 text-zinc-300 transition-all shrink-0">
+              Dragon Ball
+            </Link>
+            <Link href="/search?game=riftbound" className="px-2.5 py-1 rounded-full bg-white/5 hover:bg-purple-500/20 hover:border-purple-500/40 hover:text-purple-300 border border-white/10 text-zinc-300 transition-all shrink-0">
+              Riftbound
+            </Link>
+          </div>
         </div>
       </section>
 
