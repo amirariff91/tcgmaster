@@ -1,6 +1,5 @@
 import { Metadata } from 'next';
 import { dbQuery } from '@/lib/db/client';
-import { Card, CardContent } from '@/components/ui/card';
 import { FormattedPrice } from '@/components/ui/formatted-price';
 import { Trophy, Calendar, Users, Target } from 'lucide-react';
 import Link from 'next/link';
@@ -107,33 +106,33 @@ export default async function DecksPage({
           </div>
         </div>
 
-        {/* Top Decks Grid (2-Lane on Mobile, 3 on Tablet, 4 on Desktop) */}
+        {/* Top Decks Grid (Sleek Compact Grid Matching Prices Page Architecture) */}
         <div>
           <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2.5 sm:gap-3 mb-4 sm:mb-6 text-white">
             <Trophy className="w-5 h-5 sm:w-6 sm:h-6 text-amber-500" />
             Recent Winning Decks
           </h2>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4 md:gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 sm:gap-3 md:gap-3.5">
             {deckRows.map((deck) => (
-              <Link key={deck.id} href={`/${game}/decks/${deck.id}`}>
-                <Card className="group overflow-hidden rounded-xl sm:rounded-2xl border-white/10 bg-[#080e1e]/90 hover:bg-white/[0.07] transition-all duration-300 hover:-translate-y-1 hover:border-orange-500/30 hover:shadow-xl hover:shadow-orange-500/10 h-full flex flex-col">
+              <Link key={deck.id} href={`/${game}/decks/${deck.id}`} className="block h-full">
+                <div className="group relative flex flex-col h-full bg-[#0a1120] hover:bg-[#0c1527] rounded-xl border border-white/5 hover:border-orange-500/30 p-2.5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-orange-500/10">
                   {/* Leader Image Header */}
-                  <div className="relative h-20 sm:h-28 md:h-32 w-full bg-black/60 overflow-hidden">
+                  <div className="relative aspect-[16/10] w-full rounded-lg overflow-hidden bg-[#060a14]">
                     {(deck.cards?.image_url || deck.cards?.local_image_url) ? (
                       <Image
                         src={resolveCardImageUrl(deck.cards.local_image_url || deck.cards.image_url) ?? ''}
                         alt={deck.cards.name || 'Leader'}
                         fill
-                        className="object-cover object-top opacity-75 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500"
+                        className="object-cover object-top opacity-85 group-hover:opacity-100 group-hover:scale-105 transition-transform duration-300"
                       />
                     ) : (
                       <div className="absolute inset-0 bg-gradient-to-br from-zinc-800 to-zinc-900" />
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#080e1e] via-transparent to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0a1120]/80 via-transparent to-transparent pointer-events-none" />
                     
                     {/* Placement Badge */}
-                    <div className="absolute top-1.5 right-1.5 sm:top-2.5 sm:right-2.5 px-2 py-0.5 sm:px-2.5 sm:py-1 bg-black/80 backdrop-blur-md rounded-full border border-white/20 text-[10px] sm:text-xs font-bold flex items-center gap-1">
+                    <div className="absolute top-1.5 right-1.5 px-2 py-0.5 bg-black/80 backdrop-blur-sm rounded-full border border-white/15 text-[10px] font-bold text-white flex items-center gap-1">
                       {deck.placement.includes('1') && <span>🥇</span>}
                       {deck.placement.includes('2') && <span>🥈</span>}
                       {deck.placement.includes('3') && <span>🥉</span>}
@@ -141,27 +140,29 @@ export default async function DecksPage({
                     </div>
                   </div>
 
-                  <CardContent className="flex-1 p-2.5 sm:p-3.5 md:p-4 flex flex-col justify-between">
-                    <div className="mb-2 sm:mb-3">
-                      <h3 className="font-bold text-xs sm:text-sm md:text-base leading-snug mb-1 truncate text-white group-hover:text-orange-400 transition-colors">
+                  {/* Card Content Body */}
+                  <div className="flex flex-col flex-1 mt-2.5">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-[13px] leading-tight mb-1 truncate text-white group-hover:text-orange-400 transition-colors">
                         {deck.cards?.name || 'Unknown Leader'}
                       </h3>
-                      <p className="text-[11px] sm:text-xs font-medium text-orange-400/90 truncate flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-orange-500 shrink-0" />
+                      <p className="text-[11px] text-zinc-400 truncate flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-orange-400 shrink-0" />
                         <span className="truncate">{deck.player_name || 'Anonymous'}</span>
                       </p>
                     </div>
 
-                    <div className="pt-2 sm:pt-3 border-t border-white/10 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-0.5 sm:gap-2 mt-auto">
-                      <span className="text-[9px] sm:text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">Deck Value</span>
+                    {/* Price / Deck Value */}
+                    <div className="pt-2 mt-2.5 border-t border-white/5 flex items-center justify-between">
+                      <span className="text-[10px] uppercase font-semibold text-zinc-500">Deck Value</span>
                       {deck.total_price ? (
-                        <FormattedPrice price={deck.total_price} className="font-black text-emerald-400 text-xs sm:text-sm md:text-base" />
+                        <FormattedPrice price={deck.total_price} className="font-black text-emerald-400 text-[13px] font-mono" />
                       ) : (
-                        <span className="text-[11px] sm:text-xs font-bold text-zinc-500">Syncing...</span>
+                        <span className="text-[11px] font-bold text-zinc-500">Syncing...</span>
                       )}
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               </Link>
             ))}
 
