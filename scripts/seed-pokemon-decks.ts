@@ -132,15 +132,23 @@ async function seedPokemonDecks() {
           const cardCount = dc.count || 1;
           const cardName = dc.name;
 
-          // Find matching card ID
+          // Find matching card ID (prioritize lowest-cost base print)
           const matchedCard = await dbQuery<{ id: string }>(`
             SELECT c.id
             FROM cards c
             JOIN sets s ON s.id = c.set_id
+            LEFT JOIN card_price_current cpc ON cpc.card_id = c.id
             WHERE s.slug LIKE 'pokemon-%'
-              AND c.name ILIKE $1
+              AND LOWER(TRIM(c.name)) = LOWER(TRIM($1))
+              AND c.name NOT ILIKE '%Alternate Art%'
+              AND c.name NOT ILIKE '%Manga%'
+              AND c.name NOT ILIKE '%Special Card%'
+            ORDER BY
+              (cpc.headline_cents IS NOT NULL AND cpc.headline_cents > 0) DESC,
+              cpc.headline_cents ASC NULLS LAST,
+              c.id ASC
             LIMIT 1
-          `, [`%${cardName}%`]);
+          `, [cardName]);
 
           await dbQuery(`
             INSERT INTO deck_cards (deck_id, card_id, raw_card_id_string, raw_card_name, count, created_at)

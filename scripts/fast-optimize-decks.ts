@@ -3,14 +3,13 @@ import { dbQuery, pool } from '../lib/db/client';
 import { redis } from '../lib/redis/client';
 
 async function fastOptimizeDecks() {
-  console.log('[Fast Deck Optimizer] 1. Finding cheapest card mapping for all card identities...');
+  console.log('[Fast Deck Optimizer] 1. Indexing cheapest prints across all card names and numbers...');
 
-  // 1. Build an in-memory map of (game_id, clean_number) -> cheapest_card_id
-  const allCards = await dbQuery<{
+  // Index 1: Cheapest card by (game_id, clean_number)
+  const allCardsByNumber = await dbQuery<{
     id: string;
     number: string;
     name: string;
-    slug: string;
     game_id: string;
     headline_cents: number | null;
   }>(`
@@ -18,7 +17,6 @@ async function fastOptimizeDecks() {
       c.id,
       c.number,
       c.name,
-      c.slug,
       s.game_id,
       cpc.headline_cents
     FROM cards c
@@ -31,29 +29,62 @@ async function fastOptimizeDecks() {
       c.name NOT ILIKE '%Alternate Art%' DESC,
       c.name NOT ILIKE '%Manga%' DESC,
       c.name NOT ILIKE '%Signature%' DESC,
+      c.name NOT ILIKE '%Special Card%' DESC,
       c.id ASC
   `);
 
-  console.log(`[Fast Deck Optimizer] Loaded ${allCards.length} cards from database.`);
-
-  const cheapestByGameAndNumber = new Map<string, string>();
-
-  for (const c of allCards) {
+  const cheapestByNumber = new Map<string, { id: string; headline_cents: number | null }>();
+  for (const c of allCardsByNumber) {
     const cleanNum = c.number.replace(/[_-][pr]\d+/gi, '').trim().toUpperCase();
     const key = `${c.game_id}:${cleanNum}`;
-    if (!cheapestByGameAndNumber.has(key)) {
-      cheapestByGameAndNumber.set(key, c.id);
+    if (!cheapestByNumber.has(key)) {
+      cheapestByNumber.set(key, { id: c.id, headline_cents: c.headline_cents });
     }
   }
 
-  console.log(`[Fast Deck Optimizer] Indexed ${cheapestByGameAndNumber.size} unique base card numbers.`);
+  // Index 2: Cheapest card by (game_id, clean_name) for generic/reprinted tournament entries
+  const allCardsByName = await dbQuery<{
+    id: string;
+    name: string;
+    game_id: string;
+    headline_cents: number | null;
+  }>(`
+    SELECT DISTINCT ON (s.game_id, LOWER(TRIM(c.name)))
+      c.id,
+      c.name,
+      s.game_id,
+      cpc.headline_cents
+    FROM cards c
+    JOIN sets s ON s.id = c.set_id
+    JOIN card_price_current cpc ON cpc.card_id = c.id
+    WHERE cpc.headline_cents > 0
+      AND c.name NOT ILIKE '%Alternate Art%'
+      AND c.name NOT ILIKE '%Manga%'
+      AND c.name NOT ILIKE '%Signature%'
+      AND c.name NOT ILIKE '%Special Card%'
+    ORDER BY
+      s.game_id,
+      LOWER(TRIM(c.name)),
+      cpc.headline_cents ASC,
+      c.id ASC
+  `);
 
-  // 2. Fetch all deck_cards and update in batches
+  const cheapestByName = new Map<string, { id: string; headline_cents: number }>();
+  for (const c of allCardsByName) {
+    const key = `${c.game_id}:${c.name.trim().toLowerCase()}`;
+    cheapestByName.set(key, { id: c.id, headline_cents: c.headline_cents! });
+  }
+
+  console.log(`[Fast Deck Optimizer] Indexed ${cheapestByNumber.size} number keys and ${cheapestByName.size} name keys.`);
+
+  // 2. Audit all deck_cards
   const deckCards = await dbQuery<{
     id: string;
     card_id: string | null;
     raw_card_name: string | null;
     raw_card_id_string: string | null;
+    current_name: string | null;
+    current_headline_cents: number | null;
     game_id: string;
   }>(`
     SELECT
@@ -61,10 +92,14 @@ async function fastOptimizeDecks() {
       dc.card_id,
       dc.raw_card_name,
       dc.raw_card_id_string,
+      c.name AS current_name,
+      cpc.headline_cents AS current_headline_cents,
       t.game_id
     FROM deck_cards dc
     JOIN decks d ON d.id = dc.deck_id
     JOIN tournaments t ON t.id = d.tournament_id
+    LEFT JOIN cards c ON c.id = dc.card_id
+    LEFT JOIN card_price_current cpc ON cpc.card_id = c.id
   `);
 
   console.log(`[Fast Deck Optimizer] Auditing ${deckCards.length} deck cards...`);
@@ -72,25 +107,45 @@ async function fastOptimizeDecks() {
   const updates: Array<{ id: string; cardId: string }> = [];
 
   for (const dc of deckCards) {
-    const raw = dc.raw_card_id_string || dc.raw_card_name;
-    if (!raw) continue;
-    const cleanNum = raw.replace(/[_-][pr]\d+/gi, '').trim().toUpperCase();
-    const key = `${dc.game_id}:${cleanNum}`;
+    const rawName = dc.raw_card_name || dc.current_name;
+    const nameKey = rawName ? `${dc.game_id}:${rawName.trim().toLowerCase()}` : null;
+    const cheapestNameMatch = nameKey ? cheapestByName.get(nameKey) : null;
 
-    const cheapestId = cheapestByGameAndNumber.get(key);
-    if (cheapestId && cheapestId !== dc.card_id) {
-      updates.push({ id: dc.id, cardId: cheapestId });
+    const rawId = dc.raw_card_id_string;
+    const numKey = rawId ? `${dc.game_id}:${rawId.replace(/[_-][pr]\d+/gi, '').trim().toUpperCase()}` : null;
+    const cheapestNumMatch = numKey ? cheapestByNumber.get(numKey) : null;
+
+    let targetCardId: string | null = null;
+
+    // Prioritize name-based cheapest match if current price is inflated or missing
+    if (cheapestNameMatch && (!dc.current_headline_cents || cheapestNameMatch.headline_cents < dc.current_headline_cents)) {
+      targetCardId = cheapestNameMatch.id;
+    } else if (cheapestNumMatch) {
+      targetCardId = cheapestNumMatch.id;
+    } else if (cheapestNameMatch) {
+      targetCardId = cheapestNameMatch.id;
+    }
+
+    if (targetCardId && targetCardId !== dc.card_id) {
+      updates.push({ id: dc.id, cardId: targetCardId });
     }
   }
 
-  console.log(`[Fast Deck Optimizer] Applying ${updates.length} remappings...`);
+  console.log(`[Fast Deck Optimizer] Applying ${updates.length} remappings to cheapest base prints in bulk...`);
 
-  // Batch update
-  for (let i = 0; i < updates.length; i += 100) {
-    const batch = updates.slice(i, i + 100);
-    for (const u of batch) {
-      await dbQuery('UPDATE deck_cards SET card_id = $1 WHERE id = $2', [u.cardId, u.id]);
-    }
+  // Bulk update using unnest
+  for (let i = 0; i < updates.length; i += 500) {
+    const batch = updates.slice(i, i + 500);
+    const ids = batch.map(b => b.id);
+    const cardIds = batch.map(b => b.cardId);
+
+    await dbQuery(`
+      UPDATE deck_cards dc
+      SET card_id = u.card_id
+      FROM unnest($1::uuid[], $2::uuid[]) AS u(id, card_id)
+      WHERE dc.id = u.id
+    `, [ids, cardIds]);
+    console.log(`  -> Remapped ${Math.min(i + 500, updates.length)} / ${updates.length}...`);
   }
 
   // 3. Recalculate all deck total_price
