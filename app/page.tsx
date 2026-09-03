@@ -155,9 +155,9 @@ export default async function HomePage() {
       {/* Streamlined Content Sections - Adapted for Dark Theme */}
       <div className="container mx-auto px-4 mt-24 relative z-30">
 
-        {/* Live Scraper & Mapper Command Center (Replacing static Market Movers) */}
+        {/* Live TM Minions (Replacing static Market Movers) */}
         <section className="mb-24">
-          <ScraperCommandCenter gainers={marketMovers.gainers} losers={marketMovers.losers} />
+          <ScraperCommandCenter />
         </section>
 
         {/* Dynamic Cards Marquee */}
