@@ -13,6 +13,24 @@ const PRICE_KIND_LABELS: Record<PriceKind, string> = {
   marketplace_ask: 'Ask',
 };
 
+export const SOURCE_DISPLAY_NAMES: Record<string, string> = {
+  carousell_my: 'Carousell Malaysia',
+  monsta_official: 'Monsta Official Store',
+  tcgplayer: 'TCGplayer',
+  snkrdunk: 'SNKRDUNK',
+  pricecharting: 'PriceCharting',
+  yuyutei: 'Yuyu-tei',
+  cardrush: 'CardRush',
+  tcgrepublic: 'TCG Republic',
+  ebay: 'eBay',
+};
+
+export function formatSourceName(source: string | null | undefined): string {
+  if (!source) return '';
+  const key = source.toLowerCase();
+  return SOURCE_DISPLAY_NAMES[key] || source.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+}
+
 export function priceKindLabel(kind: PriceKind | null | undefined): string {
   return kind ? PRICE_KIND_LABELS[kind] ?? 'Price' : 'Price';
 }

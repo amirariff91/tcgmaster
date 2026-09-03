@@ -15,7 +15,7 @@ import { cn, formatDate } from '@/lib/utils';
 import { useCurrencyContext } from '@/lib/currency-context';
 import { ExternalLink } from 'lucide-react';
 import { FormattedPrice } from '@/components/ui/formatted-price';
-import { priceKindLabel, type PriceKind } from '@/lib/pricing/price-labels';
+import { priceKindLabel, formatSourceName, type PriceKind } from '@/lib/pricing/price-labels';
 
 export interface PriceHistoryPoint {
   grade: string;
@@ -44,6 +44,7 @@ type TimeRange = '1W' | '1M' | '3M';
 type ChartType = 'RAW' | 'GRADED';
 
 const SOURCE_COLORS: Record<string, string> = {
+  carousell_my: '#ff2636', // Carousell Coral Red
   yuyutei: '#2dd4bf', // Teal
   tcgplayer: '#10b981', // Green
   snkrdunk: '#3b82f6', // Blue
@@ -54,6 +55,7 @@ const SOURCE_COLORS: Record<string, string> = {
 };
 
 const MARKET_LOGOS = [
+  { match: 'carousell', logo: '/logos/carousell-icon.png' },
   { match: 'snkrdunk', logo: '/logos/snkrdunk.png' },
   { match: 'yuyutei', logo: '/logos/yuyutei.png' },
   { match: 'cardrush', logo: '/logos/cardrush.png' },
@@ -64,6 +66,7 @@ const MARKET_LOGOS = [
 ] as const;
 
 const SOURCE_KIND: Record<string, PriceKind> = {
+  carousell_my: 'sold_guide',
   tcgplayer: 'market',
   pricecharting: 'sold_guide',
   yuyutei: 'retail_sell',
@@ -479,7 +482,7 @@ export function CollectrChart({ priceHistory, gradeInfos, marketUrls = {}, class
           {latestPricesList.map((item) => {
             const s = item.source.toLowerCase();
             const logo = MARKET_LOGOS.find(m => s.includes(m.match))?.logo ?? null;
-            const needsWhitePlate = !s.includes('snkrdunk');
+            const needsWhitePlate = !s.includes('snkrdunk') && !s.includes('carousell');
             const href = marketUrls[item.source] ?? null;
 
             const body = (
@@ -488,7 +491,7 @@ export function CollectrChart({ priceHistory, gradeInfos, marketUrls = {}, class
                   {logo ? (
                     <img
                       src={logo}
-                      alt={item.source}
+                      alt={formatSourceName(item.source)}
                       className={`w-8 h-8 rounded-md border border-white/10 shadow-sm ${
                         needsWhitePlate
                           ? 'bg-white object-contain p-1'
@@ -500,7 +503,7 @@ export function CollectrChart({ priceHistory, gradeInfos, marketUrls = {}, class
                       <span className="text-xs font-bold">{item.source.charAt(0).toUpperCase()}</span>
                     </div>
                   )}
-                  <span className="text-white font-bold capitalize">{item.source}</span>
+                  <span className="text-white font-bold">{formatSourceName(item.source)}</span>
                   <span className="text-[10px] text-zinc-500 uppercase tracking-wider">{priceKindLabel(item.kind)}</span>
                   {href && <ExternalLink className="h-3.5 w-3.5 text-zinc-500" aria-hidden />}
                 </div>

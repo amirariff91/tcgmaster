@@ -13,7 +13,7 @@ import { formatPrice, formatNumber, getRarityDisplay, formatDate, formatDisplayN
 import { getCardWithPrices } from '@/lib/ppt/service';
 import { dbQuery } from '@/lib/db/client';
 import { calculatePriceChange24h } from '@/lib/pricing/trending';
-import { latestRecordedAt, priceKindLabel, type PriceKind } from '@/lib/pricing/price-labels';
+import { latestRecordedAt, priceKindLabel, formatSourceName, type PriceKind } from '@/lib/pricing/price-labels';
 
 // `price_history.source` values are lowercase enum members; match on substring so
 // display casing and multi-word names ("TCG Republic") still resolve.
@@ -607,7 +607,7 @@ export default async function CardDetailPage({ params }: PageProps) {
             <div>
               <p className="text-sm font-semibold text-zinc-400 uppercase tracking-widest mb-2 flex items-center">
                 {priceKindLabel(featuredKind)} ({gradeLabel})
-                {winningSource && <span className="ml-3 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-white/10 text-zinc-300 tracking-wider">Source: {winningSource}</span>}
+                {winningSource && <span className="ml-3 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-white/10 text-zinc-300 tracking-wider">Source: {formatSourceName(winningSource)}</span>}
               </p>
               <div className="flex items-baseline gap-4">
                 {featuredPrice ? (
