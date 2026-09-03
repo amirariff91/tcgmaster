@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import cloudflareImageLoader, { isImageCdnEnabled } from '@/lib/images/cloudflare-loader';
+import cloudflareImageLoader, { isImageCdnEnabled, resolveCardImageUrl } from '@/lib/images/cloudflare-loader';
 import { Check } from 'lucide-react';
 import { cn, splitCardName } from '@/lib/utils';
 import { type MockCard, pokemonTypeColors, rarityColors } from '@/lib/mock-data';
@@ -77,7 +77,7 @@ export function CardGridItem({
         <div className="relative flex-shrink-0">
           {(card.local_image_url || card.image_url) ? (
             <Image
-              src={card.local_image_url || card.image_url || ''}
+              src={resolveCardImageUrl(card.local_image_url || card.image_url) || ''}
               alt={cleanName}
               width={80}
               height={112}
@@ -92,12 +92,22 @@ export function CardGridItem({
           ) : (
             <div
               className={cn(
-                'w-20 h-28 rounded flex items-center justify-center',
-                getPlaceholderColor()
+                'w-20 h-28 rounded-md flex flex-col items-center justify-between p-2 relative overflow-hidden',
+                'bg-gradient-to-b from-[#131d36] via-[#0d1629] to-[#080d19] border border-white/10 shadow-sm'
               )}
             >
-              <span className="text-2xl font-bold text-white/80">
-                {cleanName.charAt(0)}
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-teal-500/10 via-transparent to-purple-500/10 pointer-events-none" />
+              <div className="w-full flex justify-between items-center opacity-60">
+                <span className="text-[8px] font-mono uppercase text-teal-400 font-bold">TCG</span>
+                <div className="w-1 h-1 rounded-full bg-teal-400" />
+              </div>
+              <div className="w-8 h-8 rounded-full bg-white/5 border border-white/15 flex items-center justify-center my-auto">
+                <span className="text-sm font-black text-white/80">
+                  {cleanName ? cleanName.charAt(0).toUpperCase() : '?'}
+                </span>
+              </div>
+              <span className="text-[8px] font-mono text-zinc-500 truncate w-full text-center">
+                #{card.number?.replace(/[_-][pr]\d+/g, '') || 'N/A'}
               </span>
             </div>
           )}

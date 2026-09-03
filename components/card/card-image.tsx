@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Image from 'next/image';
-import cloudflareImageLoader, { isImageCdnEnabled } from '@/lib/images/cloudflare-loader';
+import cloudflareImageLoader, { isImageCdnEnabled, resolveCardImageUrl } from '@/lib/images/cloudflare-loader';
 import { cn } from '@/lib/utils';
 
 interface CardImageProps {
@@ -39,7 +39,7 @@ function Placeholder({ showText = true, alt, className, sizeClassName }: Placeho
   return (
     <div
       className={cn(
-        'flex items-center justify-center rounded-lg bg-white/5 border border-white/10',
+        'relative flex flex-col items-center justify-between p-4 rounded-xl bg-gradient-to-b from-[#131d36] via-[#0d1629] to-[#080d19] border border-white/10 shadow-lg overflow-hidden group/placeholder',
         sizeClassName,
         className
       )}
@@ -47,10 +47,37 @@ function Placeholder({ showText = true, alt, className, sizeClassName }: Placeho
       role="img"
       aria-label={`Placeholder for ${alt}`}
     >
+      {/* Holographic foil shimmer lines */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-teal-500/10 via-transparent to-purple-500/10 pointer-events-none" />
+      <div className="absolute -inset-[100%] opacity-20 bg-[radial-gradient(#38bdf8_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
+
+      {/* Top Header Badge */}
+      <div className="w-full flex items-center justify-between z-10 opacity-60">
+        <span className="text-[10px] font-mono tracking-widest uppercase text-teal-400 font-bold">TCG</span>
+        <div className="w-1.5 h-1.5 rounded-full bg-teal-400/80 animate-pulse" />
+      </div>
+
+      {/* Center Sphere Emblem */}
+      <div className="relative flex flex-col items-center justify-center my-auto z-10">
+        <div className="w-14 h-14 rounded-full bg-white/5 border border-white/15 flex items-center justify-center shadow-[inset_0_0_12px_rgba(255,255,255,0.05)] group-hover/placeholder:border-teal-400/40 transition-colors">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-500/20 to-blue-600/20 flex items-center justify-center">
+            <span className="text-xl font-black text-white/90 select-none tracking-tight">
+              {alt ? alt.trim().charAt(0).toUpperCase() : '?'}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Card Title */}
       {showText && (
-        <span className="text-4xl text-zinc-600 select-none" aria-hidden="true">
-          ?
-        </span>
+        <div className="w-full text-center z-10 px-1">
+          <p className="text-[11px] font-semibold text-zinc-300 truncate w-full tracking-wide">
+            {alt || 'Unknown Card'}
+          </p>
+          <p className="text-[9px] text-zinc-500 uppercase tracking-wider font-mono mt-0.5">
+            Original Scan Pending
+          </p>
+        </div>
       )}
     </div>
   );
@@ -142,7 +169,7 @@ export function CardImage({
       {/* The actual image — use width/height (not fill) so parent needs no explicit height */}
       <Image
         ref={imgRef}
-        src={src}
+        src={resolveCardImageUrl(src) || src}
         alt={alt}
         width={500}
         height={700}

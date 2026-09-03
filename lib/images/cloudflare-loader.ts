@@ -68,20 +68,28 @@ function snapWidth(width: number): number {
 export function resolveCardImageUrl(
   src: string | null | undefined,
 ): string | null | undefined {
-  if (!src || !isImageCdnEnabled) return src;
+  if (!src) return src;
+
+  // Automatically upgrade low-res 200px TCGPlayer thumbnails to crisp 400px high-res
+  let resolved = src;
+  if (typeof resolved === 'string' && resolved.includes('tcgplayer-cdn.tcgplayer.com') && resolved.includes('_200w.jpg')) {
+    resolved = resolved.replace('_200w.jpg', '_400w.jpg');
+  }
+
+  if (!isImageCdnEnabled) return resolved;
 
   let url: URL;
   try {
-    url = new URL(src);
+    url = new URL(resolved);
   } catch {
-    return src;
+    return resolved;
   }
 
   if (
     url.origin !== SUPABASE_CARD_IMAGES_ORIGIN ||
     !url.pathname.startsWith(SUPABASE_CARD_IMAGES_PATH)
   ) {
-    return src;
+    return resolved;
   }
 
   const objectKey = url.pathname.slice(SUPABASE_CARD_IMAGES_PATH.length);

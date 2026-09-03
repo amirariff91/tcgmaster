@@ -27,6 +27,7 @@ interface DbCard {
   slug: string;
   set_id: string;
   set_name: string;
+  ppt_set_id: string | null;
   image_url: string | null;
   tcg_player_id: string | null;
 }
@@ -51,19 +52,27 @@ async function mapPokemonJaTcgPlayer() {
 
   // Load all Japanese Pokemon cards from DB
   const cards = await dbQuery<DbCard>(`
-    SELECT c.id, c.name, c.number, c.slug, c.set_id, s.name as set_name, c.image_url, c.tcg_player_id
+    SELECT c.id, c.name, c.number, c.slug, c.set_id, s.name as set_name, s.ppt_set_id, c.image_url, c.tcg_player_id
     FROM cards c
     JOIN sets s ON s.id = c.set_id
     WHERE s.slug LIKE 'pokemon-%-ja'
   `);
   console.log(`[Pokemon JA Mapper] Loaded ${cards.length} Japanese Pokemon cards from DB.`);
 
-  // Group DB cards by normalized set name
+  // Group DB cards by normalized set name AND set code (ppt_set_id)
   const cardsBySet = new Map<string, DbCard[]>();
+  const cardsByCode = new Map<string, DbCard[]>();
+
   for (const c of cards) {
-    const key = normalize(c.set_name);
-    if (!cardsBySet.has(key)) cardsBySet.set(key, []);
-    cardsBySet.get(key)!.push(c);
+    const nameKey = normalize(c.set_name);
+    if (!cardsBySet.has(nameKey)) cardsBySet.set(nameKey, []);
+    cardsBySet.get(nameKey)!.push(c);
+
+    if (c.ppt_set_id) {
+      const codeKey = normalize(c.ppt_set_id);
+      if (!cardsByCode.has(codeKey)) cardsByCode.set(codeKey, []);
+      cardsByCode.get(codeKey)!.push(c);
+    }
   }
 
   let mappedCount = 0;
@@ -72,17 +81,34 @@ async function mapPokemonJaTcgPlayer() {
   for (let i = 0; i < groups.length; i++) {
     const group = groups[i];
     const groupNorm = normalize(group.name);
+    const abbrNorm = group.abbreviation ? normalize(group.abbreviation) : '';
 
     // Find matching DB set
     let matchingSetCards: DbCard[] | undefined;
-    for (const [setKey, setCardsList] of cardsBySet.entries()) {
-      if (
-        groupNorm.includes(setKey) ||
-        setKey.includes(groupNorm) ||
-        (group.abbreviation && normalize(group.abbreviation) === setKey)
-      ) {
-        matchingSetCards = setCardsList;
-        break;
+
+    // 1. Try match by set code/abbreviation (e.g. M1L, M2, M3, MC)
+    if (abbrNorm && cardsByCode.has(abbrNorm)) {
+      matchingSetCards = cardsByCode.get(abbrNorm);
+    } else {
+      for (const [codeKey, setCardsList] of cardsByCode.entries()) {
+        if (codeKey.length >= 2 && (groupNorm.startsWith(codeKey) || abbrNorm === codeKey)) {
+          matchingSetCards = setCardsList;
+          break;
+        }
+      }
+    }
+
+    // 2. Try match by name
+    if (!matchingSetCards) {
+      for (const [setKey, setCardsList] of cardsBySet.entries()) {
+        if (
+          groupNorm.includes(setKey) ||
+          setKey.includes(groupNorm) ||
+          (abbrNorm && abbrNorm === setKey)
+        ) {
+          matchingSetCards = setCardsList;
+          break;
+        }
       }
     }
 
@@ -125,8 +151,11 @@ async function mapPokemonJaTcgPlayer() {
             mappedCount++;
           }
 
-          if (p.imageUrl && (!matched.image_url || matched.image_url.includes('404') || matched.image_url === '')) {
-            params.push(p.imageUrl);
+          // Always prefer crisp 400w high-res image
+          const highResImageUrl = p.imageUrl ? p.imageUrl.replace('_200w.jpg', '_400w.jpg') : null;
+
+          if (highResImageUrl && (!matched.image_url || matched.image_url.includes('404') || matched.image_url === '' || matched.image_url.includes('_200w.jpg'))) {
+            params.push(highResImageUrl);
             updates.push(`image_url = $${params.length}`);
             imageBackfilledCount++;
           }
