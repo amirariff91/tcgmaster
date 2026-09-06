@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import cloudflareImageLoader, { isImageCdnEnabled, resolveCardImageUrl } from '@/lib/images/cloudflare-loader';
 import { Check } from 'lucide-react';
-import { cn, splitCardName } from '@/lib/utils';
+import { cn, splitCardName, formatDisplayNumber } from '@/lib/utils';
 import { type MockCard, pokemonTypeColors, rarityColors } from '@/lib/mock-data';
 import { QuickAddDropdown } from './quick-add-dropdown';
 import { useCurrencyContext } from '@/lib/currency-context';
@@ -133,7 +133,7 @@ export function CardGridItem({
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <p className="text-xs text-zinc-400 font-medium">
-                {card.number}
+                {formatDisplayNumber(gameSlug, card.number)}
               </p>
               <h3 className="font-semibold text-white truncate">
                 {cleanName}
