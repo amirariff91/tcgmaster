@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   description: 'Explore the legendary illustrators, manga artists, and studios behind your favorite trading card games.',
 };
 
-export const revalidate = 3600; // 1 hour revalidation
+export const dynamic = 'force-dynamic';
 
 export default async function ArtistsPage() {
   const games = await dbQuery<{ id: string; slug: string; name: string }>(`

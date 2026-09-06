@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   description: 'Explore the top winning deck archetypes, tournament statistics, and meta shares across all Trading Card Games.',
 };
 
-export const revalidate = 900; // 15 minutes ISR cache
+export const dynamic = 'force-dynamic';
 
 // Map slugs to dynamic theme styles, colors, and banners
 const gameStyles: Record<string, { bg: string; text: string; glow: string; border: string; banner: string }> = {
