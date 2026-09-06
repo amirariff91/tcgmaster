@@ -107,6 +107,21 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "*.monsta.com",
       },
+      // Bulbapedia archives for TCG artist headshots
+      {
+        protocol: "https",
+        hostname: "archives.bulbagarden.net",
+      },
+      // Wikipedia / Wikimedia Commons
+      {
+        protocol: "https",
+        hostname: "upload.wikimedia.org",
+      },
+      // Fandom / Wikia CDN
+      {
+        protocol: "https",
+        hostname: "static.wikia.nocookie.net",
+      },
     ],
   },
   typescript: {

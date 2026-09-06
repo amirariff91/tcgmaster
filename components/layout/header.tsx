@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Menu, X, Settings, LogOut, Briefcase, Bell, Trophy, FolderOpen, ChevronRight, TrendingUp, Layers } from 'lucide-react';
+import { Menu, X, Settings, LogOut, Briefcase, Bell, Trophy, FolderOpen, ChevronRight, TrendingUp, Layers, Palette } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
@@ -18,6 +18,7 @@ interface NavItem {
 const mainNavItems: NavItem[] = [
   { label: 'Prices', href: '/search' },
   { label: 'Decks', href: '/decks' },
+  { label: 'Artists', href: '/artists' },
 ];
 
 const userMenuItems = [
@@ -298,6 +299,23 @@ export function Header() {
                   <div>
                     <span className="text-base font-bold text-white group-hover:text-amber-400 transition-colors">Decks</span>
                     <p className="text-[11px] text-zinc-400">Tournament decklists & meta tiers</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-zinc-500 group-hover:text-white transition-colors" />
+              </Link>
+
+              <Link
+                href="/artists"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex items-center justify-between px-3.5 py-3 rounded-2xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 hover:border-orange-500/30 transition-all group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 group-hover:scale-105 transition-transform">
+                    <Palette className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="text-base font-bold text-white group-hover:text-purple-400 transition-colors">Artists</span>
+                    <p className="text-[11px] text-zinc-400">Illustrators & signature artwork</p>
                   </div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-zinc-500 group-hover:text-white transition-colors" />

@@ -164,7 +164,7 @@ export default async function HomePage() {
 
           {/* 1-Tap Quick Filter Pills */}
           <div className="flex items-center justify-center gap-1.5 sm:gap-2 mt-3 overflow-x-auto py-1 no-scrollbar text-[11px] font-semibold">
-            <Link href="/search" className="px-2.5 py-1 rounded-full bg-white/5 hover:bg-orange-500 hover:text-white border border-white/10 text-zinc-300 transition-all shrink-0">
+            <Link href="/search?game=all" className="px-2.5 py-1 rounded-full bg-white/5 hover:bg-orange-500 hover:text-white border border-white/10 text-zinc-300 transition-all shrink-0">
               All
             </Link>
             <Link href="/search?game=one-piece" className="px-2.5 py-1 rounded-full bg-white/5 hover:bg-rose-500/20 hover:border-rose-500/40 hover:text-rose-300 border border-white/10 text-zinc-300 transition-all shrink-0">

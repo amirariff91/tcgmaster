@@ -141,47 +141,43 @@ async function run() {
       const html = await page.content();
       const $ = cheerio.load(html);
 
-      const tables = $('table.hoverable-striped');
-      if (tables.length === 0) {
-         console.log('  ✗ No sales tables found. Saving timestamp and moving on.');
-      } else {
-         const insertRows: any[] = [];
+      const GRADE_CONTAINER_CONFIG: Record<string, { grade: string; companyId: string | null }> = {
+        'completed-auctions-used': { grade: 'raw', companyId: null },
+        'completed-auctions-manual-only': { grade: '10', companyId: '74c51627-cc4b-4a82-a1c0-52b3975b47b7' },
+        'completed-auctions-graded': { grade: '9', companyId: '74c51627-cc4b-4a82-a1c0-52b3975b47b7' },
+        'completed-auctions-new': { grade: '8', companyId: '74c51627-cc4b-4a82-a1c0-52b3975b47b7' },
+        'completed-auctions-cib': { grade: '7', companyId: '74c51627-cc4b-4a82-a1c0-52b3975b47b7' },
+        'completed-auctions-box-only': { grade: '9.5', companyId: 'cda2045f-5d78-49e7-b1c8-de04dac9888d' },
+        'completed-auctions-loose-and-box': { grade: '10', companyId: 'cda2045f-5d78-49e7-b1c8-de04dac9888d' },
+        'completed-auctions-grade-twenty': { grade: '10', companyId: 'cda2045f-5d78-49e7-b1c8-de04dac9888d' },
+        'completed-auctions-grade-nineteen': { grade: '10', companyId: 'dce6169f-8958-4229-861b-686a4644c984' },
+      };
 
-         tables.each((_, table) => {
-            const tableId = $(table).attr('id') || '';
-            let parsedGrade = 'raw';
+      const insertRows: any[] = [];
+      for (const [containerClass, conf] of Object.entries(GRADE_CONTAINER_CONFIG)) {
+        const rows = $(`.tab-frame .${containerClass} table tbody tr`);
+        rows.each((_, r) => {
+          const dateStr = $(r).find('td.date').text().trim();
+          const priceText = $(r).find('span.js-price').text().trim();
+          if (!dateStr || !priceText) return;
+          const date = new Date(dateStr);
+          if (isNaN(date.getTime())) return;
+          const match = priceText.match(/([0-9.,]+)/);
+          if (!match) return;
+          const price = parseFloat(match[1].replace(/,/g, ''));
+          if (isNaN(price) || price <= 0) return;
 
-            if (tableId.includes('grade10')) parsedGrade = '10';
-            else if (tableId.includes('grade9')) parsedGrade = '9';
-            else if (tableId.includes('grade8')) parsedGrade = '8';
-            else if (tableId.includes('grade7')) parsedGrade = '7';
-            else if (tableId.includes('new')) parsedGrade = 'new';
-
-            $(table).find('tbody tr').each((_, row) => {
-               const dateStr = $(row).find('.date').text().trim();
-               const priceStr = $(row).find('.price').text().trim();
-
-               if (!dateStr || !priceStr) return;
-
-               const date = new Date(dateStr);
-               if (isNaN(date.getTime())) return;
-
-               const match = priceStr.match(/([0-9.,]+)/);
-               if (!match) return;
-               const price = parseFloat(match[1].replace(/,/g, ''));
-               if (isNaN(price) || price <= 0) return;
-
-               insertRows.push({
-                 card_id: cardId,
-                 source: 'pricecharting',
-                 grade: parsedGrade,
-                 grading_company_id: parsedGrade !== 'raw' && parsedGrade !== 'new' ? '74c51627-cc4b-4a82-a1c0-52b3975b47b7' : null,
-                 price: price,
-                 currency: 'USD',
-                 recorded_at: date.toISOString(),
-               });
-            });
-         });
+          insertRows.push({
+            card_id: cardId,
+            source: 'pricecharting',
+            grade: conf.grade,
+            grading_company_id: conf.companyId,
+            price: price,
+            currency: 'USD',
+            recorded_at: date.toISOString(),
+          });
+        });
+      });
 
          if (insertRows.length > 0) {
             const oldest = insertRows.reduce((min, r) => r.recorded_at < min ? r.recorded_at : min, insertRows[0].recorded_at);

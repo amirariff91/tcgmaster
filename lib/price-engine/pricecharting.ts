@@ -46,10 +46,11 @@ function parsePrice(text: string): number | undefined {
 
 function readGradedPrices($: cheerio.CheerioAPI): Record<string, number> {
   const gradedPrices: Record<string, number> = {};
+
+  // 1. Classic table format (#full-prices tr, #price_data tr)
   $('#full-prices tr, #price_data tr').each((_, row) => {
     const label = $(row).find('td.label').text().replace(/\s+/g, ' ').trim().toLowerCase();
 
-    // Normalize common PriceCharting grade labels to our DB format
     let normalizedGrade: string | null = null;
     if (label === 'psa 10') normalizedGrade = 'psa10';
     else if (label === 'psa 9') normalizedGrade = 'psa9';
@@ -68,6 +69,25 @@ function readGradedPrices($: cheerio.CheerioAPI): Record<string, number> {
       gradedPrices[normalizedGrade] = price;
     }
   });
+
+  // 2. Modern product price grid layout (cell IDs on td/div)
+  const cellMappings: Record<string, string> = {
+    'manual_only_price': 'psa10',
+    'graded_price': 'psa9',
+    'box_only_price': 'bgs9.5',
+    'new_price': 'psa8',
+  };
+
+  for (const [cellId, gradeKey] of Object.entries(cellMappings)) {
+    if (gradedPrices[gradeKey] === undefined) {
+      const priceText = $(`#${cellId} span.price, #${cellId} .price, #${cellId} span.js-price`).first().text();
+      const p = parsePrice(priceText);
+      if (p !== undefined) {
+        gradedPrices[gradeKey] = p;
+      }
+    }
+  }
+
   return gradedPrices;
 }
 

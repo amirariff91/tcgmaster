@@ -153,8 +153,8 @@ export function isValidCertNumber(certNumber: string, company: string): boolean 
 export function formatDisplayNumber(gameSlug: string | null | undefined, number: string, cardCount?: number): string {
   if (!number) return '';
 
-  // Strip _pX, -pX, _rX, -rX suffixes for UI display
-  const cleanNumber = number.replace(/[_-][pr]\d+/g, '');
+  // Strip _pX, -pX, _rX, -rX suffixes for UI display (e.g., EB01-003_p2 -> EB01-003)
+  const cleanNumber = number.replace(/[_-][pr]\d+/gi, '');
 
   // Pokemon cards append /total if not already present
   if (gameSlug === 'pokemon') {

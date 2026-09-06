@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import { dbQuery } from '@/lib/db/client';
+import { redis } from '@/lib/redis/client';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Trophy, ChevronRight, Loader2, Crown, Flame, Sparkles } from 'lucide-react';
@@ -10,7 +11,7 @@ export const metadata: Metadata = {
   description: 'Explore the top winning deck archetypes, tournament statistics, and meta shares across all Trading Card Games.',
 };
 
-export const revalidate = 60; // Revalidate every minute
+export const revalidate = 900; // 15 minutes ISR cache
 
 // Map slugs to dynamic theme styles, colors, and banners
 const gameStyles: Record<string, { bg: string; text: string; glow: string; border: string; banner: string }> = {
@@ -86,81 +87,102 @@ type GlobalDeckRow = {
 };
 
 export default async function GlobalDecksHub() {
-  let games: GameRow[] = [];
-  let allDecks: GlobalDeckRow[] = [];
+  const cacheKey = 'decks:hub:tierlists:v1';
+  type DecksCacheData = {
+    games: GameRow[];
+    tierListsByGame: Record<string, ArchetypeData[]>;
+  };
 
+  let cachedData: DecksCacheData | null = null;
   try {
-    games = await dbQuery<GameRow>(`
-      SELECT id, slug, display_name
-      FROM games
-      WHERE is_active = true
-    `);
-
-    allDecks = await dbQuery<GlobalDeckRow>(`
-      SELECT
-        d.leader_card_id,
-        CASE WHEN c.id IS NULL THEN NULL ELSE json_build_object(
-          'name', c.name,
-          'image_url', c.image_url,
-          'local_image_url', c.local_image_url
-        ) END AS cards,
-        json_build_object(
-          'games', json_build_object('id', g.id, 'slug', g.slug)
-        ) AS tournaments
-      FROM decks d
-      LEFT JOIN cards c ON c.id = d.leader_card_id
-      JOIN tournaments t ON t.id = d.tournament_id
-      JOIN games g ON g.id = t.game_id
-    `);
-  } catch (error) {
-    console.error('Failed to load global deck data:', error);
+    cachedData = await redis.get<DecksCacheData>(cacheKey);
+  } catch (err) {
+    console.error('Redis get error in GlobalDecksHub:', err);
   }
 
-  // Desired display order: One Piece, Pokémon, Dragon Ball Fusion World, Riftbound, Monsta Galaxy
-  const order = ['one-piece', 'pokemon', 'dbfw', 'riftbound', 'boboiboy'];
-  games.sort((a, b) => {
-    const idxA = order.indexOf(a.slug);
-    const idxB = order.indexOf(b.slug);
-    if (idxA === -1 && idxB === -1) return 0;
-    if (idxA === -1) return 1;
-    if (idxB === -1) return -1;
-    return idxA - idxB;
-  });
+  let games: GameRow[] = cachedData?.games || [];
+  let tierListsByGame: Record<string, ArchetypeData[]> = cachedData?.tierListsByGame || {};
 
-  // Aggregate Data in JS
-  const groupedData: Record<string, Record<string, ArchetypeData>> = {};
+  if (!cachedData) {
+    let allDecks: GlobalDeckRow[] = [];
+    try {
+      games = await dbQuery<GameRow>(`
+        SELECT id, slug, display_name
+        FROM games
+        WHERE is_active = true
+      `);
 
-  for (const deck of allDecks) {
-    if (!deck.leader_card_id || !deck.cards) continue;
-
-    const gameId = deck.tournaments?.games?.id;
-    const gameSlug = deck.tournaments?.games?.slug;
-    if (!gameId || !gameSlug) continue;
-
-    if (!groupedData[gameId]) {
-      groupedData[gameId] = {};
+      allDecks = await dbQuery<GlobalDeckRow>(`
+        SELECT
+          d.leader_card_id,
+          CASE WHEN c.id IS NULL THEN NULL ELSE json_build_object(
+            'name', c.name,
+            'image_url', c.image_url,
+            'local_image_url', c.local_image_url
+          ) END AS cards,
+          json_build_object(
+            'games', json_build_object('id', g.id, 'slug', g.slug)
+          ) AS tournaments
+        FROM decks d
+        LEFT JOIN cards c ON c.id = d.leader_card_id
+        JOIN tournaments t ON t.id = d.tournament_id
+        JOIN games g ON g.id = t.game_id
+      `);
+    } catch (error) {
+      console.error('Failed to load global deck data:', error);
     }
 
-    const leaderId = deck.leader_card_id;
-    if (!groupedData[gameId][leaderId]) {
-      groupedData[gameId][leaderId] = {
-        leaderCardId: leaderId,
-        leaderCardName: (deck.cards.name || 'Unknown Leader').replace(/\s*\(Alternate Art\)\s*/gi, '').replace(/\s*\(Parallel\)\s*/gi, ''),
-        leaderCardImage: deck.cards.local_image_url || deck.cards.image_url || '',
-        gameSlug: gameSlug,
-        tops: 0,
-      };
+    // Desired display order: One Piece, Pokémon, Dragon Ball Fusion World, Riftbound, Monsta Galaxy
+    const order = ['one-piece', 'pokemon', 'dbfw', 'riftbound', 'boboiboy'];
+    games.sort((a, b) => {
+      const idxA = order.indexOf(a.slug);
+      const idxB = order.indexOf(b.slug);
+      if (idxA === -1 && idxB === -1) return 0;
+      if (idxA === -1) return 1;
+      if (idxB === -1) return -1;
+      return idxA - idxB;
+    });
+
+    // Aggregate Data in JS
+    const groupedData: Record<string, Record<string, ArchetypeData>> = {};
+
+    for (const deck of allDecks) {
+      if (!deck.leader_card_id || !deck.cards) continue;
+
+      const gameId = deck.tournaments?.games?.id;
+      const gameSlug = deck.tournaments?.games?.slug;
+      if (!gameId || !gameSlug) continue;
+
+      if (!groupedData[gameId]) {
+        groupedData[gameId] = {};
+      }
+
+      const leaderId = deck.leader_card_id;
+      if (!groupedData[gameId][leaderId]) {
+        groupedData[gameId][leaderId] = {
+          leaderCardId: leaderId,
+          leaderCardName: (deck.cards.name || 'Unknown Leader').replace(/\s*\(Alternate Art\)\s*/gi, '').replace(/\s*\(Parallel\)\s*/gi, ''),
+          leaderCardImage: deck.cards.local_image_url || deck.cards.image_url || '',
+          gameSlug: gameSlug,
+          tops: 0,
+        };
+      }
+
+      groupedData[gameId][leaderId].tops += 1;
     }
 
-    groupedData[gameId][leaderId].tops += 1;
-  }
+    // Convert the grouped data into sorted arrays per game
+    for (const gameId in groupedData) {
+      const archetypes = Object.values(groupedData[gameId]);
+      archetypes.sort((a, b) => b.tops - a.tops);
+      tierListsByGame[gameId] = archetypes;
+    }
 
-  // Convert the grouped data into sorted arrays per game
-  const tierListsByGame: Record<string, ArchetypeData[]> = {};
-  for (const gameId in groupedData) {
-    const archetypes = Object.values(groupedData[gameId]);
-    archetypes.sort((a, b) => b.tops - a.tops);
-    tierListsByGame[gameId] = archetypes;
+    try {
+      await redis.set(cacheKey, { games, tierListsByGame }, { ex: 900 });
+    } catch (err) {
+      console.error('Redis set error in GlobalDecksHub:', err);
+    }
   }
 
   return (

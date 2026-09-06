@@ -8,7 +8,6 @@ import { CardDetailActions } from '@/components/card/card-detail-actions';
 import { RelatedCards, type RelatedCard } from '@/components/card/related-cards';
 import { FormattedPrice } from '@/components/ui/formatted-price';
 import { CollectrChart } from '@/components/charts/collectr-chart';
-import { PriceFreshness } from '@/components/card/price-freshness';
 import { formatPrice, formatNumber, getRarityDisplay, formatDate, formatDisplayNumber, formatSetName, splitCardName } from '@/lib/utils';
 import { getCardWithPrices } from '@/lib/ppt/service';
 import { dbQuery } from '@/lib/db/client';
@@ -591,11 +590,6 @@ export default async function CardDetailPage({ params }: PageProps) {
                   {variantInfo}
                 </div>
               )}
-              {card.artist && (
-                <p className="text-zinc-400 font-medium mt-1">
-                  Illustrated by <span className="text-zinc-300">{card.artist}</span>
-                </p>
-              )}
               {printRunInfo?.tcgplayer_card_name && (
                 <p className="text-zinc-400 font-medium text-xs mt-1 bg-white/10 inline-block px-2 py-0.5 rounded-sm">
                   TCGPlayer: <span className="text-zinc-300">{printRunInfo.tcgplayer_card_name}</span>
@@ -662,29 +656,6 @@ export default async function CardDetailPage({ params }: PageProps) {
                 <p className="text-sm leading-relaxed text-zinc-300 whitespace-pre-line">{card.description}</p>
               </div>
             )}
-
-            {/* Pulse / Quick Stats */}
-            <div className="grid grid-cols-3 divide-x divide-white/10 bg-[#0b1329]/80 backdrop-blur-sm rounded-2xl border border-white/10 py-4 lg:py-6 px-2">
-              <div className="px-4 flex flex-col items-center text-center">
-                <span className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest mb-2">PSA 10 Pop</span>
-                <span className="text-2xl font-black text-white tabular-nums">{psa10Pop > 0 ? formatNumber(psa10Pop) : '--'}</span>
-                <span className="text-zinc-500 text-[10px] mt-1 font-medium">{totalPop > 0 ? formatNumber(totalPop) : '--'} total</span>
-              </div>
-              <div className="px-4 flex flex-col items-center text-center">
-                <span className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest mb-2">Price Sources</span>
-                <span className="text-2xl font-black text-white tabular-nums">{latestPricesList.length > 0 ? latestPricesList.length : '--'}</span>
-                <span className="text-zinc-500 text-[10px] mt-1 font-medium">Current snapshot</span>
-              </div>
-              <div className="px-4 flex flex-col items-center text-center">
-                <span className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest mb-2">Last Updated</span>
-                <PriceFreshness newestPriceAt={newestPriceAt} />
-                <span className="text-zinc-500 text-[10px] mt-1 font-medium">
-                  {latestPricesList.length > 0
-                    ? `${latestPricesList.length} source${latestPricesList.length === 1 ? '' : 's'}`
-                    : 'No sources yet'}
-                </span>
-              </div>
-            </div>
 
           </div>
 

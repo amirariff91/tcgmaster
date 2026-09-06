@@ -93,5 +93,9 @@ export async function GET(request: NextRequest) {
         hasMore: results.hasMore,
       },
     },
+  }, {
+    headers: {
+      'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
+    },
   });
 }

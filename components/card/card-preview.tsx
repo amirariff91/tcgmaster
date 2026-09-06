@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { cn, getRarityDisplay, splitCardName } from '@/lib/utils';
+import { cn, getRarityDisplay, splitCardName, formatDisplayNumber } from '@/lib/utils';
 import { useCurrencyContext } from '@/lib/currency-context';
 import { CardImage } from './card-image';
 import { PriceChangeIndicator } from './price-display';
@@ -57,7 +57,7 @@ export function CardPreview({ card, gameSlug, variant = 'default', className }: 
               )}
             </h3>
             <p className="text-sm text-zinc-400 truncate">
-              {card.set?.name} - #{card.number}
+              {card.set?.name} - #{formatDisplayNumber(gameSlug, card.number)}
             </p>
           </div>
           <div className="text-right">
@@ -151,7 +151,7 @@ export function CardPreview({ card, gameSlug, variant = 'default', className }: 
               {card.set?.name}
             </p>
             <p className="text-[11px] text-zinc-500">
-              {card.rarity ? getRarityDisplay(card.rarity as string) : '?'} &bull; #{card.number || '?'}
+              {card.rarity ? getRarityDisplay(card.rarity as string) : '?'} &bull; #{formatDisplayNumber(gameSlug, card.number) || '?'}
             </p>
           </div>
 

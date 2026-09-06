@@ -1,0 +1,163 @@
+{
+  "mitsuhiro-arita": {
+    "name": "Mitsuhiro Arita",
+    "japaneseName": "有田 満弘",
+    "role": "Illustrator & Concept Artist",
+    "country": "Japan",
+    "birth": "1970",
+    "bio": "Mitsuhiro Arita is one of the most legendary illustrators in trading card game history. Working with the Pokémon Trading Card Game since its inception with the 1996 Base Set, Arita illustrated the iconic original Base Set Charizard, Pikachu, and Mewtwo. His painterly, dynamic style captures realistic lighting, weight, and vibrant natural habitats.",
+    "notableWorks": [
+      "Base Set Charizard",
+      "Tag Team GX Alternate Arts",
+      "VMAX Climax Character Rares",
+      "Berserk Concept Art"
+    ],
+    "games": [
+      "pokemon"
+    ],
+    "photoUrl": "https://archives.bulbagarden.net/media/upload/thumb/c/cf/Mitsuhiro_Arita.png/400px-Mitsuhiro_Arita.png"
+  },
+  "ken-sugimori": {
+    "name": "Ken Sugimori",
+    "japaneseName": "杉森 建",
+    "role": "Character Designer & Art Director",
+    "country": "Japan",
+    "birth": "1966 (Fukuoka, Japan)",
+    "bio": "Ken Sugimori is a Japanese video game designer, manga artist, and art director, best known as the character designer and art director for the Pokémon franchise. Alongside Satoshi Tajiri, he co-founded Game Freak. His classic watercolor character designs defined the aesthetic of the original 151 Pokémon and early card releases.",
+    "notableWorks": [
+      "Original Generation I & II Pokémon Designs",
+      "Base Set Trainer Cards",
+      "Gym Heroes / Challenge Cards"
+    ],
+    "games": [
+      "pokemon"
+    ],
+    "photoUrl": "/artists/ken-sugimori.jpg"
+  },
+  "kagemaru-himeno": {
+    "name": "Kagemaru Himeno",
+    "japaneseName": "姫野 かげまる",
+    "role": "Manga Artist & Legendary Illustrator",
+    "country": "Japan",
+    "birth": "Japan",
+    "bio": "Kagemaru Himeno is one of the most beloved and prolific illustrators in Pokémon Trading Card Game history, having illustrated over 650 cards since the classic Jungle expansion. Also known as a talented manga artist, Himeno's distinctive soft watercolor style, warm lighting, and endearing depictions of Pokémon in everyday scenes have made her artworks iconic across generations.",
+    "notableWorks": [
+      "Jungle Eevee & Vulpix",
+      "Neo Genesis Clefairy",
+      "Expedition Base Set Pikachu",
+      "Southern Islands Collection"
+    ],
+    "games": [
+      "pokemon"
+    ],
+    "photoUrl": "/artists/kagemaru-himeno.jpg"
+  },
+  "5ban-graphics": {
+    "name": "5ban Graphics",
+    "japaneseName": "5ban Graphics",
+    "role": "Creatures Inc. CGI Studio",
+    "country": "Japan",
+    "birth": "Established 2010",
+    "bio": "5ban Graphics is an in-house digital CGI design group formed within Creatures Inc. Since the Black & White era, 5ban Graphics has been responsible for modeling and rendering hundreds of full-art Pokémon Ultra Rares, Pokémon-EX, Pokémon-GX, and Pokémon VSTAR cards.",
+    "notableWorks": [
+      "Black & White Full Art EXs",
+      "Sword & Shield V/VMAX Renders",
+      "Scarlet & Violet ex Renders"
+    ],
+    "games": [
+      "pokemon"
+    ]
+  },
+  "kankurou": {
+    "name": "kankurou",
+    "japaneseName": "カンクロウ",
+    "role": "Manga & TCG Illustrator",
+    "country": "Japan",
+    "birth": "Japan",
+    "bio": "kankurou is one of the premier illustrators for the ONE PIECE Card Game, renowned for intense, battle-ready character expressions, thick dynamic ink lines, and high-impact action poses across numerous Leader cards and Super Rares.",
+    "notableWorks": [
+      "Charlotte Snack",
+      "Charlotte Daifuku",
+      "OP-01 / OP-07 Pirates & Leaders"
+    ],
+    "games": [
+      "one-piece"
+    ]
+  },
+  "koushi-rokushiro": {
+    "name": "Koushi Rokushiro",
+    "japaneseName": "六四郎",
+    "role": "Character Illustrator",
+    "country": "Japan",
+    "birth": "Japan",
+    "bio": "Koushi Rokushiro is a prominent illustrator contributing heavily to the ONE PIECE Card Game. Famous for vivid colors and comic-book energetic perspectives that bring Eiichiro Oda's characters into thrilling card art.",
+    "notableWorks": [
+      "One Piece ST-01 to ST-14 Starter Deck Arts",
+      "Booster Pack Parallel Arts"
+    ],
+    "games": [
+      "one-piece"
+    ]
+  },
+  "eiichiro-oda": {
+    "name": "Eiichiro Oda",
+    "japaneseName": "尾田 栄一郎",
+    "role": "Creator of ONE PIECE & Manga Artist",
+    "country": "Kumamoto, Japan",
+    "birth": "January 1, 1975",
+    "bio": "Eiichiro Oda is the creator and author of ONE PIECE, the best-selling manga series in history with over 516 million copies in circulation. His original manga artwork panels, celebratory anniversary drawings, and signature Manga Alternate Art cards are the most prestigious and valuable grails in the ONE PIECE Card Game.",
+    "notableWorks": [
+      "Manga Alternate Art Super Parallels (Luffy, Zoro, Roger, Shanks, Law)"
+    ],
+    "games": [
+      "one-piece"
+    ],
+    "photoUrl": "https://static.wikia.nocookie.net/onepiece/images/3/32/Eiichiro_Oda_Infobox.png/revision/latest?cb=20151007150928"
+  },
+  "six-more-vodka": {
+    "name": "Six More Vodka",
+    "japaneseName": "Six More Vodka",
+    "role": "Premier Concept Art Studio",
+    "country": "Berlin, Germany",
+    "birth": "Founded 2006 by Marko Djurdjevic",
+    "bio": "Six More Vodka is a world-class design and concept art studio based in Berlin, Germany. Renowned for rich cinematic lighting, moody atmospheric storytelling, and master-level anatomical rendering across fantasy card art and worldbuilding.",
+    "notableWorks": [
+      "Legends of Runeterra Key Art",
+      "Riftbound Premier Character Illustrations"
+    ],
+    "games": [
+      "riftbound"
+    ]
+  },
+  "kudos-productions": {
+    "name": "Kudos Productions",
+    "japaneseName": "Kudos Productions",
+    "role": "Digital Illustration Studio",
+    "country": "International",
+    "birth": "International",
+    "bio": "Kudos Productions is a premier digital art and illustration studio providing high-end character illustration, splash art, and card illustrations for global gaming franchises.",
+    "notableWorks": [
+      "Riftbound Champions and Spell Artworks"
+    ],
+    "games": [
+      "riftbound"
+    ]
+  },
+  "naoki-saito": {
+    "name": "Naoki Saito",
+    "japaneseName": "齋藤 直樹",
+    "role": "Character Illustrator & YouTuber",
+    "country": "Yamagata, Japan",
+    "birth": "January 11, 1982",
+    "bio": "Naoki Saito is a highly acclaimed Japanese illustrator and educator. Renowned for creating some of the most sought-after and valuable Full Art Trainer cards in Pokémon TCG history (including Lillie, Sightseer, and Lisia), known for expressive facial eyes and beautiful clean line work.",
+    "notableWorks": [
+      "Ultra Prism Lillie (Full Art)",
+      "Tag All Stars Sightseer",
+      "Celestial Storm Lisia"
+    ],
+    "games": [
+      "pokemon"
+    ],
+    "photoUrl": "https://archives.bulbagarden.net/media/upload/thumb/2/2e/Naoki_Saito.png/400px-Naoki_Saito.png"
+  }
+}

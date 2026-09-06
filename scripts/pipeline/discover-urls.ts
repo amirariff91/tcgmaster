@@ -1,27 +1,29 @@
 import 'dotenv/config';
-import { createClient } from '@supabase/supabase-js';
+import { Pool } from 'pg';
 import { getSharedBrowser } from '../../lib/price-engine/browser';
 import * as cheerio from 'cheerio';
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!);
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 async function delay(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 async function runDiscovery() {
-  console.log('Fetching top 100 expensive Japanese OP cards that lack URLs...');
+  console.log('Fetching top expensive Japanese OP cards that lack verified URLs...');
 
-  const { data: cards, error } = await supabase
-    .from('cards')
-    .select('id, slug, name, number, snkrdunk_url, pricecharting_url, yuyutei_url, price_cache_ttl')
-    .like('slug', 'op-%-ja')
-    .or('snkrdunk_url.is.null,pricecharting_url.is.null,yuyutei_url.is.null')
-    .order('price_cache_ttl', { ascending: false, nullsFirst: false })
-    .limit(100);
+  const { rows: cards } = await pool.query(`
+    SELECT id, slug, name, number, snkrdunk_url, pricecharting_url, yuyutei_url, price_cache_ttl
+    FROM cards
+    WHERE slug LIKE 'op-%-ja'
+      AND (snkrdunk_url IS NULL OR pricecharting_url IS NULL OR yuyutei_url IS NULL)
+    ORDER BY price_cache_ttl DESC NULLS LAST
+    LIMIT 50;
+  `);
 
-  if (error || !cards) {
-    console.error('Error fetching cards', error);
+  if (!cards || cards.length === 0) {
+    console.log('No cards need URL discovery.');
+    await pool.end();
     return;
   }
 
@@ -30,12 +32,13 @@ async function runDiscovery() {
 
   for (const card of cards) {
     console.log(`\n==============================================`);
-    console.log(`Processing: ${card.name} (${card.number}) - $${((card.price_cache_ttl || 0) / 100).toFixed(2)}`);
+    console.log(`Processing: ${card.name} (${card.number}) [${card.slug}]`);
 
     const updates: Record<string, string> = {};
-    const cardNumLower = card.number.toLowerCase();
+    const cardNumLower = (card.number || '').toLowerCase();
 
-    if (!card.snkrdunk_url) {
+    // 1. SnkrDunk discovery
+    if (!card.snkrdunk_url && card.number) {
       console.log(`  [Snkrdunk] Searching for ${card.number}...`);
       try {
         const page = await browser.newPage();
@@ -50,11 +53,11 @@ async function runDiscovery() {
           const title = firstLink.text().toLowerCase();
 
           if (href && title.includes(cardNumLower)) {
-             const fullUrl = href.startsWith('http') ? href : `https://snkrdunk.com${href}`;
-             console.log(`  ✅ [Snkrdunk] Found VERIFIED match: ${fullUrl}`);
-             updates.snkrdunk_url = fullUrl.split('?')[0];
+            const fullUrl = href.startsWith('http') ? href : `https://snkrdunk.com${href}`;
+            console.log(`  ✅ [Snkrdunk] Found VERIFIED match: ${fullUrl}`);
+            updates.snkrdunk_url = fullUrl.split('?')[0];
           } else {
-             console.log(`  ⚠️ [Snkrdunk] Found a link but title didnt match perfectly.`);
+            console.log(`  ⚠️ [Snkrdunk] Found a link but title didnt match card number.`);
           }
         } else {
           console.log(`  ❌ [Snkrdunk] No results found.`);
@@ -66,51 +69,83 @@ async function runDiscovery() {
       }
     }
 
-    if (!card.pricecharting_url) {
-      console.log(`  [PriceCharting] Generating URL deterministically...`);
-      let setSlug = card.slug.split('-')[1]; // op-op01-001-ja -> op01
-      if (setSlug === 'p' || card.number.startsWith('P-')) setSlug = 'promo';
-
-      const cleanName = card.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-      const cleanNum = cardNumLower.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-
-      let pcUrl = `https://www.pricecharting.com/game/one-piece-japanese-${setSlug}/${cleanName}-${cleanNum}`;
-
-      // Handle special variants for PC
-      if (card.slug.endsWith('_p2-ja')) pcUrl += '-manga';
-      else if (card.slug.endsWith('_p3-ja') || card.slug.endsWith('_p4-ja')) pcUrl += '-special-card';
-      else if (card.slug.includes('_p') && !card.slug.endsWith('_p1-ja')) pcUrl += '-parallel';
-
+    // 2. PriceCharting intelligent search-based discovery (never naive suffix guessing)
+    if (!card.pricecharting_url && card.number) {
+      console.log(`  [PriceCharting] Searching by card number (${card.number})...`);
       try {
         const page = await browser.newPage();
-        await page.goto(pcUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+        const cleanNum = card.number.split('_')[0].split('-')[0]; // base number token e.g. OP01-120
+        const query = `${cleanNum} japanese`;
+        const searchUrl = `https://www.pricecharting.com/search-products?type=prices&q=${encodeURIComponent(query)}`;
+        
+        await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+        await delay(2500);
+
         const html = await page.content();
         const $ = cheerio.load(html);
-        const title = $('title').text().toLowerCase();
+        const rows = $('table#games_table tbody tr');
 
-        if (title.includes('price') && title.includes('one piece')) {
-           console.log(`  ✅ [PriceCharting] Verified generated URL: ${pcUrl}`);
-           updates.pricecharting_url = pcUrl;
+        const isManga = card.name.toLowerCase().includes('manga');
+        const isParallel = card.slug.includes('_p') && !card.slug.endsWith('_p1-ja') && !isManga;
+        const isSpecial = card.slug.includes('_p3') || card.name.toLowerCase().includes('special');
+        const isBase = !card.slug.includes('_p') && !card.slug.includes('_r');
+
+        let matchedUrl: string | null = null;
+
+        rows.each((_, r) => {
+          if (matchedUrl) return;
+          const title = $(r).find('td.title a').text().trim().toLowerCase();
+          const href = $(r).find('td.title a').attr('href');
+          const setCol = $(r).find('td.console, td.platform, td.system, td.set').text().toLowerCase();
+
+          // Must be Japanese set
+          if (!setCol.includes('japanese')) return;
+
+          if (isManga) {
+            if (title.includes('manga')) {
+              matchedUrl = href ? new URL(href, 'https://www.pricecharting.com').toString() : null;
+            }
+          } else if (isSpecial) {
+            if (title.includes('special') || title.includes('[sp]')) {
+              matchedUrl = href ? new URL(href, 'https://www.pricecharting.com').toString() : null;
+            }
+          } else if (isParallel) {
+            if (title.includes('alternate art') || title.includes('parallel')) {
+              matchedUrl = href ? new URL(href, 'https://www.pricecharting.com').toString() : null;
+            }
+          } else if (isBase) {
+            if (!title.includes('[') && !title.includes('alternate art') && !title.includes('manga') && !title.includes('promo')) {
+              matchedUrl = href ? new URL(href, 'https://www.pricecharting.com').toString() : null;
+            }
+          }
+        });
+
+        if (matchedUrl) {
+          console.log(`  ✅ [PriceCharting] Found match: ${matchedUrl}`);
+          updates.pricecharting_url = matchedUrl;
         } else {
-           console.log(`  ❌ [PriceCharting] Generated URL looks invalid (404/wrong page).`);
+          console.log(`  ⚠️ [PriceCharting] No qualifying row matched variant requirements.`);
         }
         await page.close();
       } catch (e: unknown) {
-         const message = e instanceof Error ? e.message : String(e);
-         console.log(`  ❌ [PriceCharting] Error checking generated URL: ${message}`);
+        const message = e instanceof Error ? e.message : String(e);
+        console.log(`  ❌ [PriceCharting] Error: ${message}`);
       }
     }
 
     if (Object.keys(updates).length > 0) {
-       updates.curation_status = 'pending';
-       await supabase.from('cards').update(updates).eq('id', card.id);
-       updatedCount++;
-       console.log(`  💾 Saved ${Object.keys(updates).length} new URLs to database.`);
+      const setClauses = Object.keys(updates).map((col, idx) => `${col} = $${idx + 2}`).join(', ');
+      const values = [card.id, ...Object.values(updates)];
+      await pool.query(`UPDATE cards SET ${setClauses}, curation_status = 'pending' WHERE id = $1`, values);
+      updatedCount++;
+      console.log(`  💾 Saved ${Object.keys(updates).length} new verified URL(s) to Postgres.`);
     }
   }
 
+  await browser.close();
+  await pool.end();
   console.log(`\nDone. Updated URLs for ${updatedCount} cards.`);
   process.exit(0);
 }
 
-runDiscovery();
+runDiscovery().catch(e => { console.error(e); process.exit(1); });

@@ -39,20 +39,48 @@ const sortOptions = [
 function SearchResults() {
   const searchParams = useSearchParams();
   const query = searchParams.get('q') || '';
+  const urlGame = searchParams.get('game');
+  const urlSet = searchParams.get('set');
+  const urlLang = searchParams.get('lang');
 
   const [sort, setSort] = React.useState(() => typeof window !== 'undefined' ? sessionStorage.getItem('search_sort') || 'price-desc' : 'price-desc');
-  const [game, setGame] = React.useState(() => typeof window !== 'undefined' ? sessionStorage.getItem('search_game') || 'all' : 'all');
-  const [cardSet, setCardSet] = React.useState(() => typeof window !== 'undefined' ? sessionStorage.getItem('search_set') || 'all' : 'all');
-  const [lang, setLang] = React.useState(() => typeof window !== 'undefined' ? sessionStorage.getItem('search_lang') || 'all' : 'all');
+  const [game, setGame] = React.useState(() => {
+    if (urlGame) return urlGame;
+    return typeof window !== 'undefined' ? sessionStorage.getItem('search_game') || 'all' : 'all';
+  });
+  const [cardSet, setCardSet] = React.useState(() => {
+    if (urlSet) return urlSet;
+    if (urlGame) return 'all';
+    return typeof window !== 'undefined' ? sessionStorage.getItem('search_set') || 'all' : 'all';
+  });
+  const [lang, setLang] = React.useState(() => {
+    if (urlLang) return urlLang;
+    if (urlGame) return 'all';
+    return typeof window !== 'undefined' ? sessionStorage.getItem('search_lang') || 'all' : 'all';
+  });
   const [showFilters, setShowFilters] = React.useState(false);
+
+  // Sync state if URL search parameters change dynamically (e.g. navigation from home page)
+  React.useEffect(() => {
+    if (urlGame && urlGame !== game) {
+      setGame(urlGame);
+      setCardSet(urlSet || 'all');
+      setLang(urlLang || 'all');
+      setPage(1);
+      setResults([]);
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('search_results_v2');
+      }
+    }
+  }, [urlGame, urlSet, urlLang, game]);
 
   const currentFiltersKey = JSON.stringify({ query, game, cardSet, lang, sort });
 
   const [results, setResults] = React.useState<SearchCardResult[]>(() => {
     if (typeof window !== 'undefined') {
-      const savedFilters = sessionStorage.getItem('search_filters_key');
+      const savedFilters = sessionStorage.getItem('search_filters_key_v2');
       if (savedFilters === currentFiltersKey) {
-        const cached = sessionStorage.getItem('search_results');
+        const cached = sessionStorage.getItem('search_results_v2');
         if (cached) {
           try { return JSON.parse(cached); } catch (e) {}
         }
@@ -65,7 +93,7 @@ function SearchResults() {
 
   const [page, setPage] = React.useState(() => {
     if (typeof window !== 'undefined') {
-      const savedFilters = sessionStorage.getItem('search_filters_key');
+      const savedFilters = sessionStorage.getItem('search_filters_key_v2');
       if (savedFilters === currentFiltersKey) {
         return parseInt(sessionStorage.getItem('search_page') || '1', 10);
       }
@@ -84,15 +112,15 @@ function SearchResults() {
 
       // If filters changed AFTER initial mount, reset page to 1
       if (!isInitialMount.current) {
-        const savedFilters = sessionStorage.getItem('search_filters_key');
+        const savedFilters = sessionStorage.getItem('search_filters_key_v2');
         if (savedFilters !== currentFiltersKey) {
           setPage(1);
           setResults([]);
-          sessionStorage.removeItem('search_results');
+          sessionStorage.removeItem('search_results_v2');
         }
       }
 
-      sessionStorage.setItem('search_filters_key', currentFiltersKey);
+      sessionStorage.setItem('search_filters_key_v2', currentFiltersKey);
       sessionStorage.setItem('search_page', page.toString());
     }
   }, [query, game, cardSet, lang, sort, page, currentFiltersKey]);
@@ -209,7 +237,7 @@ function SearchResults() {
 
         if (fetchPage === 1) {
           setResults(mappedCards);
-          sessionStorage.setItem('search_results', JSON.stringify(mappedCards));
+          sessionStorage.setItem('search_results_v2', JSON.stringify(mappedCards));
         } else {
           setResults(prev => {
             const existingIds = new Set(prev.map(c => c.id));
@@ -217,7 +245,7 @@ function SearchResults() {
             if (newCards.length === 0) return prev;
 
             const updated = [...prev, ...newCards];
-            sessionStorage.setItem('search_results', JSON.stringify(updated));
+            sessionStorage.setItem('search_results_v2', JSON.stringify(updated));
             return updated;
           });
         }

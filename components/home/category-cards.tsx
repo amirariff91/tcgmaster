@@ -1,18 +1,8 @@
 'use client';
 
-import type * as React from 'react';
+import * as React from 'react';
 import Link from 'next/link';
-import { 
-  ArrowRight, 
-  Layers, 
-  Sparkles, 
-  Cpu, 
-  Flame, 
-  Zap, 
-  ShieldCheck, 
-  Swords, 
-  Orbit 
-} from 'lucide-react';
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
 export interface Category {
@@ -26,54 +16,54 @@ interface CategoryCardsProps {
   categories: Category[];
 }
 
-// Game-specific tactical aesthetic tokens matching TM Minions theme
+// Game-specific aesthetic tokens and official logo assets
 const GAME_THEMES: Record<string, {
-  color: string;
+  logo: string;
+  logoAlt: string;
+  logoClass: string;
   borderGlow: string;
   bgGradient: string;
-  badge: string;
-  icon: React.ReactNode;
-  pipelineStatus: string;
+  accentColor: string;
 }> = {
   'one-piece': {
-    color: 'text-rose-400',
-    borderGlow: 'hover:border-rose-500/40 hover:shadow-[0_0_30px_rgba(244,63,94,0.15)]',
-    bgGradient: 'from-rose-500/10 via-transparent to-transparent',
-    badge: 'bg-rose-500/10 text-rose-300 border-rose-500/30',
-    icon: <Flame className="w-5 h-5 text-rose-400" />,
-    pipelineStatus: '⚡ Minion Sync: Live',
+    logo: '/images/logos/one-piece-card-game.png',
+    logoAlt: 'ONE PIECE CARD GAME',
+    logoClass: 'w-28 sm:w-32 md:w-36 h-12 sm:h-14 md:h-16',
+    borderGlow: 'hover:border-rose-500/50 hover:shadow-[0_0_35px_rgba(244,63,94,0.22)]',
+    bgGradient: 'from-rose-500/15 via-transparent to-transparent',
+    accentColor: 'group-hover:text-rose-400',
   },
   'pokemon': {
-    color: 'text-cyan-400',
-    borderGlow: 'hover:border-cyan-500/40 hover:shadow-[0_0_30px_rgba(6,182,212,0.15)]',
-    bgGradient: 'from-cyan-500/10 via-transparent to-transparent',
-    badge: 'bg-cyan-500/10 text-cyan-300 border-cyan-500/30',
-    icon: <Zap className="w-5 h-5 text-cyan-400" />,
-    pipelineStatus: '⚡ 7,013 Market Comps',
+    logo: '/images/logos/pokemon.svg',
+    logoAlt: 'Pokémon Trading Card Game',
+    logoClass: 'w-24 sm:w-28 md:w-32 h-12 sm:h-14 md:h-16',
+    borderGlow: 'hover:border-cyan-400/50 hover:shadow-[0_0_35px_rgba(6,182,212,0.22)]',
+    bgGradient: 'from-cyan-500/15 via-transparent to-transparent',
+    accentColor: 'group-hover:text-cyan-400',
   },
   'riftbound': {
-    color: 'text-purple-400',
-    borderGlow: 'hover:border-purple-500/40 hover:shadow-[0_0_30px_rgba(168,85,247,0.15)]',
-    bgGradient: 'from-purple-500/10 via-transparent to-transparent',
-    badge: 'bg-purple-500/10 text-purple-300 border-purple-500/30',
-    icon: <Swords className="w-5 h-5 text-purple-400" />,
-    pipelineStatus: '⚡ Riot CDN Verified',
+    logo: '/images/logos/riftbound.svg',
+    logoAlt: 'Riftbound League of Legends TCG',
+    logoClass: 'w-28 sm:w-32 md:w-36 h-12 sm:h-14 md:h-16',
+    borderGlow: 'hover:border-purple-500/50 hover:shadow-[0_0_35px_rgba(168,85,247,0.22)]',
+    bgGradient: 'from-purple-500/15 via-transparent to-transparent',
+    accentColor: 'group-hover:text-purple-400',
   },
   'dbfw': {
-    color: 'text-amber-400',
-    borderGlow: 'hover:border-amber-500/40 hover:shadow-[0_0_30px_rgba(245,158,11,0.15)]',
-    bgGradient: 'from-amber-500/10 via-transparent to-transparent',
-    badge: 'bg-amber-500/10 text-amber-300 border-amber-500/30',
-    icon: <Sparkles className="w-5 h-5 text-amber-400" />,
-    pipelineStatus: '⚡ Graded & Raw Comps',
+    logo: '/images/logos/dragon-ball-super.png',
+    logoAlt: 'Dragon Ball Super Card Game',
+    logoClass: 'w-28 sm:w-32 md:w-36 h-12 sm:h-14 md:h-16',
+    borderGlow: 'hover:border-amber-400/50 hover:shadow-[0_0_35px_rgba(245,158,11,0.22)]',
+    bgGradient: 'from-amber-500/15 via-transparent to-transparent',
+    accentColor: 'group-hover:text-amber-400',
   },
   'boboiboy': {
-    color: 'text-teal-400',
-    borderGlow: 'hover:border-teal-500/40 hover:shadow-[0_0_30px_rgba(20,184,166,0.15)]',
-    bgGradient: 'from-teal-500/10 via-transparent to-transparent',
-    badge: 'bg-teal-500/10 text-teal-300 border-teal-500/30',
-    icon: <Orbit className="w-5 h-5 text-teal-400" />,
-    pipelineStatus: '⚡ 1000x1500 Studio Scans',
+    logo: '/images/logos/monsta-galaxy-card.png',
+    logoAlt: 'Monsta Galaxy Card Game',
+    logoClass: 'w-26 sm:w-30 md:w-34 h-13 sm:h-15 md:h-18',
+    borderGlow: 'hover:border-cyan-400/50 hover:shadow-[0_0_35px_rgba(6,182,212,0.22)]',
+    bgGradient: 'from-cyan-500/15 via-transparent to-transparent',
+    accentColor: 'group-hover:text-cyan-400',
   },
 };
 
@@ -99,16 +89,16 @@ export function CategoryCards({ categories }: CategoryCardsProps) {
         </p>
       </div>
 
-      {/* Advanced TM Minions Ecosystem Matrix */}
-      <div className="space-y-3">
+      {/* Side-by-Side Square TCG Matrix */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 sm:gap-4 md:gap-5">
         {categories.map((category) => {
           const theme = GAME_THEMES[category.slug] || {
-            color: 'text-orange-400',
+            logo: '/images/logos/pokemon.svg',
+            logoAlt: category.name,
+            logoClass: 'w-24 h-12',
             borderGlow: 'hover:border-orange-500/40 hover:shadow-[0_0_30px_rgba(249,115,22,0.15)]',
             bgGradient: 'from-orange-500/10 via-transparent to-transparent',
-            badge: 'bg-orange-500/10 text-orange-300 border-orange-500/30',
-            icon: <Layers className="w-5 h-5 text-orange-400" />,
-            pipelineStatus: '⚡ Minion Sync: Live',
+            accentColor: 'group-hover:text-orange-400',
           };
 
           return (
@@ -116,51 +106,37 @@ export function CategoryCards({ categories }: CategoryCardsProps) {
               key={category.slug}
               href={`/search?game=${category.slug}`}
               className={cn(
-                "group relative block overflow-hidden rounded-2xl border border-white/10 bg-[#080e1e]/90 p-4 sm:p-5 md:p-6 backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5",
+                "group relative flex flex-col justify-between items-center rounded-2xl sm:rounded-3xl border border-white/10 bg-[#080e1e]/90 p-4 sm:p-5 md:p-6 backdrop-blur-md transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-2xl overflow-hidden aspect-[1/1] sm:aspect-[4/3] lg:aspect-[1/1]",
                 theme.borderGlow
               )}
             >
-              {/* Ambient Game Gradient Accent */}
+              {/* Ambient Game-Themed Glow on Hover */}
               <div 
                 className={cn(
-                  "absolute inset-0 bg-gradient-to-r opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none",
+                  "absolute inset-0 bg-gradient-to-b opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none",
                   theme.bgGradient
                 )} 
               />
-
-              <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                
-                {/* Game Title & Icon */}
-                <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
-                  <div className="flex h-11 w-11 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-black/40 shadow-inner group-hover:scale-105 transition-transform">
-                    {theme.icon}
-                  </div>
-                  <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
-                    <h3 className="text-base sm:text-lg font-black text-white group-hover:text-orange-400 transition-colors">
-                      {category.name}
-                    </h3>
-                    <span className={cn("px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold border shrink-0", theme.badge)}>
-                      {theme.pipelineStatus}
-                    </span>
-                  </div>
+              
+              {/* Top: Franchise Official Logo */}
+              <div className="relative z-10 flex-1 w-full flex items-center justify-center pt-2">
+                <div className={cn("relative flex items-center justify-center transition-transform duration-300 group-hover:scale-108 drop-shadow-md", theme.logoClass)}>
+                  <Image
+                    src={theme.logo}
+                    alt={theme.logoAlt}
+                    fill
+                    className="object-contain"
+                    sizes="(max-width: 640px) 140px, (max-width: 1024px) 180px, 200px"
+                    priority
+                  />
                 </div>
+              </div>
 
-                {/* Right Side: Indexed Count & Tactical Explore Action */}
-                <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-6 shrink-0 pt-2.5 sm:pt-0 border-t sm:border-t-0 border-white/5">
-                  <div className="text-left sm:text-right">
-                    <p className="text-[10px] uppercase font-bold tracking-widest text-zinc-500">Indexed Catalog</p>
-                    <p className="font-mono text-sm sm:text-base font-black text-white tracking-tight">
-                      {category.cardCount} <span className="text-xs text-zinc-400 font-medium">cards</span>
-                    </p>
-                  </div>
-
-                  {/* Tactical Action Button */}
-                  <div className="inline-flex items-center gap-2 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-white/[0.04] border border-white/10 text-xs font-bold text-white group-hover:bg-gradient-to-r group-hover:from-orange-600 group-hover:to-amber-500 group-hover:border-transparent group-hover:shadow-[0_0_20px_rgba(249,115,22,0.4)] transition-all">
-                    <span>Enter Market</span>
-                    <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
-                  </div>
-                </div>
-
+              {/* Bottom: Total Cards Count */}
+              <div className="relative z-10 w-full pt-3 border-t border-white/5 flex items-center justify-center text-center">
+                <p className="font-mono text-xs sm:text-sm font-extrabold text-zinc-300 group-hover:text-white transition-colors tracking-tight">
+                  {category.cardCount} <span className="text-[11px] font-medium text-zinc-500 group-hover:text-zinc-400">cards</span>
+                </p>
               </div>
             </Link>
           );
@@ -171,3 +147,4 @@ export function CategoryCards({ categories }: CategoryCardsProps) {
 }
 
 export default CategoryCards;
+

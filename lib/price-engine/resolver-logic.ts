@@ -131,12 +131,20 @@ export function classifyCandidate({
   const qualifiers = extractQualifiers(evidence.externalTitle ?? '');
   for (const qualifier of qualifiers) {
     if (!qualifierMap.has(qualifier)) {
+      // If candidate has a qualifier that explicitly identifies this variant card (e.g. 'manga' or 'alternate art'), accept it
+      if (isVariantCard && VARIANT_KEYWORDS.some(kw => qualifier.includes(kw))) {
+        continue;
+      }
       return { action: 'skip', reason: `unknown-qualifier:${qualifier}` };
     }
   }
 
   for (const qualifier of qualifiers) {
     if (qualifierMap.get(qualifier) === 'distinct_printing') {
+      // If the card being resolved is itself a variant card that matches this qualifier, accept!
+      if (isVariantCard && VARIANT_KEYWORDS.some(kw => qualifier.includes(kw))) {
+        continue;
+      }
       return { action: 'reject', reason: `distinct-printing:${qualifier}` };
     }
   }
@@ -179,7 +187,39 @@ export function selectPriceChartingCandidate({
   const acceptedList = classified.filter(({ classification }) => classification.action === 'accept');
 
   if (acceptedList.length > 1) {
-    const isVariantCard = card.slug.includes('_p') && card.slug.toLowerCase().endsWith('-ja');
+    const isManga = (card.name ?? '').toLowerCase().includes('manga') || card.slug.includes('_p2');
+    const isSpecial = (card.name ?? '').toLowerCase().includes('special') || card.slug.includes('_p3') || card.slug.includes('_p4');
+
+    // Score candidates by variant specificity
+    const scored = acceptedList.map(item => {
+      const title = item.candidate.title.toLowerCase();
+      let score = 0;
+      if (isManga) {
+        if (title.includes('manga') || title.includes('super parallel') || title.includes('スーパーパラレル')) score += 10;
+        if (title.includes('red manga') && card.slug.includes('_p3')) score += 5; // OP13 Red Manga
+      } else if (isSpecial) {
+        if (title.includes('[sp]') || title.includes('special card') || title.includes('wanted')) score += 10;
+      } else {
+        // General Parallel / Alternate Art
+        if (title.includes('alternate art') || title.includes('parallel')) score += 5;
+        if (title.includes('manga')) score -= 10; // Don't give manga to regular parallel
+        if (title.includes('[sp]')) score -= 5;
+      }
+      return { ...item, score };
+    });
+
+    scored.sort((a, b) => b.score - a.score);
+    if (scored[0].score > (scored[1]?.score ?? -999)) {
+      return {
+        action: 'accept',
+        reason: scored[0].classification.reason,
+        candidate: scored[0].candidate,
+        classification: scored[0].classification,
+        unknownQualifierReasons: [],
+      };
+    }
+
+    const isVariantCard = (card.slug.includes('_p') || card.slug.includes('_r')) && card.slug.toLowerCase().endsWith('-ja');
     if (isVariantCard) {
       return {
         action: 'nomatch',

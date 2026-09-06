@@ -8,7 +8,9 @@ export async function GET() {
     const cached = await redis.get(cacheKey);
     
     if (cached) {
-      return NextResponse.json({ data: cached });
+      return NextResponse.json({ data: cached }, {
+        headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400' }
+      });
     }
 
     const gamesList = await dbQuery(`
@@ -20,7 +22,9 @@ export async function GET() {
     // Cache for 1 hour since games don't change often
     await redis.set(cacheKey, gamesList, { ex: 3600 });
 
-    return NextResponse.json({ data: gamesList });
+    return NextResponse.json({ data: gamesList }, {
+      headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400' }
+    });
   } catch (error) {
     console.error('Error fetching games:', error);
     return NextResponse.json({ error: 'Failed to fetch games' }, { status: 500 });

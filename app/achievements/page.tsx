@@ -19,7 +19,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { formatPrice, formatDate, cn } from '@/lib/utils';
+import { formatPrice, formatDate, cn, formatDisplayNumber } from '@/lib/utils';
 
 // Achievement types and mock data
 type AchievementCategory = 'collection' | 'investment' | 'grading' | 'milestone' | 'special';
@@ -624,7 +624,7 @@ export default function AchievementsPage() {
                                 className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-3 py-1 text-sm"
                               >
                                 <span className="text-zinc-600">
-                                  #{card.number}
+                                  #{formatDisplayNumber(undefined, card.number)}
                                 </span>
                                 <span className="font-medium text-zinc-900">
                                   {card.name}

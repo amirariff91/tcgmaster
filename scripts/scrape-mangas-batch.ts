@@ -108,73 +108,71 @@ async function scrapePage(page: any, card: any) {
   
   const html = await page.content();
   const $ = cheerio.load(html);
-  
-  // PriceCharting changed their CSS class from .hoverable-striped to .hoverable-rows
-  // We use table#games_table to be robust.
-  const tables = $('table#games_table');
-  
-  if (tables.length === 0) {
-    console.log(`❌ Page loaded but no tables found (URL might be wrong or redirected): ${title}`);
-    return;
-  }
-  
+
+  const GRADE_CONFIG: Record<string, { grade: string; companyId: string | null }> = {
+    'completed-auctions-used': { grade: 'raw', companyId: null },
+    'completed-auctions-manual-only': { grade: '10', companyId: '74c51627-cc4b-4a82-a1c0-52b3975b47b7' },
+    'completed-auctions-graded': { grade: '9', companyId: '74c51627-cc4b-4a82-a1c0-52b3975b47b7' },
+    'completed-auctions-new': { grade: '8', companyId: '74c51627-cc4b-4a82-a1c0-52b3975b47b7' },
+    'completed-auctions-cib': { grade: '7', companyId: '74c51627-cc4b-4a82-a1c0-52b3975b47b7' },
+    'completed-auctions-box-only': { grade: '9.5', companyId: 'cda2045f-5d78-49e7-b1c8-de04dac9888d' },
+    'completed-auctions-loose-and-box': { grade: '10', companyId: 'cda2045f-5d78-49e7-b1c8-de04dac9888d' },
+    'completed-auctions-grade-twenty': { grade: '10', companyId: 'cda2045f-5d78-49e7-b1c8-de04dac9888d' },
+    'completed-auctions-grade-nineteen': { grade: '10', companyId: 'dce6169f-8958-4229-861b-686a4644c984' },
+  };
+
   const insertRows: any[] = [];
-  tables.each((_, table) => {
-    const tableId = $(table).attr('id') || '';
-    let parsedGrade = 'raw';
-    if (tableId.includes('grade10')) parsedGrade = '10';
-    else if (tableId.includes('grade9')) parsedGrade = '9';
-    else if (tableId.includes('grade8')) parsedGrade = '8';
-    else if (tableId.includes('grade7')) parsedGrade = '7';
-    else if (tableId.includes('new')) parsedGrade = 'new';
-    
-    $(table).find('tbody tr').each((_, row) => {
-      const dateStr = $(row).find('.date').text().trim();
-      const priceStr = $(row).find('.price').text().trim();
-      if (!dateStr || !priceStr) return;
+  for (const [containerClass, conf] of Object.entries(GRADE_CONFIG)) {
+    const rows = $(`.tab-frame .${containerClass} table tbody tr`);
+    rows.each((_, r) => {
+      const dateStr = $(r).find('td.date').text().trim();
+      const priceText = $(r).find('span.js-price').text().trim();
+      if (!dateStr || !priceText) return;
       const date = new Date(dateStr);
       if (isNaN(date.getTime())) return;
-      const match = priceStr.match(/([0-9.,]+)/);
+      const match = priceText.match(/([0-9.,]+)/);
       if (!match) return;
       const price = parseFloat(match[1].replace(/,/g, ''));
       if (isNaN(price) || price <= 0) return;
-      
+
       insertRows.push({
         card_id: card.id,
         source: 'pricecharting',
-        grade: parsedGrade,
-        grading_company_id: parsedGrade !== 'raw' && parsedGrade !== 'new' ? '74c51627-cc4b-4a82-a1c0-52b3975b47b7' : null,
+        grade: conf.grade,
+        grading_company_id: conf.companyId,
         price: price,
+        price_native: price,
         currency: 'USD',
         recorded_at: date.toISOString(),
+        price_kind: 'sold_guide'
       });
     });
-  });
-  
+  }
+
   if (insertRows.length > 0) {
+    // Preserve data policy: Quarantine previous bad rows before deleting
     await dbQuery(`
-      INSERT INTO price_quarantine (card_id, source, grade, price, currency, observed_at, reason, evidence, price_kind)
-      SELECT card_id, source, grade, price, currency, recorded_at, 'manual-mapping-correction', '{}'::jsonb, 'retail_sell'
+      INSERT INTO price_quarantine (card_id, source, grade, price, price_native, currency, price_kind, reason, evidence, observed_at)
+      SELECT card_id, source, grade, price, price_native, currency, COALESCE(price_kind, 'market'::price_kind),
+             'manual-mapping-correction', '{"note": "Historical Manga re-scrape"}'::jsonb, recorded_at
       FROM price_history
-      WHERE card_id = $1 AND source = 'pricecharting'
+      WHERE card_id = $1 AND source = 'pricecharting' AND price < 100
     `, [card.id]);
     
-    await dbQuery(`DELETE FROM price_history WHERE card_id = $1 AND source = 'pricecharting'`, [card.id]);
+    await dbQuery(`DELETE FROM price_history WHERE card_id = $1 AND source = 'pricecharting' AND price < 100`, [card.id]);
     
-    await dbQuery(`
-      INSERT INTO price_history (card_id, source, grade, grading_company_id, price, currency, recorded_at)
-      SELECT card_id, source::price_source, grade, grading_company_id, price, currency, recorded_at
-      FROM jsonb_to_recordset($1::jsonb) AS rows(
-        card_id uuid, source text, grade text, grading_company_id uuid,
-        price numeric, currency text, recorded_at timestamptz
-      )`,
-      [JSON.stringify(insertRows)]
-    );
+    for (const row of insertRows) {
+      await dbQuery(
+        `INSERT INTO price_history (card_id, source, grade, grading_company_id, price, price_native, currency, recorded_at, price_kind)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        [row.card_id, row.source, row.grade, row.grading_company_id, row.price, row.price_native, row.currency, row.recorded_at, row.price_kind]
+      );
+    }
     
     await dbQuery(`UPDATE cards SET pricecharting_url = $1, pc_fetched = TRUE WHERE id = $2`, [url, card.id]);
     console.log(`✅ Saved ${insertRows.length} historical prices and locked URL for ${card.slug}!`);
   } else {
-    console.log(`⚠️ Table found, but 0 valid rows parsed for ${card.slug}.`);
+    console.log(`⚠️ 0 valid rows parsed for ${card.slug}.`);
   }
 }
 

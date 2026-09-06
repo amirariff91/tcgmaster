@@ -58,13 +58,12 @@ export interface Headline {
   grade: CanonicalGrade;
 }
 
-// Headline policy: raw market first, then retail sell, sold guide, and lowest listing. 
-// Marketplace asks (Snkrdunk) act as the final fallback for high-end variants where retail is OOS 
-// and text-based aggregators (PriceCharting) are structurally corrupted.
+// Headline policy: raw market first, then sold guide (verified completed sales),
+// followed by retail sell (store asking price), lowest listing, and marketplace ask.
 const HEADLINE_KIND_PREFERENCE: PriceKind[] = [
   'market',
-  'retail_sell',
   'sold_guide',
+  'retail_sell',
   'lowest_listing',
   'marketplace_ask',
 ];
@@ -360,11 +359,15 @@ export async function persistObservations(
       .map((other) => other.priceUsd);
 
     // Cross-source catastrophe guard for variants
-    // If PriceCharting is >8x lower than a trusted source (like Snkrdunk), it is likely
-    // aggregating the Base card instead of the Variant.
-    if (card.slug.includes('_') && observation.source === 'pricecharting') {
-      const snkrdunkPrice = identityApprovedObservations.find(o => o.source === 'snkrdunk' && o.grade === observation.grade)?.priceUsd;
-      if (snkrdunkPrice && snkrdunkPrice / observation.priceUsd > 8) {
+    // If PriceCharting (or any source) is >6x lower than a trusted source (Snkrdunk or Yuyutei),
+    // or falls under $25 when historical median is >$100, it is aggregating a base card.
+    const isVariant = card.slug.includes('_') || /manga|parallel|special|wanted/i.test(card.name);
+    if (isVariant && (observation.source === 'pricecharting' || observation.source === 'cardrush')) {
+      const benchmarkPrice = identityApprovedObservations.find(o => 
+        (o.source === 'snkrdunk' || o.source === 'yuyutei') && o.grade === observation.grade
+      )?.priceUsd;
+
+      if (benchmarkPrice && benchmarkPrice >= 50 && benchmarkPrice / observation.priceUsd > 6) {
         quarantineRows.push({
           card_id: card.id,
           source: observation.source,
@@ -375,8 +378,9 @@ export async function persistObservations(
           price_kind: SOURCE_KIND[observation.source],
           reason: 'corrupted-variant-aggregation',
           evidence: quarantineEvidence(card, observation, {
-            snkrdunkPrice,
-            ratio: snkrdunkPrice / observation.priceUsd,
+            benchmarkSource: 'corroborated',
+            benchmarkPrice,
+            ratio: benchmarkPrice / observation.priceUsd,
           }),
         });
         continue;

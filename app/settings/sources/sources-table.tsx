@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Check, Edit2, Link2, Loader2, Save, X } from 'lucide-react';
 import Link from 'next/link';
+import { formatDisplayNumber } from '@/lib/utils';
 
 interface Card {
   id: string;
@@ -88,7 +89,7 @@ export function SourcesTable({ initialCards }: { initialCards: Card[] }) {
                   <Link href={`/one-piece-card-game/japanese-op01/${card.slug}`} className="font-medium text-white hover:text-blue-400 line-clamp-1" title={card.name}>
                     {card.name}
                   </Link>
-                  <div className="text-xs text-zinc-500 mt-0.5">{card.number}</div>
+                  <div className="text-xs text-zinc-500 mt-0.5">{formatDisplayNumber(undefined, card.number)}</div>
                 </td>
                 <td className="px-4 py-3">{price}</td>
                 <td className="px-4 py-3">

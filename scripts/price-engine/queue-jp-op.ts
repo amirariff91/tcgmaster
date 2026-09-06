@@ -17,9 +17,12 @@ export const fetchCard = async (card: WorkerCard, mappings: SourceMapping[]): Pr
   const observations: PriceObservation[] = [];
   const cardUpdates: Record<string, unknown> = {};
 
+  const isVariant = /[-_][pr]\d+$/i.test(card.number || card.slug);
   const yuyuteiMapping = mappings.find((mapping) => mapping.source === 'yuyutei');
   if (!yuyuteiMapping?.externalUrl) {
     console.log('[Japanese OP] yuyutei: no mapping, skipped');
+  } else if (isVariant && yuyuteiMapping.confidence !== 'confirmed') {
+    console.log(`[Japanese OP] yuyutei: variant card ${card.slug} has unconfirmed mapping (${yuyuteiMapping.confidence}), skipped to prevent contamination`);
   } else {
     console.log(`[Japanese OP] Fetching from Yuyutei anchor ${yuyuteiMapping.externalUrl}...`);
     const yuyuteiResult = await fetchYuyuteiByAnchor(yuyuteiMapping.externalUrl);
@@ -37,8 +40,11 @@ export const fetchCard = async (card: WorkerCard, mappings: SourceMapping[]): Pr
   }
 
   const priceChartingMapping = mappings.find((mapping) => mapping.source === 'pricecharting');
+  const isVariant = /[-_][pr]\d+$/i.test(card.number || card.slug);
   if (!priceChartingMapping?.externalUrl) {
     console.log('[Japanese OP] pricecharting: no mapping, skipped');
+  } else if (isVariant && priceChartingMapping.confidence !== 'confirmed') {
+    console.log(`[Japanese OP] pricecharting: variant card ${card.slug} has unconfirmed mapping (${priceChartingMapping.confidence}), skipped to prevent contamination`);
   } else {
     console.log(`[Japanese OP] Fetching from PriceCharting anchor ${priceChartingMapping.externalUrl}...`);
     const priceChartingResult = await fetchPriceChartingByAnchor(priceChartingMapping.externalUrl);
@@ -72,6 +78,8 @@ export const fetchCard = async (card: WorkerCard, mappings: SourceMapping[]): Pr
   const snkrdunkMapping = mappings.find((mapping) => mapping.source === 'snkrdunk');
   if (!snkrdunkMapping?.externalUrl) {
     console.log('[Japanese OP] snkrdunk: no mapping, skipped');
+  } else if (snkrdunkMapping.confidence !== 'confirmed') {
+    console.log(`[Japanese OP] snkrdunk: card ${card.slug} has unconfirmed mapping (${snkrdunkMapping.confidence}), skipped to prevent contamination`);
   } else {
     console.log(`[Japanese OP] Fetching from SnkrDunk anchor ${snkrdunkMapping.externalUrl}...`);
     const snkrdunkResult = await fetchSnkrdunkPrice(snkrdunkMapping.externalUrl);

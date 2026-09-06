@@ -18,7 +18,9 @@ export async function GET(request: Request) {
     const cached = await redis.get(cacheKey);
     
     if (cached) {
-      return NextResponse.json({ data: cached });
+      return NextResponse.json({ data: cached }, {
+        headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400' }
+      });
     }
 
     // First find the game id
@@ -59,7 +61,9 @@ export async function GET(request: Request) {
     // Cache for 1 hour
     await redis.set(cacheKey, sortedSets, { ex: 3600 });
 
-    return NextResponse.json({ data: sortedSets });
+    return NextResponse.json({ data: sortedSets }, {
+      headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400' }
+    });
   } catch (error) {
     console.error('Error fetching sets:', error);
     return NextResponse.json({ error: 'Failed to fetch sets' }, { status: 500 });

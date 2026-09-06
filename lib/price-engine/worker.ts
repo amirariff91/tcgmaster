@@ -13,6 +13,8 @@ export type WorkerCard = CardRef & {
   print_run_info?: unknown;
   yuyutei_url?: string | null;
   cardrush_url?: string | null;
+  pricecharting_url?: string | null;
+  snkrdunk_url?: string | null;
   sets?: { name?: string | null } | null;
 };
 
@@ -112,7 +114,7 @@ export async function runScrapeLoop(config: WorkerConfig): Promise<never> {
     try {
       cards = await db(
         `SELECT c.id, c.name, c.slug, c.number, c.tcg_player_id, c.print_run_info,
-                c.yuyutei_url, c.cardrush_url,
+                c.yuyutei_url, c.cardrush_url, c.pricecharting_url, c.snkrdunk_url,
                 CASE WHEN s.id IS NULL THEN NULL ELSE json_build_object('name', s.name) END AS sets
          FROM cards c
          LEFT JOIN sets s ON s.id = c.set_id
@@ -140,11 +142,50 @@ export async function runScrapeLoop(config: WorkerConfig): Promise<never> {
     console.log(`${label} Processing: ${card.name} (${card.number})`);
 
     try {
-      const mappings = (await getMappingsForCard(db, card.id)).filter((mapping) => (
+      const storedMappings = await getMappingsForCard(db, card.id);
+      const mappings: SourceMapping[] = [...storedMappings];
+
+      // Fallback: If a source URL is verified directly on the card record but missing/unconfirmed in
+      // card_source_mapping, synthesize a confirmed mapping so live workers never misfetch or skip.
+      const sourceUrlFallbacks: Array<{ source: PriceSource; url: string | null | undefined }> = [
+        { source: 'pricecharting', url: card.pricecharting_url },
+        { source: 'snkrdunk', url: card.snkrdunk_url },
+        { source: 'yuyutei', url: card.yuyutei_url },
+        { source: 'cardrush', url: card.cardrush_url },
+      ];
+
+      for (const { source, url } of sourceUrlFallbacks) {
+        if (!url) continue;
+        const existingIdx = mappings.findIndex((m) => m.source === source);
+        if (existingIdx === -1) {
+          mappings.push({
+            cardId: card.id,
+            source,
+            externalId: null,
+            externalUrl: url,
+            externalTitle: card.name,
+            externalSet: card.sets?.name ?? null,
+            confidence: 'confirmed',
+            matchedBy: 'url',
+            evidence: { origin: 'cards-table-anchor' },
+            verifiedAt: new Date().toISOString(),
+          });
+        } else if (mappings[existingIdx].confidence !== 'confirmed') {
+          // Upgrade unconfirmed / derived mappings to use the verified card anchor
+          mappings[existingIdx] = {
+            ...mappings[existingIdx],
+            externalUrl: url,
+            confidence: 'confirmed',
+            matchedBy: 'url',
+          };
+        }
+      }
+
+      const activeMappings = mappings.filter((mapping) => (
         config.sources.includes(mapping.source)
         && (mapping.confidence === 'confirmed' || mapping.confidence === 'derived')
       ));
-      const result = await config.fetchCard(card, mappings);
+      const result = await config.fetchCard(card, activeMappings);
       if (result.observations.length === 0) {
         const timestamp = new Date().toISOString();
         try {

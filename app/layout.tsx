@@ -4,7 +4,9 @@ import Script from 'next/script';
 import './globals.css';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
+import { NavigationProgressBar } from '@/components/layout/navigation-progress-bar';
 import { Providers } from './providers';
+import { Suspense } from 'react';
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 
@@ -95,6 +97,9 @@ export default function RootLayout({
       </head>
       <body className={`${inter.variable} ${newsreader.variable} font-sans antialiased bg-[#060c18] text-zinc-100`}>
         <Providers>
+          <Suspense fallback={null}>
+            <NavigationProgressBar />
+          </Suspense>
           <div className="flex min-h-screen flex-col">
             <Header />
             <main className="flex-1">{children}</main>
