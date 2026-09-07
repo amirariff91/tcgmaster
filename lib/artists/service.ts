@@ -72,15 +72,29 @@ export async function getTopArtistsByGame(): Promise<Record<string, ArtistSummar
   const results: Record<string, ArtistSummary[]> = {};
 
   for (const game of games) {
-    const artists = await dbQuery<{ artist: string; card_count: string }>(`
-      SELECT c.artist, COUNT(*) as card_count
+    const artists = await dbQuery<{ 
+      artist: string; 
+      card_count: string;
+      db_role: string | null;
+      db_japanese_name: string | null;
+      db_country: string | null;
+      db_avatar_url: string | null;
+    }>(`
+      SELECT 
+        c.artist, 
+        COUNT(*) as card_count,
+        ap.role as db_role,
+        ap.japanese_name as db_japanese_name,
+        ap.country as db_country,
+        ap.avatar_url as db_avatar_url
       FROM cards c
       JOIN sets s ON s.id = c.set_id
+      LEFT JOIN artist_profiles ap ON ap.slug = regexp_replace(lower(trim(c.artist)), '[^a-z0-9]+', '-', 'g')
       WHERE s.game_id = $1 
         AND c.artist IS NOT NULL 
         AND c.artist != '' 
         AND c.artist != 'Unknown'
-      GROUP BY c.artist
+      GROUP BY c.artist, ap.role, ap.japanese_name, ap.country, ap.avatar_url
       HAVING COUNT(*) >= 2
       ORDER BY COUNT(*) DESC
       LIMIT 36
@@ -96,10 +110,10 @@ export async function getTopArtistsByGame(): Promise<Record<string, ArtistSummar
         cardCount: parseInt(a.card_count, 10),
         gameSlug: game.slug,
         gameName: game.name,
-        role: curated?.role,
-        japaneseName: curated?.japaneseName,
-        country: curated?.country,
-        photoUrl: curated?.photoUrl,
+        role: a.db_role || curated?.role,
+        japaneseName: a.db_japanese_name || curated?.japaneseName,
+        country: a.db_country || curated?.country || 'Japan',
+        photoUrl: a.db_avatar_url || curated?.photoUrl,
       };
     });
 
@@ -116,9 +130,48 @@ export async function getTopArtistsByGame(): Promise<Record<string, ArtistSummar
 }
 
 /**
- * Fetch artist biography (from curated profile, Wikipedia API, or generated fallback)
+ * Fetch artist biography (from PostgreSQL artist_profiles, curated profile, or Wikipedia)
  */
 export async function getArtistProfile(artistName: string, slug: string): Promise<ArtistProfile> {
+  // 1. Check PostgreSQL artist_profiles table first
+  try {
+    const rows = await dbQuery<{
+      display_name: string;
+      japanese_name: string | null;
+      role: string | null;
+      country: string | null;
+      birth_year: string | null;
+      bio: string | null;
+      avatar_url: string | null;
+      notable_works: string[] | null;
+      games_illustrated: string[] | null;
+    }>(`
+      SELECT display_name, japanese_name, role, country, birth_year, bio, avatar_url, notable_works, games_illustrated
+      FROM artist_profiles
+      WHERE slug = $1
+      LIMIT 1
+    `, [slug]);
+
+    if (rows.length > 0 && rows[0].bio) {
+      const p = rows[0];
+      return {
+        name: p.display_name || artistName,
+        slug,
+        japaneseName: p.japanese_name || undefined,
+        role: p.role || undefined,
+        country: p.country || 'Japan',
+        birth: p.birth_year || undefined,
+        bio: p.bio,
+        photoUrl: p.avatar_url || undefined,
+        notableWorks: p.notable_works || undefined,
+        games: p.games_illustrated || undefined,
+      };
+    }
+  } catch (err) {
+    console.error('Error fetching artist_profiles from DB:', err);
+  }
+
+  // 2. Check static curated fallback
   const curated = (artistProfilesJson as Record<string, any>)[slug];
   if (curated) {
     return {
@@ -127,7 +180,7 @@ export async function getArtistProfile(artistName: string, slug: string): Promis
     };
   }
 
-  // Fallback: try Wikipedia REST API
+  // 3. Fallback: try Wikipedia REST API
   try {
     const wikiUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(artistName)}`;
     const res = await fetch(wikiUrl, {
@@ -154,7 +207,7 @@ export async function getArtistProfile(artistName: string, slug: string): Promis
     name: artistName,
     slug,
     role: 'Trading Card Game Illustrator',
-    bio: `${artistName} is an illustrator whose artwork is featured across official Trading Card Game card releases.`,
+    bio: `${artistName} is a commercial illustrator whose artwork is featured across official Trading Card Game card releases.`,
   };
 }
 

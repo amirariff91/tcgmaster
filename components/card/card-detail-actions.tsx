@@ -2,14 +2,18 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Bell, Check, Link2, Loader2, Plus, Share2 } from 'lucide-react';
+import { Bell, Check, Flag, Link2, Loader2, Plus, Share2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { GRADE_OPTIONS } from '@/lib/pricing/grades';
 import type { CanonicalGrade } from '@/lib/pricing/grades';
+import { CardReportModal } from './card-report-modal';
 
 interface CardDetailActionsProps {
   cardId: string;
   cardName: string;
+  cardNumber?: string;
+  currentPrice?: number | null;
+  currentSource?: string | null;
   /** Grade the page is currently showing — pre-selects the same grade here. */
   defaultGrade?: string;
 }
@@ -54,21 +58,61 @@ function useDismissOnOutsideClick(onDismiss: () => void, active: boolean) {
 }
 
 const panelClass =
-  'absolute left-0 right-0 top-full mt-2 z-50 rounded-xl border border-white/10 bg-[#0b1329] p-1.5 shadow-2xl shadow-black/60';
+  'absolute left-0 right-0 top-full mt-2.5 z-50 rounded-2xl border border-white/10 bg-[#0b1329]/95 backdrop-blur-xl p-2 shadow-[0_16px_40px_rgba(0,0,0,0.85)] ring-1 ring-white/5';
 const optionClass =
-  'w-full rounded-lg px-3 py-2 text-left text-sm text-zinc-200 transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50';
+  'w-full rounded-xl px-3.5 py-2.5 text-left text-sm font-medium text-zinc-200 transition-all duration-150 hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-50';
 
-export function CardDetailActions({ cardId, cardName, defaultGrade = 'raw' }: CardDetailActionsProps) {
-  const [openMenu, setOpenMenu] = useState<'collection' | 'alert' | null>(null);
+export function CardDetailActions({ 
+  cardId, 
+  cardName, 
+  cardNumber,
+  currentPrice,
+  currentSource,
+  defaultGrade = 'raw' 
+}: CardDetailActionsProps) {
+  const [openMenu, setOpenMenu] = useState<'collection' | 'alert' | 'report' | null>(null);
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
   const [shared, setShared] = useState(false);
+  const [showOtherInput, setShowOtherInput] = useState(false);
+  const [otherText, setOtherText] = useState('');
 
-  const containerRef = useDismissOnOutsideClick(() => setOpenMenu(null), openMenu !== null);
+  const containerRef = useDismissOnOutsideClick(() => {
+    setOpenMenu(null);
+    setShowOtherInput(false);
+  }, openMenu !== null);
 
-  const toggle = (menu: 'collection' | 'alert') => {
+  const toggle = (menu: 'collection' | 'alert' | 'report') => {
     setStatus({ kind: 'idle' });
+    setShowOtherInput(false);
     setOpenMenu((current) => (current === menu ? null : menu));
   };
+
+  async function submitQuickReport(category: string, description?: string) {
+    setStatus({ kind: 'busy' });
+    setOpenMenu(null);
+    setShowOtherInput(false);
+    try {
+      const res = await fetch('/api/cards/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cardId,
+          category,
+          description: description || undefined,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to submit report');
+      }
+
+      setStatus({ kind: 'done', message: 'Report submitted. Thank you!' });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error submitting report';
+      setStatus({ kind: 'error', message: msg });
+    }
+  }
 
   async function addToCollection(grade: CanonicalGrade) {
     setStatus({ kind: 'busy' });
@@ -242,6 +286,102 @@ export function CardDetailActions({ cardId, cardName, defaultGrade = 'raw' }: Ca
         >
           {shared ? <Link2 className="h-4 w-4 text-emerald-400" /> : <Share2 className="h-4 w-4 text-zinc-300" />}
         </button>
+
+        {/* Report / Flag Button with Simple Popover */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => toggle('report')}
+            disabled={busy}
+            aria-label={`Report an issue with ${cardName}`}
+            aria-expanded={openMenu === 'report'}
+            aria-haspopup="listbox"
+            title="Report price or variant mismatch"
+            className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/5 transition-colors duration-200 hover:bg-white/10 disabled:opacity-60"
+          >
+            <Flag className="h-4 w-4 text-zinc-300 hover:text-amber-400 transition-colors" />
+          </button>
+
+          {openMenu === 'report' && (
+            <div className={cn(panelClass, 'left-auto right-0 w-64')} role="menu">
+              <p className="px-3 pb-2 pt-1.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-b border-white/5 mb-1">
+                Report an Issue
+              </p>
+
+              {!showOtherInput ? (
+                <>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => submitQuickReport('wrong_price')}
+                    className={cn(optionClass, 'flex items-center gap-2.5 py-2.5 text-xs font-medium')}
+                  >
+                    <span>🏷️</span>
+                    <span>Wrong Price</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => submitQuickReport('variant_mismatch')}
+                    className={cn(optionClass, 'flex items-center gap-2.5 py-2.5 text-xs font-medium')}
+                  >
+                    <span>🔀</span>
+                    <span>Variant Mismatch</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => submitQuickReport('incorrect_link')}
+                    className={cn(optionClass, 'flex items-center gap-2.5 py-2.5 text-xs font-medium')}
+                  >
+                    <span>🔗</span>
+                    <span>Wrong External Link</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => setShowOtherInput(true)}
+                    className={cn(optionClass, 'flex items-center gap-2.5 py-2.5 text-xs font-medium text-zinc-400 hover:text-white')}
+                  >
+                    <span>✏️</span>
+                    <span>Other issue...</span>
+                  </button>
+                </>
+              ) : (
+                <div className="p-2 space-y-2">
+                  <input
+                    type="text"
+                    autoFocus
+                    placeholder="Describe issue..."
+                    value={otherText}
+                    onChange={(e) => setOtherText(e.target.value)}
+                    className="w-full px-2.5 py-2 bg-black/40 border border-white/15 rounded-lg text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-amber-500"
+                  />
+                  <div className="flex items-center justify-end gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setShowOtherInput(false)}
+                      className="px-2.5 py-1 rounded text-[11px] text-zinc-400 hover:text-white"
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!otherText.trim()}
+                      onClick={() => submitQuickReport('other', otherText)}
+                      className="px-3 py-1 rounded bg-amber-500 hover:bg-amber-400 text-black text-[11px] font-bold disabled:opacity-50"
+                    >
+                      Submit
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       <div aria-live="polite" className="min-h-[1.25rem]">

@@ -23,6 +23,8 @@ export const SOURCE_DISPLAY_NAMES: Record<string, string> = {
   cardrush: 'CardRush',
   tcgrepublic: 'TCG Republic',
   ebay: 'eBay',
+  alt: 'Alt (eBay Comps)',
+  fanatics: 'Fanatics Collect',
 };
 
 export function formatSourceName(source: string | null | undefined): string {

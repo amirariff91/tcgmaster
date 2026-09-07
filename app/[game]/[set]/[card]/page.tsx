@@ -104,7 +104,8 @@ interface CardData {
   snkrdunk_url?: string;
   cardrush_url?: string;
   yuyutei_url?: string;
-  card_source_mapping?: { source: string; external_url: string }[];
+  pricecharting_url?: string;
+  card_source_mapping?: { source: string; external_url: string; external_id?: string }[];
 }
 
 async function getCardData(gameSlug: string, setSlug: string, cardSlug: string): Promise<CardData | null> {
@@ -126,6 +127,7 @@ async function getCardData(gameSlug: string, setSlug: string, cardSlug: string):
       c.snkrdunk_url,
       c.yuyutei_url,
       c.cardrush_url,
+      c.pricecharting_url,
       json_build_object(
         'id', s.id,
         'name', s.name,
@@ -179,6 +181,7 @@ async function getCardData(gameSlug: string, setSlug: string, cardSlug: string):
       COALESCE((
         SELECT json_agg(json_build_object(
           'source', csm.source,
+          'external_id', csm.external_id,
           'external_url', csm.external_url
         ) ORDER BY csm.source)
         FROM card_source_mapping csm
@@ -521,6 +524,7 @@ export default async function CardDetailPage({ params }: PageProps) {
     snkrdunk: cardData.snkrdunk_url,
     yuyutei: cardData.yuyutei_url,
     cardrush: cardData.cardrush_url,
+    pricecharting: cardData.pricecharting_url,
   })) {
     if (url) marketUrls[source] = url;
   }
@@ -530,8 +534,15 @@ export default async function CardDetailPage({ params }: PageProps) {
     for (const mapping of cardData.card_source_mapping) {
       if (mapping.external_url) {
         marketUrls[mapping.source] = mapping.external_url;
+      } else if (mapping.source === 'tcgplayer' && mapping.external_id) {
+        marketUrls['tcgplayer'] = `https://www.tcgplayer.com/product/${mapping.external_id}`;
       }
     }
+  }
+
+  // Fallback direct product URL if tcg_player_id is present on the card
+  if (!marketUrls['tcgplayer'] && cardData.tcg_player_id) {
+    marketUrls['tcgplayer'] = `https://www.tcgplayer.com/product/${cardData.tcg_player_id}`;
   }
 
   const { baseName: cleanName, variantInfo } = splitCardName(card.name);
@@ -553,8 +564,8 @@ export default async function CardDetailPage({ params }: PageProps) {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
 
-          {/* Column 1: Image Showcase (col-span-3) */}
-          <div className="lg:col-span-3">
+          {/* Column 1: Image Showcase & Actions (col-span-3, relative z-30 so popovers float above Column 2 on mobile) */}
+          <div className="lg:col-span-3 relative z-30">
             <div className="lg:sticky lg:top-24 group perspective-[1000px]">
               <div className="relative max-w-[260px] sm:max-w-full mx-auto transition-transform duration-500 ease-out group-hover:scale-[1.02] group-hover:-rotate-y-2 group-hover:rotate-x-2">
                 <CardImage
@@ -571,6 +582,9 @@ export default async function CardDetailPage({ params }: PageProps) {
                 <CardDetailActions
                   cardId={card.id}
                   cardName={cleanName}
+                  cardNumber={card.number}
+                  currentPrice={featuredPrice}
+                  currentSource={winningSource}
                   defaultGrade={activeGradeForChart}
                 />
               </div>

@@ -49,3 +49,4 @@ logs/
 psa-cookies.json
 scratch*
 *.py
+scripts/*.json

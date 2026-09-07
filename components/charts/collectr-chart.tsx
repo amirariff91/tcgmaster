@@ -51,6 +51,8 @@ const SOURCE_COLORS: Record<string, string> = {
   cardrush: '#a855f7', // Purple
   ebay: '#f59e0b', // Orange
   pricecharting: '#ef4444', // Red
+  alt: '#e2e8f0', // Silver / Light Slate
+  fanatics: '#818cf8', // Indigo
   default: '#a1a1aa' // Gray
 };
 
@@ -63,6 +65,8 @@ const MARKET_LOGOS = [
   { match: 'pricecharting', logo: '/logos/pricecharting.png' },
   { match: 'tcgrepublic', logo: '/logos/tcgrepublic.png' },
   { match: 'tcg republic', logo: '/logos/tcgrepublic.png' },
+  { match: 'fanatics', logo: '/logos/fanatics.png' },
+  { match: 'alt', logo: '/logos/alt.png' },
 ] as const;
 
 const SOURCE_KIND: Record<string, PriceKind> = {
@@ -72,6 +76,7 @@ const SOURCE_KIND: Record<string, PriceKind> = {
   yuyutei: 'retail_sell',
   cardrush: 'lowest_listing',
   snkrdunk: 'marketplace_ask',
+  fanatics: 'lowest_listing',
 };
 
 export function CollectrChart({ priceHistory, gradeInfos, marketUrls = {}, className }: CollectrChartProps) {
@@ -483,6 +488,7 @@ export function CollectrChart({ priceHistory, gradeInfos, marketUrls = {}, class
             const s = item.source.toLowerCase();
             const isCarousell = s.includes('carousell');
             const isSnkrdunk = s.includes('snkrdunk');
+            const isDarkBg = s.includes('alt') || s.includes('fanatics');
             const logo = MARKET_LOGOS.find(m => s.includes(m.match))?.logo ?? null;
             const href = marketUrls[item.source] ?? null;
 
@@ -499,7 +505,9 @@ export function CollectrChart({ priceHistory, gradeInfos, marketUrls = {}, class
                           ? "bg-[#ff2636] object-cover p-0 overflow-hidden"
                           : isSnkrdunk
                             ? "bg-white/5 object-cover p-0 overflow-hidden"
-                            : "bg-white object-contain p-1"
+                            : isDarkBg
+                              ? "bg-black object-cover p-0 overflow-hidden"
+                              : "bg-white object-contain p-1"
                       )}
                     />
                   ) : (

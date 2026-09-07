@@ -91,14 +91,14 @@ async function mapPokemonTcgPlayer() {
         const cardNum = card.number.replace(/^0+/, '');
         const cardNameNorm = normalize(card.name);
 
-        // Find product matching card number and name
+        // Find product strictly matching card number (extracting before slash)
         const match = products.find((p) => {
           const numExt = p.extendedData?.find((d) => d.name === 'Number')?.value;
-          const pNum = numExt ? String(numExt).replace(/^0+/, '') : '';
-          const pNameNorm = normalize(p.name);
-
-          if (pNum && cardNum && pNum === cardNum) return true;
-          return pNameNorm === cardNameNorm;
+          if (!numExt) return false;
+          // Handles "174/182" -> "174", "048/203" -> "48", "TG01/TG30" -> "TG01", etc.
+          const pNum = String(numExt).split('/')[0].trim().replace(/^0+/, '').toLowerCase();
+          const targetNum = cardNum.trim().toLowerCase();
+          return pNum === targetNum;
         });
 
         if (match) {

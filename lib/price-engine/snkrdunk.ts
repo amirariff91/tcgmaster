@@ -42,69 +42,105 @@ export async function fetchSnkrdunkPrice(query: string, setName?: string): Promi
 
       // Fetch Product Details for Title
       const prodRes = await fetch(`https://snkrdunk.com/en/v1/products/${productCode}`, { headers: HEADERS });
-      const prodData = await prodRes.json() as any;
+      const prodData = (await prodRes.json()) as { product?: { name?: string } };
       const externalTitle = prodData?.product?.name || 'Snkrdunk Card';
 
       // Fetch Used Listings for Prices
       const listingsRes = await fetch(`https://snkrdunk.com/en/v1/products/${productCode}/used-listings?perPage=50&page=1&sortType=latest&isOnlyOnSale=false`, { headers: HEADERS });
-      const listingsData = await listingsRes.json() as any;
+      const listingsData = (await listingsRes.json()) as { usedListings?: Array<{ condition?: string; priceAmount?: number | string; isSold?: boolean }> };
       const listings = Array.isArray(listingsData?.usedListings) ? listingsData.usedListings : [];
 
       const gradedPrices: Record<string, number> = {};
       const seenSoldGrades = new Set<string>();
 
+      // Track raw prices by condition tier: sold vs ask
+      const rawSoldByTier: Record<string, number> = {};
+      const rawAskByTier: Record<string, number> = {};
+
       for (const listing of listings) {
         if (typeof listing !== 'object' || listing === null) continue;
-        const condition = listing.condition || 'A';
+        const condition = (listing.condition || 'A').trim();
         const price = Number(listing.priceAmount);
         if (isNaN(price) || price <= 0) continue;
 
-        let parsedGrade = 'raw';
-        if (!['B', 'C', 'D', 'S', 'A'].includes(condition)) {
-           let company, numeric;
-           const gradeMatchFull = condition.match(/^(PSA|BGS|CGC|TAG|AGS|ARS).*?\s+([0-9]+\.?[0-9]*\+?)$/i);
-           const gradeMatchPartial = condition.match(/^(PSA)\s*([0-9]+\.?[0-9]*)/i);
+        // Check if raw single-letter condition (S, A, B, C, D)
+        const isRawCondition = ['S', 'A', 'B', 'C', 'D'].includes(condition.toUpperCase());
 
-           if (gradeMatchFull) {
-             company = gradeMatchFull[1].toLowerCase();
-             numeric = gradeMatchFull[2].replace('+', '').replace('.', '');
-             parsedGrade = `${company}${numeric}`;
-           } else if (gradeMatchPartial) {
-             company = gradeMatchPartial[1].toLowerCase();
-             numeric = gradeMatchPartial[2].replace('+', '').replace('.', '');
-             parsedGrade = `${company}${numeric}`;
-           } else {
-             // Basic fallback
-             if (condition.includes('PSA 10')) parsedGrade = 'psa10';
-             else if (condition.includes('PSA 9')) parsedGrade = 'psa9';
-             else if (condition.includes('BGS 10')) parsedGrade = 'bgs10';
-           }
-        } else if (['B', 'C', 'D'].includes(condition)) {
-           continue; // Skip lower grades
-        }
-
-        if (listing.isSold) {
-          if (!seenSoldGrades.has(parsedGrade)) {
-            seenSoldGrades.add(parsedGrade);
-            gradedPrices[parsedGrade] = price;
+        if (isRawCondition) {
+          const tier = condition.toUpperCase();
+          if (listing.isSold) {
+            if (rawSoldByTier[tier] === undefined) {
+              rawSoldByTier[tier] = price;
+            }
+          } else {
+            if (rawAskByTier[tier] === undefined || price < rawAskByTier[tier]) {
+              rawAskByTier[tier] = price;
+            }
           }
         } else {
-          // If not sold, it's an Ask price. We only save it if we haven't seen a Sold price AND haven't saved a lower Ask price yet.
-          if (!seenSoldGrades.has(parsedGrade)) {
-            if (!gradedPrices[parsedGrade] || price < gradedPrices[parsedGrade]) {
-              gradedPrices[parsedGrade] = price;
+          // Graded slab parsing
+          let company = '';
+          let numeric = '';
+          const gradeMatchFull = condition.match(/^(PSA|BGS|CGC|TAG|AGS|ARS).*?\s+([0-9]+\.?[0-9]*\+?)$/i);
+          const gradeMatchPartial = condition.match(/^(PSA)\s*([0-9]+\.?[0-9]*)/i);
+
+          if (gradeMatchFull) {
+            company = gradeMatchFull[1].toLowerCase();
+            numeric = gradeMatchFull[2].replace('+', '').replace('.', '');
+          } else if (gradeMatchPartial) {
+            company = gradeMatchPartial[1].toLowerCase();
+            numeric = gradeMatchPartial[2].replace('+', '').replace('.', '');
+          } else if (condition.includes('PSA 10')) {
+            company = 'psa'; numeric = '10';
+          } else if (condition.includes('PSA 9')) {
+            company = 'psa'; numeric = '9';
+          } else if (condition.includes('BGS 10')) {
+            company = 'bgs'; numeric = '10';
+          }
+
+          if (company && numeric) {
+            const parsedGrade = `${company}${numeric}`;
+            if (listing.isSold) {
+              if (!seenSoldGrades.has(parsedGrade)) {
+                seenSoldGrades.add(parsedGrade);
+                gradedPrices[parsedGrade] = price;
+              }
+            } else {
+              // If not sold, it's an Ask price. Save only if we haven't seen a Sold price AND haven't saved a lower Ask price yet.
+              if (!seenSoldGrades.has(parsedGrade)) {
+                if (!gradedPrices[parsedGrade] || price < gradedPrices[parsedGrade]) {
+                  gradedPrices[parsedGrade] = price;
+                }
+              }
             }
           }
         }
       }
 
+      // Priority for raw headline price:
+      // 1. Sold: A (or S), then B, then C, then D
+      // 2. Ask: A (or S), then B, then C, then D
+      // NEVER fallback to graded slabs for the raw headline!
       let headlinePrice: number | undefined;
-      if (gradedPrices['raw']) {
-        headlinePrice = gradedPrices['raw'];
-        delete gradedPrices['raw'];
-      } else {
-        // Fallback to whichever is available if raw isn't
-        headlinePrice = Object.values(gradedPrices)[0];
+      let usedConditionTier: string | undefined;
+
+      const priorityTiers = ['A', 'S', 'B', 'C', 'D'];
+      for (const tier of priorityTiers) {
+        if (rawSoldByTier[tier] !== undefined) {
+          headlinePrice = rawSoldByTier[tier];
+          usedConditionTier = tier;
+          break;
+        }
+      }
+
+      if (headlinePrice === undefined) {
+        for (const tier of priorityTiers) {
+          if (rawAskByTier[tier] !== undefined) {
+            headlinePrice = rawAskByTier[tier];
+            usedConditionTier = `${tier}-ask`;
+            break;
+          }
+        }
       }
 
       if (headlinePrice !== undefined || Object.keys(gradedPrices).length > 0) {
@@ -116,6 +152,7 @@ export async function fetchSnkrdunkPrice(query: string, setName?: string): Promi
             externalUrl: rawQuery,
             externalTitle,
             matchedBy: 'cached-url',
+            conditionTier: usedConditionTier || null,
           },
         };
       }

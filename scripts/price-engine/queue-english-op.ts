@@ -50,8 +50,11 @@ export const fetchCard = async (card: WorkerCard, mappings: SourceMapping[]): Pr
   }
 
   const priceChartingMapping = mappings.find((mapping) => mapping.source === 'pricecharting');
+  const isVariant = /[-_][pr]\d+$/i.test(card.number || card.slug);
   if (!priceChartingMapping?.externalUrl) {
     console.log('[English OP] pricecharting: no mapping, skipped');
+  } else if (isVariant && priceChartingMapping.confidence !== 'confirmed') {
+    console.log(`[English OP] pricecharting: variant card ${card.slug} has unconfirmed mapping (${priceChartingMapping.confidence}), skipped to prevent contamination`);
   } else {
     console.log(`[English OP] Fetching from PriceCharting anchor ${priceChartingMapping.externalUrl}...`);
     const priceChartingResult = await fetchPriceChartingByAnchor(priceChartingMapping.externalUrl);

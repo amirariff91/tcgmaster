@@ -26,6 +26,7 @@ type PriceHistoryInsert = {
   price: number;
   currency: string;
   recorded_at: string;
+  price_kind: string;
 };
 type HistoricalPriceExistingRow = {
   recorded_at: string | Date;
@@ -80,7 +81,7 @@ function extractSnkrdunkId(url: string): string | null {
   return match ? match[1] : null;
 }
 
-async function fetchHistoricalSalesForCard(cardId: string, snkrdunkId: string) {
+export async function fetchHistoricalSalesForCard(cardId: string, snkrdunkId: string) {
   const productCode = `SW---${snkrdunkId}`;
   let totalSaved = 0;
   let page = 1;
@@ -112,24 +113,24 @@ async function fetchHistoricalSalesForCard(cardId: string, snkrdunkId: string) {
 
         let parsedGrade = 'raw';
         let gradingCompany = null;
-        const condition = listing.condition || 'A';
+        const condition = (listing.condition || 'A').trim();
 
-        // Filter out unwanted Raw conditions
-        if (['B', 'C', 'D'].includes(condition)) {
-          return null;
-        }
+        // Check if raw single-letter condition (S, A, B, C, D)
+        const isRaw = ['S', 'A', 'B', 'C', 'D'].includes(condition.toUpperCase());
 
-        // Regex to parse things like "PSA 10", "BGS 9.5", "CGC Pristine 10", "ARS 10+"
-        // It captures the company name and the numeric grade.
-        const gradeMatch = condition.match(/^(PSA|BGS|CGC|TAG|AGS|ARS)(?:\s+Pristine|\s+Perfect|\s+Black Label|\s+Gold Label)?\s+([0-9]+\.?[0-9]*\+?)$/i);
+        if (!isRaw) {
+          // Regex to parse things like "PSA 10", "BGS 9.5", "CGC Pristine 10", "ARS 10+"
+          // It captures the company name and the numeric grade.
+          const gradeMatch = condition.match(/^(PSA|BGS|CGC|TAG|AGS|ARS)(?:\s+Pristine|\s+Perfect|\s+Black Label|\s+Gold Label)?\s+([0-9]+\.?[0-9]*\+?)$/i);
 
-        if (gradeMatch) {
-           gradingCompany = gradeMatch[1].toLowerCase();
-           parsedGrade = gradeMatch[2].replace('+', '');
-        } else if (condition.includes('PSA')) {
-           // Fallback for weirdly formatted PSA
-           const m = condition.match(/PSA\s*([0-9]+\.?[0-9]*)/i);
-           if (m) { gradingCompany = 'psa'; parsedGrade = m[1]; }
+          if (gradeMatch) {
+             gradingCompany = gradeMatch[1].toLowerCase();
+             parsedGrade = gradeMatch[2].replace('+', '');
+          } else if (condition.includes('PSA')) {
+             // Fallback for weirdly formatted PSA
+             const m = condition.match(/PSA\s*([0-9]+\.?[0-9]*)/i);
+             if (m) { gradingCompany = 'psa'; parsedGrade = m[1]; }
+          }
         }
 
         const COMPANY_UUIDS: Record<string, string> = {
@@ -149,6 +150,7 @@ async function fetchHistoricalSalesForCard(cardId: string, snkrdunkId: string) {
           price: Number(listing.priceAmount),
           currency: listing.currency || 'USD',
           recorded_at: recordedAt,
+          price_kind: 'sold_guide',
         };
       }).filter((row): row is PriceHistoryInsert => row !== null);
 
@@ -176,10 +178,10 @@ async function fetchHistoricalSalesForCard(cardId: string, snkrdunkId: string) {
           try {
             await dbQuery(
               `INSERT INTO price_history (
-                 card_id, source, grade, grading_company_id, price, currency, recorded_at
+                 card_id, source, grade, grading_company_id, price, currency, recorded_at, price_kind
                )
                SELECT card_id, source::price_source, grade, grading_company_id,
-                      price, currency, recorded_at
+                      price, currency, recorded_at, price_kind::price_kind
                FROM jsonb_to_recordset($1::jsonb) AS rows(
                  card_id uuid,
                  source text,
@@ -187,7 +189,8 @@ async function fetchHistoricalSalesForCard(cardId: string, snkrdunkId: string) {
                  grading_company_id uuid,
                  price numeric,
                  currency text,
-                 recorded_at timestamptz
+                 recorded_at timestamptz,
+                 price_kind text
                )`,
               [JSON.stringify(newRows)],
             );
@@ -459,7 +462,9 @@ async function run() {
   }
 }
 
-run().catch(err => {
-  console.error('Fatal Snkrdunk Historical worker error:', err);
-  process.exit(1);
-});
+if (import.meta.main) {
+  run().catch(err => {
+    console.error('Fatal Snkrdunk Historical worker error:', err);
+    process.exit(1);
+  });
+}

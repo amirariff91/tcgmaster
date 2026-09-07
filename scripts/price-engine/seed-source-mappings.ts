@@ -298,6 +298,13 @@ async function main(): Promise<void> {
 
   for (const card of cards) {
     if (hasValue(card.tcg_player_id) && !plannedPairs.has(pairKey(card.id, 'tcgplayer'))) {
+      // Guard: Never allow variant cards (_p, _r) to inherit a base tcg_player_id
+      const isVariant = card.slug.includes('_p') || card.slug.includes('_r');
+      if (isVariant) {
+        skippedVariantCollision++;
+        continue;
+      }
+
       derivedRows.push(seedRow(
         card.id,
         'tcgplayer',

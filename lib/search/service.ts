@@ -192,7 +192,9 @@ export async function searchCards(
       ? '(c.image_url IS NOT NULL) DESC, cpc.headline_cents ASC NULLS LAST, c.id'
       : options.sort === 'name-asc'
         ? '(c.image_url IS NOT NULL) DESC, c.name ASC, c.id'
-        : '(c.image_url IS NOT NULL) DESC, c.last_price_fetch DESC NULLS LAST, c.name, c.id';
+        : options.sort === 'recent'
+          ? '(c.image_url IS NOT NULL) DESC, GREATEST(c.last_price_fetch, cpc.computed_at) DESC NULLS LAST, c.id'
+          : '(c.image_url IS NOT NULL) DESC, c.last_price_fetch DESC NULLS LAST, c.name, c.id';
 
   const countCards = async (extraWhere = '') => {
     const filters = buildFilters();

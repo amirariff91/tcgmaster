@@ -74,8 +74,8 @@ export function classifyCandidate({
     };
   }
 
-  const isVariantCard = card.slug.includes('_p') && card.slug.toLowerCase().endsWith('-ja');
-  const isBaseCard = !card.slug.includes('_p') && card.slug.toLowerCase().endsWith('-ja');
+  const isVariantCard = /[-_][pr]\d+/i.test(card.slug || card.number);
+  const isBaseCard = !isVariantCard;
 
   const VARIANT_KEYWORDS = [
     'alternate art', 'manga', 'parallel', 'super parallel', 'sp', 'special',
