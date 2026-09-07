@@ -2,9 +2,8 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { 
-  User, 
+  User,
   Sparkles, 
   Layers, 
   MapPin, 
@@ -130,21 +129,36 @@ export function ArtistDetailClient({ artist, profile, cards }: ArtistDetailClien
           <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start justify-between">
             <div className="flex flex-col sm:flex-row gap-5 sm:gap-6 items-start flex-1 min-w-0">
               
-              {/* Profile Picture / Avatar Icon - 2x Bigger */}
+              {/* Profile Picture / Avatar Icon - 2x Bigger with Direct Fallback */}
               <div className="relative shrink-0 mx-auto sm:mx-0">
                 <div className="w-36 h-36 sm:w-44 sm:h-44 md:w-48 md:h-48 rounded-2xl sm:rounded-3xl border-2 border-zinc-400/30 bg-gradient-to-b from-zinc-700/50 via-zinc-800/70 to-zinc-900/90 shadow-2xl flex items-center justify-center overflow-hidden p-1 sm:p-1.5">
                   {profile.photoUrl ? (
-                    <Image
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
                       src={profile.photoUrl}
                       alt={profile.name}
                       width={200}
                       height={200}
-                      priority
                       className="w-full h-full object-cover rounded-xl sm:rounded-2xl"
+                      onError={(e) => {
+                        // Swap to fallback if upstream 403s
+                        (e.target as HTMLElement).style.display = 'none';
+                        const parent = (e.target as HTMLElement).parentElement;
+                        if (parent && !parent.querySelector('.artist-monogram-fallback')) {
+                          const fallback = document.createElement('div');
+                          fallback.className = 'artist-monogram-fallback w-full h-full rounded-xl sm:rounded-2xl bg-zinc-800/80 flex items-center justify-center text-zinc-300 font-mono font-black text-3xl sm:text-4xl';
+                          const words = profile.name.trim().split(/\s+/).filter(Boolean);
+                          fallback.innerText = (words.length > 1 ? words[0][0] + words[words.length - 1][0] : words[0].substring(0, 2)).toUpperCase();
+                          parent.appendChild(fallback);
+                        }
+                      }}
                     />
                   ) : (
-                    <div className="w-full h-full rounded-xl sm:rounded-2xl bg-zinc-800/80 flex items-center justify-center text-zinc-400">
-                      <User className="w-16 h-16 sm:w-20 sm:h-20 stroke-[1.5] text-zinc-300/80" />
+                    <div className="w-full h-full rounded-xl sm:rounded-2xl bg-zinc-800/80 flex items-center justify-center text-zinc-400 font-mono font-black text-3xl sm:text-4xl">
+                      {(() => {
+                        const words = profile.name.trim().split(/\s+/).filter(Boolean);
+                        return (words.length > 1 ? words[0][0] + words[words.length - 1][0] : words[0].substring(0, 2)).toUpperCase();
+                      })()}
                     </div>
                   )}
                 </div>
@@ -300,7 +314,7 @@ export function ArtistDetailClient({ artist, profile, cards }: ArtistDetailClien
               <div className="relative">
                 <select
                   value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as any)}
+                  onChange={(e) => setSortBy(e.target.value as 'price-desc' | 'price-asc' | 'name-asc')}
                   className="bg-[#0a1324] text-xs font-semibold text-zinc-300 border border-white/10 rounded-xl px-3 py-1.5 focus:outline-none focus:border-zinc-400/50 cursor-pointer"
                 >
                   <option value="price-desc">Rank / Price: High to Low</option>

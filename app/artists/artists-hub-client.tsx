@@ -2,17 +2,12 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { 
-  User,
   Search, 
   Sparkles, 
   ChevronRight, 
   Layers, 
-  Palette, 
-  Flame, 
-  Brush,
-  Compass
+  Palette
 } from 'lucide-react';
 import type { ArtistSummary } from '@/lib/artists/service';
 
@@ -61,11 +56,11 @@ const gameThemes: Record<string, {
     badgeText: 'Riftbound',
   },
   'dbfw': {
-    pillBg: 'bg-amber-500/15 text-amber-300 border-amber-500/30 hover:bg-amber-500/25',
-    pillBorder: 'border-amber-500/40',
-    pillText: 'text-amber-400',
-    avatarBg: 'from-amber-500/20 via-orange-500/20 to-yellow-500/20 text-amber-400 border-amber-500/30',
-    badgeBg: 'bg-amber-500/10 border-amber-500/20 text-amber-300',
+    pillBg: 'bg-red-500/15 text-red-300 border-red-500/30 hover:bg-red-500/25',
+    pillBorder: 'border-red-500/40',
+    pillText: 'text-red-400',
+    avatarBg: 'from-red-500/20 via-amber-500/20 to-yellow-500/20 text-red-400 border-red-500/30',
+    badgeBg: 'bg-red-500/10 border-red-500/20 text-red-300',
     badgeText: 'Dragon Ball',
   },
 };
@@ -74,9 +69,58 @@ const defaultTheme = {
   pillBg: 'bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700',
   pillBorder: 'border-zinc-700',
   pillText: 'text-zinc-400',
-  avatarBg: 'from-zinc-800 via-zinc-700 to-zinc-800 text-zinc-300 border-zinc-700',
-  badgeBg: 'bg-zinc-800 border-zinc-700 text-zinc-300',
+  avatarBg: 'from-zinc-800 via-zinc-850 to-zinc-900 text-zinc-400 border-zinc-700/60',
+  badgeBg: 'bg-zinc-800/80 border-zinc-700/60 text-zinc-300',
   badgeText: 'TCG',
+};
+
+function getArtistInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 1) {
+    return parts[0].substring(0, 2).toUpperCase();
+  }
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function ArtistAvatar({
+  name,
+  photoUrl,
+  avatarBg,
+}: {
+  name: string;
+  photoUrl?: string | null;
+  avatarBg: string;
+}) {
+  const [hasError, setHasError] = React.useState(false);
+
+  // If photo exists and hasn't errored
+  if (photoUrl && !hasError) {
+    return (
+      <div className={`relative w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br ${avatarBg} border flex items-center justify-center shrink-0 group-hover:scale-105 transition-all duration-200 shadow-inner overflow-hidden p-0.5`}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={photoUrl}
+          alt=""
+          width={56}
+          height={56}
+          loading="lazy"
+          decoding="async"
+          onError={() => setHasError(true)}
+          className="w-full h-full object-cover rounded-xl"
+        />
+      </div>
+    );
+  }
+
+  // Fallback monogram badge
+  const initials = getArtistInitials(name);
+  return (
+    <div className={`relative w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br ${avatarBg} border flex items-center justify-center shrink-0 group-hover:scale-105 transition-all duration-200 shadow-inner overflow-hidden select-none`}>
+      <span className="font-mono font-black text-xs sm:text-sm tracking-wider text-white/90 drop-shadow">
+        {initials}
+      </span>
+    </div>
+  );
 };
 
 export function ArtistsHubClient({ games, artistsByGame }: ArtistsHubClientProps) {
@@ -212,20 +256,12 @@ export function ArtistsHubClient({ games, artistsByGame }: ArtistsHubClientProps
                   href={`/artists/${artist.slug}`}
                   className="group relative flex items-center gap-3.5 p-3.5 sm:p-4 rounded-2xl bg-[#0b1329]/90 hover:bg-[#0f1b38] border border-white/10 hover:border-purple-500/40 transition-all duration-200 shadow-md hover:shadow-xl hover:-translate-y-0.5"
                 >
-                  {/* Avatar Container with Photo or Empty Profile Icon */}
-                  <div className={`relative w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br ${theme.avatarBg} border flex items-center justify-center shrink-0 group-hover:scale-105 transition-all duration-200 shadow-inner overflow-hidden p-0.5`}>
-                    {artist.photoUrl ? (
-                      <Image
-                        src={artist.photoUrl}
-                        alt={artist.artist}
-                        width={56}
-                        height={56}
-                        className="w-full h-full object-cover rounded-xl"
-                      />
-                    ) : (
-                      <User className="w-6 h-6 sm:w-7 sm:h-7 stroke-[1.5] text-white/70 group-hover:text-white transition-colors" />
-                    )}
-                  </div>
+                  {/* Avatar Container with Photo, Direct Loading, or Monogram Fallback */}
+                  <ArtistAvatar
+                    name={artist.artist}
+                    photoUrl={artist.photoUrl}
+                    avatarBg={theme.avatarBg}
+                  />
 
                   {/* Profile Info Details */}
                   <div className="flex-1 min-w-0 space-y-1">

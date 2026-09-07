@@ -62,7 +62,14 @@ async function enrichPokemonArtist(artistName: string): Promise<boolean> {
 
     // 1. Extract Japanese Kanji name
     const jpMatch = wt.match(/Japanese:\s*'''?([^'’\n]+)'''?/i);
-    const japaneseName = jpMatch ? jpMatch[1].trim() : null;
+    let japaneseName = jpMatch ? jpMatch[1].trim() : null;
+    if (japaneseName) {
+      japaneseName = japaneseName
+        .replace(/\{\{(?:ruby|tt)\|([^}|]+)\|[^}]+\}\}/g, '$1')
+        .replace(/\{\{[^}]+\}\}/g, '')
+        .replace(/'''?/g, '')
+        .trim();
+    }
 
     // 2. Extract Birth year / details
     const birthMatch = wt.match(/born\s+([A-Za-z]+\s+\d{1,2},\s+\d{4}|\d{4})/i);
