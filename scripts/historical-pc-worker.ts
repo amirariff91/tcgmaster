@@ -177,7 +177,7 @@ async function run() {
             recorded_at: date.toISOString(),
           });
         });
-      });
+      }
 
          if (insertRows.length > 0) {
             const oldest = insertRows.reduce((min, r) => r.recorded_at < min ? r.recorded_at : min, insertRows[0].recorded_at);
@@ -333,7 +333,6 @@ async function run() {
                console.log(`  ✓ Saved 0 historical PriceCharting trades (caught up to history).`);
             }
          }
-      }
       
       await dbQuery(
         `UPDATE cards SET pc_fetched = TRUE, last_price_fetch = $1, curation_status = $2 WHERE id = $3`,
