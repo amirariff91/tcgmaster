@@ -8,6 +8,9 @@ import nlp from 'compromise';
 
 export interface ParsedQuery {
   cardName: string | null;
+  cardNumber: string | null;
+  rawNumber: string | null;
+  setCode: string | null;
   setName: string | null;
   year: number | null;
   grade: number | null;
@@ -194,11 +197,50 @@ export function parseSearchQuery(query: string): ParsedQuery {
     }
   }
 
+  // 1. Extract alphanumeric card codes like OP05-119, ST01-001, FB01-001, SV2A-199
+  const codeMatch = q.match(/\b([a-z]{1,4}\d{1,2})[-_](\d{1,4}[a-z0-9_]*)\b/i);
+  if (codeMatch) {
+    result.setCode = codeMatch[1].toUpperCase();
+    result.cardNumber = codeMatch[0].toUpperCase();
+    result.rawNumber = codeMatch[2].replace(/_p\d+/i, '').replace(/_r\d+/i, '');
+    q = q.replace(codeMatch[0], ' ');
+    confidence += 0.3;
+  }
+
+  // 2. Extract fractional card numbers like 232/172, 199/165
+  const fractionMatch = q.match(/\b(\d{1,4})\s*\/\s*(\d{1,4})\b/);
+  if (fractionMatch) {
+    result.cardNumber = fractionMatch[1];
+    result.rawNumber = fractionMatch[1];
+    q = q.replace(fractionMatch[0], ' ');
+    confidence += 0.25;
+  }
+
+  // 3. Extract explicit card numbers with '#' prefix like #113, #001, #25
+  const hashNumberMatch = q.match(/#(\d{1,4}[a-z]?)\b/i);
+  if (!result.cardNumber && hashNumberMatch) {
+    result.cardNumber = hashNumberMatch[1];
+    result.rawNumber = hashNumberMatch[1];
+    q = q.replace(hashNumberMatch[0], ' ');
+    confidence += 0.2;
+  }
+
   // Clean up remaining query for card name
   q = q
     .replace(/\s+/g, ' ')
     .replace(/[^\p{L}\p{N}\s'-]/gu, '')
     .trim();
+
+  // 4. Extract standalone trailing or leading number (e.g. "Luffy 119", "Zamazenta 232", "232 Zamazenta")
+  if (!result.cardNumber) {
+    const standaloneNumMatch = q.match(/(?:^|\s)(\d{1,4}[a-z]?)(?:\s|$)/i);
+    if (standaloneNumMatch && (!result.year || standaloneNumMatch[1] !== String(result.year))) {
+      result.cardNumber = standaloneNumMatch[1];
+      result.rawNumber = standaloneNumMatch[1];
+      q = q.replace(standaloneNumMatch[0], ' ').trim();
+      confidence += 0.2;
+    }
+  }
 
   // Use Compromise to extract proper nouns (likely card names)
   const doc = nlp(q);
@@ -306,6 +348,7 @@ export function getAutocompleteSuggestions(
 export function scoreCardMatch(
   card: {
     name: string;
+    number?: string;
     setName?: string;
     year?: number;
     rarity?: string;
@@ -313,6 +356,29 @@ export function scoreCardMatch(
   parsed: ParsedQuery
 ): number {
   let score = 0;
+
+  // Exact or prefix Card Number match (Extremely high intent)
+  if (parsed.cardNumber && card.number) {
+    const cardNumLower = card.number.toLowerCase();
+    const queryNumLower = parsed.cardNumber.toLowerCase();
+
+    if (cardNumLower === queryNumLower) {
+      score += 150;
+    } else if (cardNumLower.startsWith(queryNumLower)) {
+      score += 100;
+    } else if (cardNumLower.includes(queryNumLower)) {
+      score += 60;
+    }
+  }
+
+  // Raw Number match (e.g. searching 119 matches OP05-119_p2)
+  if (parsed.rawNumber && card.number && (!parsed.cardNumber || parsed.cardNumber !== parsed.rawNumber)) {
+    const cardNumLower = card.number.toLowerCase();
+    const rawLower = parsed.rawNumber.toLowerCase();
+    if (cardNumLower.includes(`-${rawLower}`) || cardNumLower.startsWith(rawLower)) {
+      score += 80;
+    }
+  }
 
   // Card name match (most important)
   if (parsed.cardName) {

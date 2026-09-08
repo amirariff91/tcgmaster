@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
   if (autocomplete) {
     const suggestions = await getSearchSuggestions(query, limit);
 
-    // Transform to match existing frontend format
+    // Transform to match frontend format with rich badges and graded prices
     const results = [
       ...suggestions.cards.map((card) => ({
         type: 'card' as const,
@@ -35,9 +35,12 @@ export async function GET(request: NextRequest) {
         name: card.name,
         slug: `${card.game}/${card.setSlug}/${card.slug}`,
         image_url: card.imageUrl,
-        subtitle: `${formatSetName(card.setName)} - #${formatDisplayNumber(card.game, card.number)}`,
+        subtitle: `${formatSetName(card.setName)} • #${formatDisplayNumber(card.game, card.number)}`,
         price: card.marketPrice,
         game: card.game,
+        number: card.number,
+        rarity: card.rarity,
+        psa10_price: card.psa10Price || null,
       })),
       ...suggestions.sets.map((set) => ({
         type: 'set' as const,

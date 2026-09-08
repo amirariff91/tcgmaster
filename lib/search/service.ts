@@ -35,6 +35,7 @@ interface CardSuggestionRow {
   image_url: string | null;
   local_image_url: string | null;
   headline_cents?: number | null;
+  graded_prices?: Record<string, { average?: number; sources?: Record<string, number> }> | null;
   sets: {
     name: string;
     slug: string;
@@ -62,6 +63,7 @@ export interface SearchResult {
   rarity: string | null;
   imageUrl: string | null;
   marketPrice: number | null;
+  psa10Price?: number | null;
   slug: string;
   game: string;
   curationStatus: string | null;
@@ -153,9 +155,28 @@ export async function searchCards(
       clauses.push(`c.curation_status = ${addParam('curated')}`);
     }
 
-    if (parsed.cardName && parsed.cardName.length >= 2) {
+    // High-precision compound search: cardName + cardNumber / setCode
+    if (parsed.cardName && (parsed.cardNumber || parsed.rawNumber)) {
+      const nameVal = addParam(`%${parsed.cardName}%`);
+      const numVal = parsed.cardNumber || parsed.rawNumber;
+      const numExact = addParam(numVal);
+      const numPrefix = addParam(`${numVal}%`);
+      const numHyphen = addParam(`%-${numVal}%`);
+      clauses.push(`(c.name ILIKE ${nameVal}) AND (c.number = ${numExact} OR c.number ILIKE ${numPrefix} OR c.number ILIKE ${numHyphen})`);
+    } else if (parsed.cardNumber || parsed.rawNumber) {
+      const numVal = parsed.cardNumber || parsed.rawNumber;
+      const numExact = addParam(numVal);
+      const numPrefix = addParam(`${numVal}%`);
+      const numHyphen = addParam(`%-${numVal}%`);
+      clauses.push(`(c.number = ${numExact} OR c.number ILIKE ${numPrefix} OR c.number ILIKE ${numHyphen} OR c.slug ILIKE ${numHyphen})`);
+    } else if (parsed.cardName && parsed.cardName.length >= 2) {
       const value = addParam(`%${parsed.cardName}%`);
       clauses.push(`(c.name ILIKE ${value} OR c.number ILIKE ${value} OR c.print_run_info ILIKE ${value})`);
+    }
+
+    if (parsed.setCode) {
+      const setCodeVal = addParam(`${parsed.setCode}%`);
+      clauses.push(`(s.slug ILIKE ${setCodeVal} OR c.number ILIKE ${setCodeVal})`);
     }
 
     if (parsed.setName) {
@@ -194,7 +215,7 @@ export async function searchCards(
         ? '(c.image_url IS NOT NULL) DESC, c.name ASC, c.id'
         : options.sort === 'recent'
           ? '(c.image_url IS NOT NULL) DESC, GREATEST(c.last_price_fetch, cpc.computed_at) DESC NULLS LAST, c.id'
-          : '(c.image_url IS NOT NULL) DESC, c.last_price_fetch DESC NULLS LAST, c.name, c.id';
+          : '(c.image_url IS NOT NULL) DESC, cpc.headline_cents DESC NULLS LAST, c.last_price_fetch DESC NULLS LAST, c.name, c.id';
 
   const countCards = async (extraWhere = '') => {
     const filters = buildFilters();
@@ -295,6 +316,7 @@ export async function searchCards(
     result.score = scoreCardMatch(
       {
         name: card.name,
+        number: card.number,
         setName: set?.name,
         rarity: card.rarity || undefined,
       },
@@ -342,7 +364,30 @@ export async function getSearchSuggestions(
     return { cards: [], sets: [], suggestions: [] };
   }
 
-  const searchValue = `%${query}%`;
+  // Parse structured components using NLP Tokenizer
+  const parsed = parseSearchQuery(query);
+
+  let cardWhere = '';
+  let cardParams: unknown[] = [];
+
+  if (parsed.cardName && (parsed.cardNumber || parsed.rawNumber)) {
+    // Compound intent: name + card number (e.g. "Luffy 119", "Zamazenta 232")
+    const numVal = parsed.cardNumber || parsed.rawNumber;
+    cardParams = [`%${parsed.cardName}%`, numVal, `${numVal}%`, `%-${numVal}%`];
+    cardWhere = `c.name ILIKE $1 AND (c.number = $2 OR c.number ILIKE $3 OR c.number ILIKE $4)`;
+  } else if (parsed.cardNumber || parsed.rawNumber) {
+    // Exact or prefix number search (e.g. "OP05-119", "232/172", "#113")
+    const numVal = parsed.cardNumber || parsed.rawNumber;
+    cardParams = [numVal, `${numVal}%`, `%-${numVal}%`];
+    cardWhere = `c.number = $1 OR c.number ILIKE $2 OR c.number ILIKE $3 OR c.slug ILIKE $3`;
+  } else {
+    // Standard character or keyword search
+    cardParams = [`%${query}%`];
+    cardWhere = `c.name ILIKE $1 OR c.number ILIKE $1 OR c.print_run_info ILIKE $1`;
+  }
+
+  const setParams = [`%${parsed.setName || query}%`];
+
   const [cards, sets] = await Promise.all([
     dbQuery<CardSuggestionRow>(`
       SELECT
@@ -354,6 +399,7 @@ export async function getSearchSuggestions(
         c.image_url,
         c.local_image_url,
         cpc.headline_cents,
+        cpc.graded_prices,
         json_build_object(
           'name', s.name,
           'slug', s.slug,
@@ -363,41 +409,74 @@ export async function getSearchSuggestions(
       JOIN sets s ON s.id = c.set_id
       JOIN games g ON g.id = s.game_id
       LEFT JOIN card_price_current cpc ON cpc.card_id = c.id
-      WHERE c.name ILIKE $1 OR c.number ILIKE $1 OR c.print_run_info ILIKE $1
-      LIMIT $2
-    `, [searchValue, limit]),
+      WHERE ${cardWhere}
+      ORDER BY 
+        (c.image_url IS NOT NULL) DESC,
+        cpc.headline_cents DESC NULLS LAST,
+        c.id
+      LIMIT $${cardParams.length + 1}
+    `, [...cardParams, limit * 2]),
     dbQuery<SetRow>(`
       SELECT name, slug, card_count
       FROM sets
       WHERE name ILIKE $1
       LIMIT 4
-    `, [searchValue]),
+    `, setParams),
   ]);
 
-  // Get NLP suggestions
-  const parsed = parseSearchQuery(query);
   const nlpSuggestions = parsed.suggestions;
 
-  return {
-    cards: cards.map((card) => {
-      const set = Array.isArray(card.sets) ? card.sets[0] : card.sets;
-      const game = set?.games;
+  // Transform and score suggestions so top matches rise to the top
+  const scoredCards: SearchResult[] = cards.map((card) => {
+    const set = Array.isArray(card.sets) ? card.sets[0] : card.sets;
+    const game = set?.games;
 
-      return {
-        id: card.id,
+    // Extract PSA 10 price if available
+    let psa10Price: number | null = null;
+    if (card.graded_prices && typeof card.graded_prices === 'object') {
+      const g10 = card.graded_prices['10'] || card.graded_prices['psa10'];
+      if (g10 && typeof g10.average === 'number' && g10.average > 0) {
+        psa10Price = g10.average;
+      }
+    }
+
+    const item: SearchResult = {
+      id: card.id,
+      name: card.name,
+      setName: set?.name || '',
+      setSlug: set?.slug || '',
+      number: card.number,
+      rarity: card.rarity,
+      imageUrl: card.local_image_url || card.image_url,
+      marketPrice: card.headline_cents != null && card.headline_cents > 0 ? card.headline_cents / 100 : null,
+      psa10Price,
+      slug: card.slug,
+      game: game?.slug || 'pokemon',
+      curationStatus: card.curation_status || null,
+      score: 0,
+    };
+
+    item.score = scoreCardMatch(
+      {
         name: card.name,
-        setName: set?.name || '',
-        setSlug: set?.slug || '',
         number: card.number,
-        rarity: card.rarity,
-        imageUrl: card.local_image_url || card.image_url,
-        marketPrice: card.headline_cents != null && card.headline_cents > 0 ? card.headline_cents / 100 : null,
-        slug: card.slug,
-        game: game?.slug || 'pokemon',
-        curationStatus: card.curation_status || null,
-        score: 0,
-      };
-    }),
+        setName: set?.name,
+        rarity: card.rarity || undefined,
+      },
+      parsed
+    );
+
+    return item;
+  });
+
+  // Sort by match score descending, then market price descending
+  scoredCards.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    return (b.marketPrice || 0) - (a.marketPrice || 0);
+  });
+
+  return {
+    cards: scoredCards.slice(0, limit),
     sets: sets.map((set) => ({
       name: set.name,
       slug: set.slug,

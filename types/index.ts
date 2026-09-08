@@ -275,6 +275,9 @@ export interface SearchResult {
   subtitle: string | null; // e.g., "Base Set - #4/102"
   price: number | null;
   game: GameSlug;
+  number?: string | null;
+  rarity?: string | null;
+  psa10_price?: number | null;
 }
 
 export interface SearchFilters {
