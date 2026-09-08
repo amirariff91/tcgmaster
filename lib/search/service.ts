@@ -171,7 +171,7 @@ export async function searchCards(
       clauses.push(`(c.number = ${numExact} OR c.number ILIKE ${numPrefix} OR c.number ILIKE ${numHyphen} OR c.slug ILIKE ${numHyphen})`);
     } else if (parsed.cardName && parsed.cardName.length >= 2) {
       const value = addParam(`%${parsed.cardName}%`);
-      clauses.push(`(c.name ILIKE ${value} OR c.number ILIKE ${value} OR c.print_run_info ILIKE ${value})`);
+      clauses.push(`(c.name ILIKE ${value} OR c.number ILIKE ${value})`);
     }
 
     if (parsed.setCode) {
@@ -381,9 +381,9 @@ export async function getSearchSuggestions(
     cardParams = [numVal, `${numVal}%`, `%-${numVal}%`];
     cardWhere = `c.number = $1 OR c.number ILIKE $2 OR c.number ILIKE $3 OR c.slug ILIKE $3`;
   } else {
-    // Standard character or keyword search
+    // Standard character or keyword search (uses GIN trigram indexes on name & number)
     cardParams = [`%${query}%`];
-    cardWhere = `c.name ILIKE $1 OR c.number ILIKE $1 OR c.print_run_info ILIKE $1`;
+    cardWhere = `c.name ILIKE $1 OR c.number ILIKE $1`;
   }
 
   const setParams = [`%${parsed.setName || query}%`];

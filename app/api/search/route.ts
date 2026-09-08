@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { searchCards, getSearchSuggestions, getPopularSearches } from '@/lib/search/service';
 import { formatDisplayNumber, formatSetName } from '@/lib/utils';
+import { redis } from '@/lib/redis/client';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -23,8 +24,16 @@ export async function GET(request: NextRequest) {
   }
 
   // Let empty query pass through to get default list
-  // Autocomplete mode - fast suggestions
+  // Autocomplete mode - fast suggestions with Redis caching
   if (autocomplete) {
+    const cacheKey = `api:search:auto:${query.toLowerCase().trim()}:${limit}`;
+    try {
+      const cached = await redis.get<any>(cacheKey);
+      if (cached) {
+        return NextResponse.json(cached);
+      }
+    } catch {}
+
     const suggestions = await getSearchSuggestions(query, limit);
 
     // Transform to match frontend format with rich badges and graded prices
@@ -54,10 +63,16 @@ export async function GET(request: NextRequest) {
       })),
     ];
 
-    return NextResponse.json({
+    const responsePayload = {
       results,
       suggestions: suggestions.suggestions,
-    });
+    };
+
+    try {
+      await redis.set(cacheKey, responsePayload, { ex: 3600 }); // 1 hour cache
+    } catch {}
+
+    return NextResponse.json(responsePayload);
   }
 
   // Full search mode

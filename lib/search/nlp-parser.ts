@@ -386,9 +386,13 @@ export function scoreCardMatch(
     const queryLower = parsed.cardName.toLowerCase();
 
     if (nameLower === queryLower) {
-      score += 100;
+      score += 200; // Absolute exact match: e.g. "Mew"
+    } else if (nameLower.startsWith(`${queryLower} `) || nameLower.startsWith(`${queryLower}-`)) {
+      score += 120; // Starts with word: e.g. "Mew ex", "Mew VMAX"
+    } else if (nameLower.includes(` ${queryLower} `) || nameLower.endsWith(` ${queryLower}`)) {
+      score += 90; // Word inside: e.g. "Shining Mew"
     } else if (nameLower.includes(queryLower)) {
-      score += 50;
+      score += 40; // Substring: e.g. "Mewtwo"
     } else if (queryLower.split(' ').every((word) => nameLower.includes(word))) {
       score += 30;
     }

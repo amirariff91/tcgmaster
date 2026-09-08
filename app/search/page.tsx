@@ -41,9 +41,13 @@ function SearchResults() {
   const query = searchParams.get('q') || '';
   const urlGame = searchParams.get('game');
   const urlSet = searchParams.get('set');
-  const urlLang = searchParams.get('lang');
-
-  const [sort, setSort] = React.useState(() => typeof window !== 'undefined' ? sessionStorage.getItem('search_sort') || 'price-desc' : 'price-desc');
+  const [sort, setSort] = React.useState(() => {
+    if (query) return 'relevance';
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('search_sort') || 'price-desc';
+    }
+    return 'relevance';
+  });
   const [game, setGame] = React.useState(() => {
     if (urlGame) return urlGame;
     return typeof window !== 'undefined' ? sessionStorage.getItem('search_game') || 'all' : 'all';
