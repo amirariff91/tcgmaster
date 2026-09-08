@@ -37,7 +37,7 @@ type HistoricalPriceExistingRow = {
   grade: string;
 };
 
-const SLEEP_MS = 30000;
+const SLEEP_MS = 10000;
 
 async function run() {
   console.log(`Starting Continuous Historical PriceCharting Worker [SLEEP=${SLEEP_MS}ms]...`);
@@ -345,8 +345,10 @@ async function run() {
       if (page) await page.close().catch(() => {});
     }
 
-    console.log(`Sleeping for ${SLEEP_MS / 1000}s to avoid bot detection... Zzz...\n`);
-    await new Promise(r => setTimeout(r, SLEEP_MS));
+    const jitter = Math.floor(Math.random() * 4000) - 2000;
+    const actualSleep = Math.max(6000, SLEEP_MS + jitter);
+    console.log(`Sleeping for ${(actualSleep / 1000).toFixed(1)}s to avoid bot detection... Zzz...\n`);
+    await new Promise(r => setTimeout(r, actualSleep));
   }
 }
 
