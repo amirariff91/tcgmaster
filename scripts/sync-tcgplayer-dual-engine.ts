@@ -30,14 +30,19 @@ export async function fetchLatestCompletedSales(productId: string | number): Pro
     const res = await fetch(`https://mpapi.tcgplayer.com/v2/product/${productId}/latestsales`, {
       method: "POST",
       headers: {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+        "Origin": "https://www.tcgplayer.com",
+        "Referer": "https://www.tcgplayer.com/",
         "Content-Type": "application/json",
         "Accept": "application/json",
       },
       body: JSON.stringify({}),
     });
 
-    if (!res.ok) return [];
+    if (!res.ok) {
+      console.warn(`[latestsales] HTTP ${res.status} for product ${productId}`);
+      return [];
+    }
     const data = await res.json();
     return (data.data || []) as LatestSaleItem[];
   } catch (err: any) {
@@ -47,13 +52,13 @@ export async function fetchLatestCompletedSales(productId: string | number): Pro
 }
 
 /**
- * Fetches 1-year historical sales records from TCGPlayer's Infinite API.
+ * Fetches 6-month historical sales records from TCGPlayer's Infinite API.
  */
 export async function fetchAnnualHistory(productId: string | number): Promise<InfiniteHistoryItem[]> {
   try {
-    const res = await fetch(`https://infinite-api.tcgplayer.com/price/history/${productId}?range=annual`, {
+    const res = await fetch(`https://infinite-api.tcgplayer.com/price/history/${productId}?range=semi-annual`, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
         "Accept": "application/json",
       },
     });

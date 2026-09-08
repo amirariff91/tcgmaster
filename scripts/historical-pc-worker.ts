@@ -162,6 +162,9 @@ async function run() {
           if (!dateStr || !priceText) return;
           const date = new Date(dateStr);
           if (isNaN(date.getTime())) return;
+          // Filter to 6-month historical window (180 days)
+          if (date.getTime() < Date.now() - 180 * 24 * 60 * 60 * 1000) return;
+
           const match = priceText.match(/([0-9.,]+)/);
           if (!match) return;
           const price = parseFloat(match[1].replace(/,/g, ''));

@@ -108,7 +108,7 @@ export async function fetchHistoricalSalesForCard(cardId: string, snkrdunkId: st
 
       const soldListings = listings.filter((listing) => listing.isSold === true && Number(listing.priceAmount) > 0);
 
-      const insertRows = soldListings.map((listing): PriceHistoryInsert | null => {
+      const allRows = soldListings.map((listing): PriceHistoryInsert | null => {
         const recordedAt = decodeUlidTime(listing.listingUID || '').toISOString();
 
         let parsedGrade = 'raw';
@@ -150,9 +150,13 @@ export async function fetchHistoricalSalesForCard(cardId: string, snkrdunkId: st
           price: Number(listing.priceAmount),
           currency: listing.currency || 'USD',
           recorded_at: recordedAt,
-          price_kind: 'sold_guide',
         };
       }).filter((row): row is PriceHistoryInsert => row !== null);
+
+      // Filter to max 6-month historical window (180 days)
+      const sixMonthsAgo = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString();
+      const insertRows = allRows.filter(r => r.recorded_at >= sixMonthsAgo);
+      const hasOlderThan6m = allRows.some(r => r.recorded_at < sixMonthsAgo);
 
       if (insertRows.length > 0) {
         const oldest = insertRows.reduce((min, r) => r.recorded_at < min ? r.recorded_at : min, insertRows[0].recorded_at);
@@ -203,6 +207,11 @@ export async function fetchHistoricalSalesForCard(cardId: string, snkrdunkId: st
           }
         } else {
           console.log(`  ✓ Caught up to existing history at page ${page}. Breaking early.`);
+          break;
+        }
+
+        if (hasOlderThan6m) {
+          console.log(`  ✓ Reached 6-month historical limit (180 days) at page ${page}. Completing card.`);
           break;
         }
       }
