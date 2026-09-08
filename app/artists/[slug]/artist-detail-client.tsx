@@ -375,11 +375,10 @@ export function ArtistDetailClient({ artist, profile, cards }: ArtistDetailClien
                     )}
 
                     {/* Card Image Box - Scaled & compact */}
-                    <div className="relative aspect-[5/7] w-full max-w-[160px] mx-auto mb-2 flex items-center justify-center">
+                    <div className="relative aspect-[5/7] w-full max-w-[150px] mx-auto mb-2 flex items-center justify-center">
                       <CardImage
                         src={card.imageUrl}
                         alt={cleanName}
-                        size="hero"
                         className="w-full h-auto object-contain rounded drop-shadow-md group-hover:scale-105 transition-transform duration-300"
                       />
                     </div>

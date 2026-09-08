@@ -3,7 +3,8 @@ import { dbQuery } from '@/lib/db/client';
 import { FormattedPrice } from '@/components/ui/formatted-price';
 import { Trophy, Calendar, Users, Target } from 'lucide-react';
 import Link from 'next/link';
-import { DeckBannerImage } from '@/components/decks/deck-banner-image';
+import Image from 'next/image';
+import { resolveCardImageUrl } from '@/lib/images/cloudflare-loader';
 
 export const metadata: Metadata = {
   title: 'Top Decks & Tournaments | TCGMaster',
@@ -116,12 +117,19 @@ export default async function DecksPage({
             {deckRows.map((deck) => (
               <Link key={deck.id} href={`/${game}/decks/${deck.id}`} className="block h-full">
                 <div className="group relative flex flex-col h-full bg-[#0a1120] hover:bg-[#0c1527] rounded-xl border border-white/5 hover:border-orange-500/30 p-2.5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-orange-500/10">
-                  {/* Leader Image Header with resilient fallback */}
+                  {/* Leader Image Header */}
                   <div className="relative aspect-[16/10] w-full rounded-lg overflow-hidden bg-[#060a14]">
-                    <DeckBannerImage
-                      src={deck.cards?.local_image_url || deck.cards?.image_url}
-                      alt={deck.cards?.name || 'Leader'}
-                    />
+                    {(deck.cards?.image_url || deck.cards?.local_image_url) ? (
+                      <Image
+                        src={resolveCardImageUrl(deck.cards.local_image_url || deck.cards.image_url) ?? ''}
+                        alt={deck.cards.name || 'Leader'}
+                        fill
+                        unoptimized
+                        className="object-cover object-top opacity-85 group-hover:opacity-100 group-hover:scale-105 transition-transform duration-300"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 bg-gradient-to-br from-zinc-800 to-zinc-900" />
+                    )}
                     <div className="absolute inset-0 bg-gradient-to-t from-[#0a1120]/80 via-transparent to-transparent pointer-events-none" />
                     
                     {/* Placement Badge */}

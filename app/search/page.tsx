@@ -221,10 +221,18 @@ function SearchResults() {
         setTotalCount(json?.data?.pagination?.totalCount ?? 0);
 
         const mappedCards = cards.map((c: any) => {
-          const [gameSlugPart, setSlugPart, cardSlugPart] = (c.slug || '').split('/');
-          const gameSlug = c.game || gameSlugPart || 'pokemon';
-          const setSlug = setSlugPart || '';
-          const cardSlug = cardSlugPart || c.slug;
+          let cardSlug = c.slug || '';
+          let setSlug = '';
+          let gameSlug = c.game || 'pokemon';
+
+          // If slug is full path 'game/set/card'
+          if (cardSlug.includes('/')) {
+            const parts = cardSlug.split('/');
+            gameSlug = parts[0] || gameSlug;
+            setSlug = parts[1] || '';
+            cardSlug = parts[2] || parts[parts.length - 1];
+          }
+
           return {
             id: c.id,
             name: c.name,
@@ -241,7 +249,7 @@ function SearchResults() {
 
         if (fetchPage === 1) {
           setResults(mappedCards);
-          sessionStorage.setItem('search_results_v2', JSON.stringify(mappedCards));
+          try { sessionStorage.setItem('search_results_v2', JSON.stringify(mappedCards)); } catch {}
         } else {
           setResults(prev => {
             const existingIds = new Set(prev.map(c => c.id));
@@ -249,12 +257,13 @@ function SearchResults() {
             if (newCards.length === 0) return prev;
 
             const updated = [...prev, ...newCards];
-            sessionStorage.setItem('search_results_v2', JSON.stringify(updated));
+            try { sessionStorage.setItem('search_results_v2', JSON.stringify(updated)); } catch {}
             return updated;
           });
         }
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error('Search client error:', err);
         if (fetchPage === 1) setResults([]);
       })
       .finally(() => {

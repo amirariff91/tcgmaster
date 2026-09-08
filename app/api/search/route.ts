@@ -77,43 +77,60 @@ export async function GET(request: NextRequest) {
 
   // Full search mode
   const sort = searchParams.get('sort') || undefined;
-  const results = await searchCards(query, {
-    page,
-    pageSize,
-    sort,
-    filters: {
-      game,
-      set,
-      rarity,
-      lang,
-    },
-  });
 
-  return NextResponse.json({
-    data: {
-      results: results.results.map((card) => ({
-        type: 'card' as const,
-        id: card.id,
-        name: card.name,
-        slug: `${card.game}/${card.setSlug}/${card.slug}`,
-        image_url: card.imageUrl,
-        subtitle: `${formatSetName(card.setName)} - #${formatDisplayNumber(card.game, card.number)}`,
-        price: card.marketPrice,
-        game: card.game,
-        rarity: card.rarity,
-        score: card.score,
-      })),
-      parsed: results.parsed,
-      pagination: {
-        page: results.page,
-        pageSize: results.pageSize,
-        totalCount: results.totalCount,
-        hasMore: results.hasMore,
+  try {
+    const results = await searchCards(query, {
+      page,
+      pageSize,
+      sort,
+      filters: {
+        game,
+        set,
+        rarity,
+        lang,
       },
-    },
-  }, {
-    headers: {
-      'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
-    },
-  });
+    });
+
+    return NextResponse.json({
+      data: {
+        results: results.results.map((card) => ({
+          type: 'card' as const,
+          id: card.id,
+          name: card.name,
+          slug: `${card.game}/${card.setSlug}/${card.slug}`,
+          image_url: card.imageUrl,
+          subtitle: `${formatSetName(card.setName)} - #${formatDisplayNumber(card.game, card.number)}`,
+          price: card.marketPrice,
+          game: card.game,
+          rarity: card.rarity,
+          score: card.score,
+        })),
+        parsed: results.parsed,
+        pagination: {
+          page: results.page,
+          pageSize: results.pageSize,
+          totalCount: results.totalCount,
+          hasMore: results.hasMore,
+        },
+      },
+    }, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+      },
+    });
+  } catch (error) {
+    console.error('Search query error in /api/search:', error);
+    return NextResponse.json({
+      data: {
+        results: [],
+        parsed: null,
+        pagination: {
+          page,
+          pageSize,
+          totalCount: 0,
+          hasMore: false,
+        },
+      },
+    }, { status: 200 });
+  }
 }

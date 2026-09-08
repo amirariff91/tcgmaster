@@ -119,11 +119,12 @@ export function SearchBar({
   };
 
   const handleResultClick = (result: SearchResult) => {
-    const path = result.type === 'card'
-      ? `/${result.game}/${result.slug}`
-      : result.type === 'set'
-      ? `/${result.game}/${result.slug}`
-      : `/${result.slug}`;
+    let path = `/${result.slug.replace(/^\/+/, '')}`;
+    if (result.type === 'card' || result.type === 'set') {
+      if (!result.slug.startsWith(`${result.game}/`) && !result.slug.startsWith(`/${result.game}/`)) {
+        path = `/${result.game}/${result.slug.replace(/^\/+/, '')}`;
+      }
+    }
     router.push(path);
     setIsOpen(false);
     setQuery('');
