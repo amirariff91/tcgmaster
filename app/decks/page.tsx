@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import { dbQuery } from '@/lib/db/client';
 import { redis } from '@/lib/redis/client';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Trophy, ChevronRight, Loader2, Crown, Flame, Sparkles } from 'lucide-react';
 import { resolveCardImageUrl } from '@/lib/images/cloudflare-loader';
 import { LeaderAvatar } from '@/components/decks/leader-avatar';
