@@ -2,9 +2,9 @@ import { Metadata } from 'next';
 import { dbQuery } from '@/lib/db/client';
 import { redis } from '@/lib/redis/client';
 import Link from 'next/link';
-import Image from 'next/image';
 import { Trophy, ChevronRight, Loader2, Crown, Flame, Sparkles } from 'lucide-react';
 import { resolveCardImageUrl } from '@/lib/images/cloudflare-loader';
+import { LeaderAvatar } from '@/components/decks/leader-avatar';
 
 export const metadata: Metadata = {
   title: 'Global Meta Tier List & Top Decks | TCGMaster',
@@ -283,19 +283,12 @@ export default async function GlobalDecksHub() {
                             {isRank1 ? <Crown className="w-3.5 h-3.5 text-amber-400" /> : `#${index + 1}`}
                           </div>
 
-                          {/* Leader Image */}
-                          <div className="relative shrink-0 w-11 h-11 rounded-full overflow-hidden border border-white/10 shadow-md bg-black/80 mr-3">
-                            {arch.leaderCardImage ? (
-                              <Image
-                                src={resolveCardImageUrl(arch.leaderCardImage) ?? arch.leaderCardImage}
-                                alt={arch.leaderCardName}
-                                fill
-                                className="object-cover object-top group-hover:scale-110 transition-transform duration-500"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-[9px] text-zinc-500 font-bold bg-zinc-900">N/A</div>
-                            )}
-                          </div>
+                          {/* Leader Image with resilient client fallback */}
+                          <LeaderAvatar
+                            src={arch.leaderCardImage}
+                            alt={arch.leaderCardName}
+                            className="mr-3"
+                          />
 
                           {/* Details */}
                           <div className="flex-1 min-w-0 pr-1">

@@ -1,7 +1,7 @@
 import { Pool, type QueryResultRow } from 'pg'
 
-const DEFAULT_POOL_MAX = 10
-const CONNECTION_TIMEOUT_MS = 3000
+const DEFAULT_POOL_MAX = 25
+const CONNECTION_TIMEOUT_MS = 15000
 
 function getPoolMax(): number {
   const configured = Number.parseInt(process.env.DATABASE_POOL_MAX || '', 10)
