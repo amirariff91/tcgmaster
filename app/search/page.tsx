@@ -41,6 +41,7 @@ function SearchResults() {
   const query = searchParams.get('q') || '';
   const urlGame = searchParams.get('game');
   const urlSet = searchParams.get('set');
+  const urlLang = searchParams.get('lang');
   const [sort, setSort] = React.useState(() => {
     if (query) return 'relevance';
     if (typeof window !== 'undefined') {
