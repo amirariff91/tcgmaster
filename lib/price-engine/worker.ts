@@ -1,6 +1,7 @@
 import { createScraperClient } from './db';
 import { getMappingsForCard, type SourceMapping } from './mapping';
 import { revalidateCardPage } from './revalidate';
+import { syncDualEngineSales } from '../../scripts/sync-tcgplayer-dual-engine';
 import {
   persistObservations,
   type CardRef,
@@ -211,6 +212,25 @@ export async function runScrapeLoop(config: WorkerConfig): Promise<never> {
           mappings,
         );
         console.log(`${label} Price persistence for ${card.slug}: written=${persisted.written} quarantined=${persisted.quarantined}`);
+
+        // Backfill-on-Touch Guard: Prevent flat charts by ensuring any card touched by daily scrapers
+        // has full 6-month historical data if it currently has <= 3 points.
+        if (card.tcg_player_id) {
+          try {
+            const histCheck = await db<{ count: string }>(
+              `SELECT count(*)::text as count FROM price_history WHERE card_id = $1`,
+              [card.id],
+            );
+            const pts = parseInt(histCheck[0]?.count || '0', 10);
+            if (pts <= 3) {
+              console.log(`${label} [Backfill-on-Touch] Card ${card.slug} has only ${pts} historical points. Backfilling 6M data...`);
+              await syncDualEngineSales(card.id, card.tcg_player_id);
+            }
+          } catch (backfillErr: any) {
+            console.warn(`${label} [Backfill-on-Touch] Non-blocking backfill error:`, backfillErr.message);
+          }
+        }
+
         await revalidateCardPage(card.id, label);
         previousCardId = card.id;
       }
