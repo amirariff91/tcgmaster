@@ -240,6 +240,7 @@ function SearchResults() {
     fetch(`/api/search?${params.toString()}`)
       .then((res) => res.json())
       .then((json) => {
+        const cards = json?.data?.results ?? [];
         const nextHasMore = json?.data?.pagination?.hasMore ?? false;
         const nextTotalCount = json?.data?.pagination?.totalCount ?? 0;
         setHasMore(nextHasMore);
