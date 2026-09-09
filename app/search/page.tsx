@@ -122,6 +122,8 @@ function SearchResults() {
           setPage(1);
           setResults([]);
           sessionStorage.removeItem('search_results_v2');
+          sessionStorage.removeItem('search_has_more');
+          sessionStorage.removeItem('search_total_count');
         }
       }
 
@@ -130,8 +132,26 @@ function SearchResults() {
     }
   }, [query, game, cardSet, lang, sort, page, currentFiltersKey]);
 
-  const [hasMore, setHasMore] = React.useState(false);
-  const [totalCount, setTotalCount] = React.useState(0);
+  const [hasMore, setHasMore] = React.useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const savedFilters = sessionStorage.getItem('search_filters_key_v2');
+      if (savedFilters === currentFiltersKey) {
+        return sessionStorage.getItem('search_has_more') === 'true';
+      }
+    }
+    return false;
+  });
+
+  const [totalCount, setTotalCount] = React.useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      const savedFilters = sessionStorage.getItem('search_filters_key_v2');
+      if (savedFilters === currentFiltersKey) {
+        return parseInt(sessionStorage.getItem('search_total_count') || '0', 10);
+      }
+    }
+    return 0;
+  });
+
   const [gameFilters, setGameFilters] = React.useState([{ value: 'all', label: 'TCGs' }]);
   const [setFilters, setSetFilters] = React.useState([{ value: 'all', label: 'Sets' }]);
 
@@ -200,11 +220,14 @@ function SearchResults() {
       fetchPageSize = page * 30;
     }
 
-    // If we have cached results on initial mount, we don't need to refetch unless we want fresh data
+    // If we have cached results on initial mount, we don't need to refetch unless hasMore is unconfirmed
     if (isInitialMount.current && results.length > 0) {
       setIsLoading(false);
       isInitialMount.current = false;
-      return;
+      const cachedHasMore = typeof window !== 'undefined' ? sessionStorage.getItem('search_has_more') : null;
+      if (cachedHasMore !== null) {
+        return;
+      }
     }
 
     params.set('page', fetchPage.toString());
@@ -217,9 +240,14 @@ function SearchResults() {
     fetch(`/api/search?${params.toString()}`)
       .then((res) => res.json())
       .then((json) => {
-        const cards = json?.data?.results ?? [];
-        setHasMore(json?.data?.pagination?.hasMore ?? false);
-        setTotalCount(json?.data?.pagination?.totalCount ?? 0);
+        const nextHasMore = json?.data?.pagination?.hasMore ?? false;
+        const nextTotalCount = json?.data?.pagination?.totalCount ?? 0;
+        setHasMore(nextHasMore);
+        setTotalCount(nextTotalCount);
+        try {
+          sessionStorage.setItem('search_has_more', String(nextHasMore));
+          sessionStorage.setItem('search_total_count', String(nextTotalCount));
+        } catch {}
 
         const mappedCards = cards.map((c: any) => {
           let cardSlug = c.slug || '';
@@ -497,7 +525,7 @@ function SearchResults() {
       )}
 
       {/* Pagination */}
-      {results.length > 0 && hasMore && (
+      {results.length > 0 && (hasMore || (totalCount > 0 && results.length < totalCount)) && (
         <div className="mt-12 flex items-center justify-center">
           <Button
             variant="outline"
