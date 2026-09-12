@@ -37,6 +37,7 @@ export interface CollectrChartProps {
   priceHistory: PriceHistoryPoint[];
   gradeInfos: GradeInfo[];
   marketUrls?: Record<string, string>;
+  sourcePrices?: Record<string, { usd: number | null; kind?: string | null; recorded_at?: string | null }>;
   className?: string;
 }
 
@@ -79,7 +80,7 @@ const SOURCE_KIND: Record<string, PriceKind> = {
   fanatics: 'lowest_listing',
 };
 
-export function CollectrChart({ priceHistory, gradeInfos, marketUrls = {}, className }: CollectrChartProps) {
+export function CollectrChart({ priceHistory, gradeInfos, marketUrls = {}, sourcePrices = {}, className }: CollectrChartProps) {
   const { format } = useCurrencyContext();
 
   const hasRaw = priceHistory.some(h => h.grade === 'raw');
@@ -269,16 +270,20 @@ export function CollectrChart({ priceHistory, gradeInfos, marketUrls = {}, class
     const latestPricesList = activeSourcesArr.map(source => {
       // Find the most recent history point for this source
       const latestPoint = sortedHistory.slice().reverse().find(p => p.source === source);
+      const verifiedRawPrice = activeTab === 'RAW' && sourcePrices[source]?.usd != null && Number.isFinite(sourcePrices[source].usd)
+        ? (sourcePrices[source].usd as number)
+        : null;
+
       return {
         source,
-        price: latestPoint?.price || lastKnownPrices[source] || 0,
-        date: latestPoint?.recorded_at || cutoff.toISOString(),
+        price: verifiedRawPrice ?? (latestPoint?.price || lastKnownPrices[source] || 0),
+        date: latestPoint?.recorded_at || sourcePrices[source]?.recorded_at || cutoff.toISOString(),
         kind: SOURCE_KIND[source] || 'market',
       };
     }).sort((a, b) => a.price - b.price);
 
     return { chartData: chartDataArr, activeSources: activeSourcesArr, minPrice: min === Infinity ? 0 : min, maxPrice: max === -Infinity ? 100 : max, latestPricesList };
-  }, [filteredByGrade, timeRange]);
+  }, [filteredByGrade, timeRange, activeTab, sourcePrices]);
 
 
   return (

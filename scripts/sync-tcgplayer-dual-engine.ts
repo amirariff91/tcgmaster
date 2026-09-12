@@ -92,6 +92,15 @@ export async function syncDualEngineSales(
     [cardId]
   );
 
+  // 1b. Fetch card details to know if the base card is Foil/Holo or Normal non-holo
+  const cardMetaRes = await pool.query(
+    `SELECT name, rarity FROM cards WHERE id = $1`,
+    [cardId]
+  );
+  const cardRarity = (cardMetaRes.rows[0]?.rarity || "").toLowerCase();
+  const cardName = (cardMetaRes.rows[0]?.name || "").toLowerCase();
+  const isBaseHolo = cardRarity.includes("holo") || cardRarity.includes("secret") || cardRarity.includes("ultra") || cardName.includes("shining") || cardName.includes("crystal");
+
   // 2. Fetch both TCGPlayer sources in parallel
   const [latestSales, annualHistory] = await Promise.all([
     fetchLatestCompletedSales(prodId),
@@ -107,7 +116,11 @@ export async function syncDualEngineSales(
 
   for (const item of annualHistory) {
     if (!item.variants || item.variants.length === 0) continue;
-    const variant = item.variants.find((v) => v.variant === "Foil") || item.variants[0];
+    // If card is non-holo, pick "Normal" first to avoid reverse-foil pollution; if holo, pick "Foil"/"Holofoil"
+    let variant = isBaseHolo
+      ? (item.variants.find((v) => v.variant === "Foil" || v.variant === "Holofoil") || item.variants.find((v) => v.variant !== "Reverse Holofoil") || item.variants[0])
+      : (item.variants.find((v) => v.variant === "Normal") || item.variants.find((v) => v.variant !== "Reverse Holofoil") || item.variants[0]);
+
     const avgSale = parseFloat(variant.averageSalesPrice || "0");
     const market = parseFloat(variant.marketPrice || "0");
     const pr = avgSale > 0 ? avgSale : market;
@@ -129,11 +142,15 @@ export async function syncDualEngineSales(
   }
 
   // Find latest completed sale from latestSales
-  // Prioritize Near Mint Foil, then Near Mint, then any completed sale
-  const nmFoilSale = latestSales.find(
-    (s) => s.condition === "Near Mint" && s.variant === "Foil" && s.purchasePrice && s.purchasePrice > 0
+  // Prioritize condition Near Mint matching base card variant (Normal vs Foil)
+  const targetVariantName = isBaseHolo ? "Foil" : "Normal";
+  const nmTargetSale = latestSales.find(
+    (s) => s.condition === "Near Mint" && s.variant === targetVariantName && s.purchasePrice && s.purchasePrice > 0
   );
-  const bestSale = nmFoilSale || latestSales.find((s) => s.purchasePrice && s.purchasePrice > 0);
+  const anyTargetSale = latestSales.find(
+    (s) => s.variant === targetVariantName && s.purchasePrice && s.purchasePrice > 0
+  );
+  const bestSale = nmTargetSale || anyTargetSale || latestSales.find((s) => s.purchasePrice && s.purchasePrice > 0);
 
   let latestSalePrice: number | null = null;
   if (bestSale && bestSale.purchasePrice && bestSale.purchasePrice < (options.maxReasonablePrice || 80000)) {
@@ -153,16 +170,22 @@ export async function syncDualEngineSales(
   // The true headline price: Completed sale takes top priority, then latest history price
   const truePrice = latestSalePrice || latestHistoryPrice;
 
-  // 3. Quarantine any existing records that are inflated listing asks (> 1.4x truePrice if truePrice is known)
+  // 3. Quarantine any existing records that are inflated listing asks or mismatched variant pollution
   if (truePrice && truePrice > 0) {
     for (const r of existingHist.rows) {
       const p = parseFloat(r.price);
-      if (p > truePrice * 1.4 && p > 500) {
-        console.log(`[QUARANTINE] Card ${cardId} row ${r.id}: $${p} vs True $${truePrice}`);
+      // Quarantine if either:
+      // (a) Price is an unverified extreme fantasy ask (> 1.4x truePrice and > $500)
+      // (b) Or price is a mismatched variant pollution (> 1.4x truePrice on a non-holo card where truePrice <= $100)
+      const isExtremeAsk = p > truePrice * 1.4 && p > 500;
+      const isVariantPollution = !isBaseHolo && p > truePrice * 1.4 && (p - truePrice) > 5;
+
+      if (isExtremeAsk || isVariantPollution) {
+        console.log(`[QUARANTINE] Card ${cardId} row ${r.id}: $${p} vs True $${truePrice} (reason: ${isVariantPollution ? 'corrupted-variant-aggregation' : 'ratio-vs-median'})`);
         await pool.query(
           `
           INSERT INTO price_quarantine (card_id, source, grade, price, price_native, currency, price_kind, reason, evidence, observed_at)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, 'ratio-vs-median', $8, $9)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
           `,
           [
             r.card_id,
@@ -172,8 +195,9 @@ export async function syncDualEngineSales(
             r.price_native,
             r.currency,
             r.price_kind,
+            isVariantPollution ? 'corrupted-variant-aggregation' : 'ratio-vs-median',
             JSON.stringify({
-              note: "fantasy listing price removed; replaced by verified sales history",
+              note: isVariantPollution ? "mismatched reverse foil variant price removed from non-holo card" : "fantasy listing price removed; replaced by verified sales history",
               truePrice,
               originalRecordedAt: r.recorded_at,
             }),

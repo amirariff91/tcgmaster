@@ -679,6 +679,7 @@ export default async function CardDetailPage({ params }: PageProps) {
               priceHistory={priceHistoryData}
               gradeInfos={priceLadderEntries}
               marketUrls={marketUrls}
+              sourcePrices={sourcePrices}
             />
           </div>
         </div>
