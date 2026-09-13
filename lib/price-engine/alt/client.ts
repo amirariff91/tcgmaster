@@ -2,6 +2,7 @@ import { getSharedBrowser } from '../browser';
 
 export interface AltItemDocument {
   id: string;
+  assetId?: string;
   name: string;
   itemName?: string;
   rawName?: string;
@@ -158,6 +159,60 @@ class AltClient {
       }
     );
   }
+
+  /**
+   * Universal search across all TCGs (One Piece, Pokemon, Dragon Ball) on Alt Typesense index.
+   */
+  async searchUniversal(params: {
+    query: string;
+    cardNumber?: string;
+    category?: 'POKEMON_CARDS' | 'ONE_PIECE_CARDS' | string;
+    perPage?: number;
+    page?: number;
+  }): Promise<AltSearchResult> {
+    const apiKey = await this.getApiKey();
+    const { query, cardNumber, category, perPage = 20, page = 1 } = params;
+
+    const filters: string[] = ['showResult:true'];
+    if (category) {
+      filters.push(`category:[${category}]`);
+    }
+    if (cardNumber) {
+      filters.push(`cardNumber:=\`${cardNumber}\``);
+    }
+
+    const payload = {
+      searches: [
+        {
+          q: query,
+          preset: 'timestamp_desc',
+          filter_by: filters.join('&&'),
+          per_page: perPage,
+          page,
+        },
+      ],
+    };
+
+    const url = `${this.typesenseHost}/multi_search?collection=production_universal_search&use_cache=true&x-typesense-api-key=${encodeURIComponent(apiKey)}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (res.status === 401) {
+      this.cachedApiKey = null;
+      return this.searchUniversal(params);
+    }
+
+    if (!res.ok) {
+      return { found: 0, hits: [] };
+    }
+
+    const data = await res.json();
+    return data.results?.[0] || { found: 0, hits: [] };
+  }
+
   /**
    * Fetches verified multi-year market transactions (completed sales from eBay, PWCC/Fanatics, Alt Vault)
    * via Alt's public GraphQL platform server.

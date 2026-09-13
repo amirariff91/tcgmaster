@@ -340,45 +340,71 @@ export async function processCardLockstep(
     );
   }
 
-  // F. ALT (alt.xyz) Graded Multi-Year Sales Comps
+  // F. ALT (alt.xyz) Graded Multi-Year Sales Comps (One Piece & Pokemon)
   const altMapping = mappings.find((m) => m.source === 'alt');
-  if (altMapping?.externalId || (altMapping?.externalUrl && altMapping.externalUrl.includes('alt.xyz/itm/'))) {
+  const shouldQueryAlt = altMapping?.externalId || (isVariant || /manga|special|secret|sr|sec|holo/i.test(card.rarity || card.name) || card.game_slug === 'pokemon');
+  if (shouldQueryAlt) {
     scraperTasks.push(
       (async () => {
-        const assetId = altMapping.externalId || altMapping.externalUrl!.split('/itm/')[1].split('?')[0];
         try {
-          const txs = await altClient.fetchMarketTransactions(assetId, 30);
-          if (txs.length > 0) {
-            let altComps = 0;
-            const sixMonthsAgo = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000);
+          let assetId = altMapping?.externalId || (altMapping?.externalUrl?.includes('/itm/') ? altMapping.externalUrl.split('/itm/')[1].split('?')[0] : null);
 
-            for (const tx of txs) {
-              const p = typeof tx.price === 'number' ? tx.price : parseFloat(tx.price);
-              if (isNaN(p) || p <= 0) continue;
+          // If no mapped assetId, discover via Typesense searchUniversal
+          if (!assetId) {
+            const baseNum = card.number.split('_')[0].trim();
+            const cleanCardName = card.name.replace(/\(.*\)/g, '').replace(/ ex| vstar| vmax| gx/gi, '').trim();
+            const category = card.game_slug === 'pokemon' ? 'POKEMON_CARDS' : (card.game_slug === 'one-piece' ? 'ONE_PIECE_CARDS' : undefined);
+            
+            const searchRes = await altClient.searchUniversal({
+              query: `${cleanCardName} ${baseNum}`,
+              category,
+              perPage: 3,
+            });
 
-              const txDate = new Date(tx.date);
-              if (txDate < sixMonthsAgo) continue;
+            const hit = searchRes.hits.find(h => {
+              const docNum = (h.document.cardNumber || '').trim().toLowerCase();
+              return docNum === baseNum.toLowerCase() || h.document.name.toLowerCase().includes(baseNum.toLowerCase());
+            });
 
-              const company = (tx.attributes?.gradingCompany || 'PSA').toLowerCase();
-              const num = (tx.attributes?.gradeNumber || '10').replace(/\.0$/, '');
-              const canonicalGrade = normalizeGrade(`${company}${num}`);
-
-              await db(
-                `INSERT INTO price_history (card_id, source, grade, price, price_native, currency, price_kind, recorded_at)
-                 VALUES ($1, 'alt', $2, $3, $3, 'USD', 'sold_guide', $4::timestamptz)
-                 ON CONFLICT DO NOTHING`,
-                [card.id, canonicalGrade, p, `${tx.date}T12:00:00Z`]
-              );
-              altComps++;
+            if (hit?.document.assetId) {
+              assetId = hit.document.assetId;
             }
+          }
 
-            if (altComps > 0) {
-              successfulSources.push('alt');
-              dualEngineComps += altComps;
+          if (assetId) {
+            const txs = await altClient.fetchMarketTransactions(assetId, 30);
+            if (txs.length > 0) {
+              let altComps = 0;
+              const sixMonthsAgo = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000);
+
+              for (const tx of txs) {
+                const p = typeof tx.price === 'number' ? tx.price : parseFloat(tx.price as string);
+                if (isNaN(p) || p <= 0) continue;
+
+                const txDate = new Date(tx.date);
+                if (txDate < sixMonthsAgo) continue;
+
+                const company = (tx.attributes?.gradingCompany || 'PSA').toLowerCase();
+                const num = (tx.attributes?.gradeNumber || '10').replace(/\.0$/, '');
+                const canonicalGrade = normalizeGrade(`${company}${num}`);
+
+                await db(
+                  `INSERT INTO price_history (card_id, source, grade, price, price_native, currency, price_kind, recorded_at)
+                   VALUES ($1, 'alt', $2, $3, $3, 'USD', 'sold_guide', $4::timestamptz)
+                   ON CONFLICT DO NOTHING`,
+                  [card.id, canonicalGrade, p, `${tx.date}T12:00:00Z`]
+                );
+                altComps++;
+              }
+
+              if (altComps > 0) {
+                successfulSources.push('alt');
+                dualEngineComps += altComps;
+              }
             }
           }
         } catch (err: any) {
-          console.warn(`[Lockstep] ALT fetch error for ${card.slug}:`, err.message);
+          // Non-blocking background enrichment
         }
       })()
     );
