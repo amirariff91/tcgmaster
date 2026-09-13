@@ -15,6 +15,7 @@ import { fetchYuyuteiByAnchor } from './yuyutei';
 import { fetchSnkrdunkPrice } from './snkrdunk';
 import { fetchCardrushByAnchor } from './cardrush';
 import { fetchTcgplayerByAnchor } from './tcgcsv';
+import { fetchTcgRepublicPrice } from './tcgrepublic';
 import { altClient } from './alt/client';
 import { fanaticsClient } from './fanatics';
 import { assertIdentity } from './identity';
@@ -282,7 +283,32 @@ export async function processCardLockstep(
     );
   }
 
-  // E. TCGPlayer English/Global daily & historical sync
+  // E. TCG Republic (Japanese One Piece & Japanese Pokemon)
+  const isJapaneseCard = card.slug.endsWith('-ja');
+  if (isJapaneseCard && (card.game_slug === 'one-piece' || card.game_slug === 'pokemon')) {
+    scraperTasks.push(
+      (async () => {
+        try {
+          const res = await withTimeout(fetchTcgRepublicPrice(card.number, card.name), 15000, 'tcgrepublic');
+          if (res && res.price > 0) {
+            observations.push({
+              source: 'tcgrepublic',
+              grade: normalizeGrade('raw'),
+              priceUsd: res.price,
+              priceNative: res.price,
+              currency: SOURCE_CURRENCY.tcgrepublic,
+              evidence: res.evidence,
+            });
+            successfulSources.push('tcgrepublic');
+          }
+        } catch (err: any) {
+          // Non-blocking fallback
+        }
+      })()
+    );
+  }
+
+  // F. TCGPlayer English/Global daily & historical sync
   const tcgMapping = mappings.find((m) => m.source === 'tcgplayer');
   const tcgProductId = tcgMapping?.externalId || card.tcg_player_id;
   if (tcgProductId) {
@@ -385,6 +411,11 @@ export async function processCardLockstep(
               // Validate exact card number match in title
               const titleLower = hit.title.toLowerCase();
               if (!titleLower.includes(cleanCardName.toLowerCase())) continue;
+              
+              // Strict token boundary check: ensure base number (e.g. OP05-060, #001) is strictly present in title
+              const baseNumLower = baseNum.toLowerCase();
+              const hasNumberToken = titleLower.split(/\s+/).some(t => t.replace(/[^a-z0-9]/g, '') === baseNumLower.replace(/[^a-z0-9]/g, ''));
+              if (!hasNumberToken && !titleLower.includes(baseNumLower)) continue;
 
               const rawGradeString = `${hit.gradingService || ''} ${hit.grade || ''}`.trim() || 'raw';
               const canonicalGrade = normalizeGrade(rawGradeString);

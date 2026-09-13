@@ -4,7 +4,7 @@ import { assertIdentity, type MatchEvidence } from './identity';
 import { checkSelfConsistency } from './guards';
 import { markForReverification, type SourceMapping, upsertMapping } from './mapping';
 
-export type PriceSource = 'tcgplayer' | 'pricecharting' | 'yuyutei' | 'cardrush' | 'snkrdunk' | 'cardmarket' | 'carousell_my' | 'monsta_official' | 'alt' | 'fanatics';
+export type PriceSource = 'tcgplayer' | 'pricecharting' | 'yuyutei' | 'cardrush' | 'snkrdunk' | 'cardmarket' | 'carousell_my' | 'monsta_official' | 'alt' | 'fanatics' | 'tcgrepublic';
 export type PriceKind = 'market' | 'lowest_listing' | 'retail_sell' | 'sold_guide' | 'marketplace_ask';
 
 export const SOURCE_KIND: Record<PriceSource, PriceKind> = {
@@ -18,6 +18,7 @@ export const SOURCE_KIND: Record<PriceSource, PriceKind> = {
   monsta_official: 'retail_sell',
   alt: 'market',
   fanatics: 'lowest_listing',
+  tcgrepublic: 'retail_sell',
 };
 
 export const SOURCE_CURRENCY: Record<PriceSource, 'USD' | 'JPY' | 'EUR' | 'MYR'> = {
@@ -31,6 +32,7 @@ export const SOURCE_CURRENCY: Record<PriceSource, 'USD' | 'JPY' | 'EUR' | 'MYR'>
   monsta_official: 'MYR',
   alt: 'USD',
   fanatics: 'USD',
+  tcgrepublic: 'USD',
 };
 
 export const SOURCE_SCOPED_UPDATE_COLUMNS: Record<string, PriceSource> = {
