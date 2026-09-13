@@ -300,6 +300,21 @@ export async function processCardLockstep(
               evidence: res.evidence,
             });
             successfulSources.push('tcgrepublic');
+
+            if (res.evidence.externalUrl) {
+              await upsertMapping(db, {
+                cardId: card.id,
+                source: 'tcgrepublic',
+                externalId: null,
+                externalUrl: res.evidence.externalUrl,
+                externalTitle: res.evidence.externalTitle,
+                externalSet: null,
+                confidence: 'confirmed',
+                matchedBy: 'url',
+                evidence: res.evidence,
+                verifiedAt: new Date().toISOString(),
+              });
+            }
           }
         } catch (err: any) {
           // Non-blocking fallback

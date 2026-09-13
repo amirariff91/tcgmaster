@@ -521,9 +521,16 @@ export function CollectrChart({ priceHistory, gradeInfos, marketUrls = {}, sourc
                       <span className="text-xs font-bold">{item.source.charAt(0).toUpperCase()}</span>
                     </div>
                   )}
-                  <span className="text-white font-bold">{formatSourceName(item.source)}</span>
+                  <span className="text-white font-bold group-hover:text-blue-400 transition-colors">{formatSourceName(item.source)}</span>
                   <span className="text-[10px] text-zinc-500 uppercase tracking-wider">{priceKindLabel(item.kind)}</span>
-                  {href && <ExternalLink className="h-3.5 w-3.5 text-zinc-500" aria-hidden />}
+                  {href && (
+                    <span 
+                      title={`Verify ${formatSourceName(item.source)} listing`}
+                      className="p-1 rounded-md text-zinc-400 group-hover:text-white group-hover:bg-white/10 transition-all flex items-center justify-center"
+                    >
+                      <ExternalLink className="h-4 w-4" aria-hidden />
+                    </span>
+                  )}
                 </div>
                 <div className="text-right flex flex-col items-end">
                   <FormattedPrice price={item.price} className="text-orange-400 font-bold text-lg tabular-nums leading-none" />
@@ -532,7 +539,7 @@ export function CollectrChart({ priceHistory, gradeInfos, marketUrls = {}, sourc
               </>
             );
 
-            const rowClass = 'flex justify-between items-center px-5 py-4 hover:bg-white/5 transition-colors';
+            const rowClass = 'group flex justify-between items-center px-5 py-4 hover:bg-white/5 transition-colors cursor-pointer';
 
             return href ? (
               <a

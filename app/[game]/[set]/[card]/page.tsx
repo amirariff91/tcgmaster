@@ -13,6 +13,7 @@ import { getCardWithPrices } from '@/lib/ppt/service';
 import { dbQuery } from '@/lib/db/client';
 import { calculatePriceChange24h } from '@/lib/pricing/trending';
 import { latestRecordedAt, priceKindLabel, formatSourceName, type PriceKind } from '@/lib/pricing/price-labels';
+import { resolveSourceUrl } from '@/lib/price-engine/source-urls';
 
 // `price_history.source` values are lowercase enum members; match on substring so
 // display casing and multi-word names ("TCG Republic") still resolve.
@@ -543,6 +544,27 @@ export default async function CardDetailPage({ params }: PageProps) {
   // Fallback direct product URL if tcg_player_id is present on the card
   if (!marketUrls['tcgplayer'] && cardData.tcg_player_id) {
     marketUrls['tcgplayer'] = `https://www.tcgplayer.com/product/${cardData.tcg_player_id}`;
+  }
+
+  // Guarantee 100% link coverage: for every source present in latestPricesList,
+  // resolve either its exact URL or a canonical search URL so users can always verify the source.
+  const cardSourceInfo = {
+    id: card.id,
+    name: card.name,
+    number: card.number,
+    slug: card.slug,
+    gameSlug: card.game?.slug,
+    tcgPlayerId: cardData.tcg_player_id,
+  };
+
+  for (const item of latestPricesList) {
+    const s = item.source.toLowerCase();
+    if (!marketUrls[s]) {
+      const resolved = resolveSourceUrl(s, null, cardSourceInfo);
+      if (resolved) {
+        marketUrls[s] = resolved;
+      }
+    }
   }
 
   const { baseName: cleanName, variantInfo } = splitCardName(card.name);
