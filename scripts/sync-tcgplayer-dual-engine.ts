@@ -82,7 +82,7 @@ export async function fetchAnnualHistory(productId: string | number): Promise<In
 export async function syncDualEngineSales(
   cardId: string,
   externalId: string | number,
-  options: { maxReasonablePrice?: number } = { maxReasonablePrice: 80000 }
+  options: { maxReasonablePrice?: number; skipCurrentPriceUpdate?: boolean } = { maxReasonablePrice: 80000, skipCurrentPriceUpdate: false }
 ) {
   const prodId = externalId.toString();
 
@@ -209,45 +209,47 @@ export async function syncDualEngineSales(
     }
   }
 
-  // 4. Update current headline
-  if (truePrice && truePrice > 0) {
-    const headlineCents = Math.round(truePrice * 100);
-    await pool.query(
-      `
-      INSERT INTO card_price_current (
-        card_id, headline_cents, headline_source, headline_kind, headline_currency, headline_grade, source_prices, computed_at
-      )
-      VALUES ($1, $2, 'tcgplayer', 'market', 'USD', 'raw', jsonb_build_object('tcgplayer', jsonb_build_object('usd', $3::numeric)), NOW())
-      ON CONFLICT (card_id)
-      DO UPDATE SET headline_cents = EXCLUDED.headline_cents,
-                    headline_source = EXCLUDED.headline_source,
-                    headline_kind = EXCLUDED.headline_kind,
-                    headline_currency = EXCLUDED.headline_currency,
-                    headline_grade = EXCLUDED.headline_grade,
-                    source_prices = jsonb_set(
-                      COALESCE(card_price_current.source_prices, '{}'::jsonb),
-                      '{tcgplayer}',
-                      jsonb_build_object('usd', $3::numeric)::jsonb
-                    ),
-                    computed_at = NOW()
-      `,
-      [cardId, headlineCents, truePrice]
-    );
+  // 4. Update current headline (skipped if lockstep orchestrator handles cross-source arbitration)
+  if (!options.skipCurrentPriceUpdate) {
+    if (truePrice && truePrice > 0) {
+      const headlineCents = Math.round(truePrice * 100);
+      await pool.query(
+        `
+        INSERT INTO card_price_current (
+          card_id, headline_cents, headline_source, headline_kind, headline_currency, headline_grade, source_prices, computed_at
+        )
+        VALUES ($1, $2, 'tcgplayer', 'market', 'USD', 'raw', jsonb_build_object('tcgplayer', jsonb_build_object('usd', $3::numeric)), NOW())
+        ON CONFLICT (card_id)
+        DO UPDATE SET headline_cents = EXCLUDED.headline_cents,
+                      headline_source = EXCLUDED.headline_source,
+                      headline_kind = EXCLUDED.headline_kind,
+                      headline_currency = EXCLUDED.headline_currency,
+                      headline_grade = EXCLUDED.headline_grade,
+                      source_prices = jsonb_set(
+                        COALESCE(card_price_current.source_prices, '{}'::jsonb),
+                        '{tcgplayer}',
+                        jsonb_build_object('usd', $3::numeric)::jsonb
+                      ),
+                      computed_at = NOW()
+        `,
+        [cardId, headlineCents, truePrice]
+      );
 
-    await pool.query(`UPDATE cards SET price_cache_ttl = $1, last_price_fetch = NOW() WHERE id = $2`, [headlineCents, cardId]);
-  } else {
-    // If no sales at all, ensure we don't display a phantom price
-    await pool.query(
-      `
-      UPDATE card_price_current
-      SET headline_cents = NULL, headline_source = NULL,
-          source_prices = source_prices - 'tcgplayer',
-          computed_at = NOW()
-      WHERE card_id = $1 AND headline_source = 'tcgplayer'
-      `,
-      [cardId]
-    );
-    await pool.query(`UPDATE cards SET price_cache_ttl = NULL WHERE id = $1`, [cardId]);
+      await pool.query(`UPDATE cards SET price_cache_ttl = $1, last_price_fetch = NOW() WHERE id = $2`, [headlineCents, cardId]);
+    } else {
+      // If no sales at all, ensure we don't display a phantom price
+      await pool.query(
+        `
+        UPDATE card_price_current
+        SET headline_cents = NULL, headline_source = NULL,
+            source_prices = source_prices - 'tcgplayer',
+            computed_at = NOW()
+        WHERE card_id = $1 AND headline_source = 'tcgplayer'
+        `,
+        [cardId]
+      );
+      await pool.query(`UPDATE cards SET price_cache_ttl = NULL WHERE id = $1`, [cardId]);
+    }
   }
 
   return {

@@ -158,6 +158,74 @@ class AltClient {
       }
     );
   }
+  /**
+   * Fetches verified multi-year market transactions (completed sales from eBay, PWCC/Fanatics, Alt Vault)
+   * via Alt's public GraphQL platform server.
+   */
+  async fetchMarketTransactions(assetId: string, maxTransactions: number = 50): Promise<AltMarketTransaction[]> {
+    const cleanId = assetId.replace(/^live_/, '').replace(/^itm\//, '');
+    const query = `
+      query AssetMarketTransactions($id: ID!, $marketTransactionFilter: MarketTransactionFilter!) {
+        asset(id: $id) {
+          marketTransactions(marketTransactionFilter: $marketTransactionFilter) {
+            id
+            date
+            auctionHouse
+            auctionType
+            price
+            attributes {
+              gradeNumber
+              gradingCompany
+              url
+            }
+          }
+        }
+      }
+    `;
+
+    try {
+      const res = await fetch('https://alt-platform-server.production.internal.onlyalt.com/graphql/AssetMarketTransactions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        },
+        body: JSON.stringify({
+          operationName: 'AssetMarketTransactions',
+          variables: {
+            id: cleanId,
+            marketTransactionFilter: {
+              allGrades: true,
+              showSkipped: false,
+              maxTransactionsPerGrade: maxTransactions,
+            },
+          },
+          query,
+        }),
+      });
+
+      if (!res.ok) return [];
+      const data = await res.json();
+      return (data.data?.asset?.marketTransactions || []) as AltMarketTransaction[];
+    } catch (err: any) {
+      console.warn(`[AltClient] fetchMarketTransactions error for ${cleanId}:`, err.message);
+      return [];
+    }
+  }
+}
+
+export interface AltMarketTransaction {
+  id: string;
+  date: string; // YYYY-MM-DD
+  auctionHouse?: string;
+  auctionType?: string;
+  price: string | number;
+  attributes?: {
+    gradeNumber?: string;
+    gradingCompany?: string;
+    url?: string;
+  };
 }
 
 export const altClient = new AltClient();
+

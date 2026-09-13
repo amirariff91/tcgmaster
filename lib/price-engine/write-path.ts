@@ -118,17 +118,27 @@ function isPriceSource(value: string): value is PriceSource {
 export function selectHeadlineFromSourcePrices(
   sourcePrices: Record<string, CurrentSourcePrice>,
 ): Headline | null {
-  const candidates = Object.entries(sourcePrices).flatMap(([source, price]) => {
-    if (!isPriceSource(source) || !Number.isFinite(price.usd)) return [];
-    if (!HEADLINE_KIND_PREFERENCE.includes(price.kind)) return [];
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  
+  // Check if any fresh prices exist (recorded within 30 days)
+  const hasFresh = Object.values(sourcePrices).some(
+    (p) => Number.isFinite(p.usd) && p.usd > 0 && p.recorded_at >= thirtyDaysAgo
+  );
 
-    return [{ source, usd: price.usd, kind: price.kind }];
+  const candidates = Object.entries(sourcePrices).flatMap(([source, price]) => {
+    if (!isPriceSource(source) || !Number.isFinite(price.usd) || price.usd <= 0) return [];
+    if (!HEADLINE_KIND_PREFERENCE.includes(price.kind)) return [];
+    // If we have fresh prices, ignore stale quotes (>30 days old)
+    if (hasFresh && price.recorded_at < thirtyDaysAgo) return [];
+
+    return [{ source, usd: price.usd, kind: price.kind, recorded_at: price.recorded_at }];
   });
 
   for (const kind of HEADLINE_KIND_PREFERENCE) {
     const kindCandidates = candidates.filter((candidate) => candidate.kind === kind);
     if (kindCandidates.length === 0) continue;
 
+    // Pick the lowest price among the qualified candidates for this kind
     const winner = kindCandidates.reduce((lowest, candidate) => (
       candidate.usd < lowest.usd ? candidate : lowest
     ));

@@ -16,7 +16,7 @@ export interface ExpectedIdentity {
 
 export type IdentityVerdict =
   | { ok: true }
-  | { ok: false; reason: 'number-mismatch' | 'no-evidence' | 'sold-out'; detail: string };
+  | { ok: false; reason: 'number-mismatch' | 'variant-mismatch' | 'no-evidence' | 'sold-out'; detail: string };
 
 function urlMatchesNumber(url: string, baseNumber: string): boolean {
   if (numberMatchesOnBoundary(url, baseNumber)) return true;
@@ -54,6 +54,29 @@ export function assertIdentity(
       ok: false,
       reason: 'number-mismatch',
       detail: `Expected card number ${baseNumber} was not found as a token in the matched title or URL.`,
+    };
+  }
+
+  // Variant disambiguation: Ensure base cards don't absorb variant/alt art listings,
+  // and variant cards don't absorb base listings.
+  const suffix = parseCardNumber(expected.number).suffix;
+  const isVariant = Boolean(suffix && /^(p\d+|r\d+|alt|sp)$/i.test(suffix));
+  const textToCheck = `${evidence.externalTitle} ${evidence.externalUrl || ''}`.toLowerCase();
+  const isVariantListing = /parallel|alt(ernate)?\s*art|manga|comic|wanted\s*poster|special\s*card|パラレル|コミックパラレル|シリアル/i.test(textToCheck);
+
+  if (!isVariant && isVariantListing) {
+    return {
+      ok: false,
+      reason: 'variant-mismatch',
+      detail: `Base card ${expected.number} rejected variant external listing: "${evidence.externalTitle}"`,
+    };
+  }
+
+  if (isVariant && !isVariantListing && (evidence.matchedBy === 'search' || evidence.matchedBy === 'dictionary')) {
+    return {
+      ok: false,
+      reason: 'variant-mismatch',
+      detail: `Variant card ${expected.number} rejected non-variant external listing: "${evidence.externalTitle}"`,
     };
   }
 

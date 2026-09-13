@@ -26,34 +26,12 @@ const SAFE_MODE = process.env.SAFE_MODE === '1';
 module.exports = {
   apps: [
     // ─────────────────────────────────────────────
-    // English One Piece — TCGCSV (no Puppeteer, fast JSON API)
+    // Lockstep Set-by-Set Multi-TCG Workers (Runs Simultaneously)
     // ─────────────────────────────────────────────
     {
-      name: 'scraper-en-op',
+      name: 'worker-onepiece',
       script: 'bun',
-      args: 'run scripts/price-engine/queue-english-op.ts',
-      env: {
-        SAFE_MODE: SAFE_MODE ? '1' : '0',
-      },
-      watch: false,
-      autorestart: true,
-      kill_timeout: 12000,
-      restart_delay: 5000,   // Wait 5s before restarting on crash
-      exp_backoff_restart_delay: 5000, // transient-dep (DB down) restart storms back off instead of burning max_restarts
-      max_restarts: 50,       // If crashes > 50 times, stop (circuit breaker)
-      min_uptime: '10s',      // Must stay alive 10s to count as healthy start
-      log_file: './logs/scraper-en-op.log',
-      error_file: './logs/scraper-en-op-error.log',
-      time: true,             // Prefix logs with timestamps
-    },
-
-    // ─────────────────────────────────────────────
-    // Japanese One Piece — Yuyutei + SnkrDunk fallback
-    // ─────────────────────────────────────────────
-    {
-      name: 'scraper-jp-op',
-      script: 'bun',
-      args: 'run scripts/price-engine/queue-jp-op.ts',
+      args: 'run scripts/price-engine/run-lockstep-worker.ts --game one-piece --loop',
       env: {
         SAFE_MODE: SAFE_MODE ? '1' : '0',
       },
@@ -61,21 +39,17 @@ module.exports = {
       autorestart: true,
       kill_timeout: 12000,
       restart_delay: 5000,
-      exp_backoff_restart_delay: 5000, // transient-dep (DB down) restart storms back off instead of burning max_restarts
+      exp_backoff_restart_delay: 5000,
       max_restarts: 50,
       min_uptime: '10s',
-      log_file: './logs/scraper-jp-op.log',
-      error_file: './logs/scraper-jp-op-error.log',
+      log_file: './logs/worker-onepiece.log',
+      error_file: './logs/worker-onepiece-error.log',
       time: true,
     },
-
-    // ─────────────────────────────────────────────
-    // Dragon Ball Fusion World — CardRush
-    // ─────────────────────────────────────────────
     {
-      name: 'scraper-dbfw',
+      name: 'worker-pokemon',
       script: 'bun',
-      args: 'run scripts/price-engine/queue-dbfw.ts',
+      args: 'run scripts/price-engine/run-lockstep-worker.ts --game pokemon --loop',
       env: {
         SAFE_MODE: SAFE_MODE ? '1' : '0',
       },
@@ -83,20 +57,17 @@ module.exports = {
       autorestart: true,
       kill_timeout: 12000,
       restart_delay: 5000,
-      exp_backoff_restart_delay: 5000, // transient-dep (DB down) restart storms back off instead of burning max_restarts
+      exp_backoff_restart_delay: 5000,
       max_restarts: 50,
       min_uptime: '10s',
-      log_file: './logs/scraper-dbfw.log',
-      error_file: './logs/scraper-dbfw-error.log',
+      log_file: './logs/worker-pokemon.log',
+      error_file: './logs/worker-pokemon-error.log',
       time: true,
     },
-
-    // English Dragon Ball Fusion World — TCGCSV
-    // ─────────────────────────────────────────────
     {
-      name: 'scraper-en-dbfw',
+      name: 'worker-dbfw',
       script: 'bun',
-      args: 'run scripts/price-engine/queue-english-dbfw.ts',
+      args: 'run scripts/price-engine/run-lockstep-worker.ts --game dbfw --loop',
       env: {
         SAFE_MODE: SAFE_MODE ? '1' : '0',
       },
@@ -104,11 +75,29 @@ module.exports = {
       autorestart: true,
       kill_timeout: 12000,
       restart_delay: 5000,
-      exp_backoff_restart_delay: 5000, // transient-dep (DB down) restart storms back off instead of burning max_restarts
+      exp_backoff_restart_delay: 5000,
       max_restarts: 50,
       min_uptime: '10s',
-      log_file: './logs/scraper-en-dbfw.log',
-      error_file: './logs/scraper-en-dbfw-error.log',
+      log_file: './logs/worker-dbfw.log',
+      error_file: './logs/worker-dbfw-error.log',
+      time: true,
+    },
+    {
+      name: 'worker-riftbound',
+      script: 'bun',
+      args: 'run scripts/price-engine/run-lockstep-worker.ts --game riftbound --loop',
+      env: {
+        SAFE_MODE: SAFE_MODE ? '1' : '0',
+      },
+      watch: false,
+      autorestart: true,
+      kill_timeout: 12000,
+      restart_delay: 5000,
+      exp_backoff_restart_delay: 5000,
+      max_restarts: 50,
+      min_uptime: '10s',
+      log_file: './logs/worker-riftbound.log',
+      error_file: './logs/worker-riftbound-error.log',
       time: true,
     },
 

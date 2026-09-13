@@ -1,47 +1,62 @@
+/**
+ * PM2 Ecosystem Config — TCGMaster 24/7 Multi-TCG Supervision
+ *
+ * Runs 4 concurrent lockstep workers (One Piece, Pokemon, Dragon Ball FW, Riftbound)
+ * each processing their latest sets first, completing each set 100% (JA + EN) before advancing.
+ */
+
 module.exports = {
   apps: [
     {
-      name: "scraper-jp-op",
-      script: "scripts/price-engine/queue-jp-op.ts",
+      name: "worker-onepiece",
+      script: "scripts/price-engine/run-lockstep-worker.ts",
+      args: "--game one-piece --loop",
       interpreter: "bun",
       env: {
         SAFE_MODE: "1"
       },
       log_date_format: "YYYY-MM-DD HH:mm:ss Z",
       autorestart: true,
+      restart_delay: 5000,
       max_memory_restart: "1G"
     },
     {
-      name: "scraper-en-op",
-      script: "scripts/price-engine/queue-english-op.ts",
+      name: "worker-pokemon",
+      script: "scripts/price-engine/run-lockstep-worker.ts",
+      args: "--game pokemon --loop",
       interpreter: "bun",
       env: {
         SAFE_MODE: "1"
       },
       log_date_format: "YYYY-MM-DD HH:mm:ss Z",
       autorestart: true,
+      restart_delay: 5000,
       max_memory_restart: "1G"
     },
     {
-      name: "scraper-jp-dbfw",
-      script: "scripts/price-engine/queue-dbfw.ts",
+      name: "worker-dbfw",
+      script: "scripts/price-engine/run-lockstep-worker.ts",
+      args: "--game dbfw --loop",
       interpreter: "bun",
       env: {
         SAFE_MODE: "1"
       },
       log_date_format: "YYYY-MM-DD HH:mm:ss Z",
       autorestart: true,
+      restart_delay: 5000,
       max_memory_restart: "1G"
     },
     {
-      name: "scraper-en-dbfw",
-      script: "scripts/price-engine/queue-english-dbfw.ts",
+      name: "worker-riftbound",
+      script: "scripts/price-engine/run-lockstep-worker.ts",
+      args: "--game riftbound --loop",
       interpreter: "bun",
       env: {
         SAFE_MODE: "1"
       },
       log_date_format: "YYYY-MM-DD HH:mm:ss Z",
       autorestart: true,
+      restart_delay: 5000,
       max_memory_restart: "1G"
     }
   ]

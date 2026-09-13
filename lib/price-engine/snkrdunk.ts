@@ -4,12 +4,33 @@ import { getSharedBrowser } from './browser';
 import { waitForSourceRateLimit } from './rate-limiter';
 import type { MatchEvidence } from './identity';
 
-// Return an object that can contain both raw and graded prices
+// Return an object that can contain both raw and graded prices plus 6-month historical sales
+export interface SnkrdunkHistoricalSale {
+  price: number;
+  grade: string;
+  recordedAt: string;
+  source: 'snkrdunk';
+  conditionTier?: string;
+}
+
 export interface SnkrdunkPriceResult {
   price: number;
   gradedPrices?: Record<string, number>;
+  historicalSales?: SnkrdunkHistoricalSale[];
   url: string;
   evidence: MatchEvidence;
+}
+
+export function decodeULIDTimestamp(ulid: string): Date {
+  const CrockfordBase32 = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+  const timePart = ulid.toUpperCase().slice(0, 10);
+  let time = 0;
+  for (let i = 0; i < 10; i++) {
+    const charIndex = CrockfordBase32.indexOf(timePart[i]);
+    if (charIndex === -1) return new Date();
+    time = time * 32 + charIndex;
+  }
+  return new Date(time);
 }
 
 export async function fetchSnkrdunkPrice(query: string, setName?: string): Promise<SnkrdunkPriceResult | null> {
@@ -45,9 +66,9 @@ export async function fetchSnkrdunkPrice(query: string, setName?: string): Promi
       const prodData = (await prodRes.json()) as { product?: { name?: string } };
       const externalTitle = prodData?.product?.name || 'Snkrdunk Card';
 
-      // Fetch Used Listings for Prices
-      const listingsRes = await fetch(`https://snkrdunk.com/en/v1/products/${productCode}/used-listings?perPage=50&page=1&sortType=latest&isOnlyOnSale=false`, { headers: HEADERS });
-      const listingsData = (await listingsRes.json()) as { usedListings?: Array<{ condition?: string; priceAmount?: number | string; isSold?: boolean }> };
+      // Fetch Used Listings for Prices and Historical Comps (up to 100 recent)
+      const listingsRes = await fetch(`https://snkrdunk.com/en/v1/products/${productCode}/used-listings?perPage=100&page=1&sortType=latest&isOnlyOnSale=false`, { headers: HEADERS });
+      const listingsData = (await listingsRes.json()) as { usedListings?: Array<{ id?: number | string; listingUID?: string; condition?: string; priceAmount?: number | string; isSold?: boolean }> };
       const listings = Array.isArray(listingsData?.usedListings) ? listingsData.usedListings : [];
 
       const gradedPrices: Record<string, number> = {};
@@ -57,11 +78,19 @@ export async function fetchSnkrdunkPrice(query: string, setName?: string): Promi
       const rawSoldByTier: Record<string, number> = {};
       const rawAskByTier: Record<string, number> = {};
 
+      // 6-Month Historical Sales Comps
+      const sixMonthsAgo = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000);
+      const historicalSales: SnkrdunkHistoricalSale[] = [];
+
       for (const listing of listings) {
         if (typeof listing !== 'object' || listing === null) continue;
         const condition = (listing.condition || 'A').trim();
         const price = Number(listing.priceAmount);
         if (isNaN(price) || price <= 0) continue;
+
+        // Decode timestamp from listingUID if present
+        const saleDate = listing.listingUID ? decodeULIDTimestamp(listing.listingUID) : null;
+        const isWithin6M = saleDate ? saleDate >= sixMonthsAgo : true;
 
         // Check if raw single-letter condition (S, A, B, C, D)
         const isRawCondition = ['S', 'A', 'B', 'C', 'D'].includes(condition.toUpperCase());
@@ -71,6 +100,15 @@ export async function fetchSnkrdunkPrice(query: string, setName?: string): Promi
           if (listing.isSold) {
             if (rawSoldByTier[tier] === undefined) {
               rawSoldByTier[tier] = price;
+            }
+            if (isWithin6M && (tier === 'A' || tier === 'S')) {
+              historicalSales.push({
+                price,
+                grade: 'raw',
+                recordedAt: (saleDate || new Date()).toISOString(),
+                source: 'snkrdunk',
+                conditionTier: tier,
+              });
             }
           } else {
             if (rawAskByTier[tier] === undefined || price < rawAskByTier[tier]) {
@@ -104,6 +142,15 @@ export async function fetchSnkrdunkPrice(query: string, setName?: string): Promi
               if (!seenSoldGrades.has(parsedGrade)) {
                 seenSoldGrades.add(parsedGrade);
                 gradedPrices[parsedGrade] = price;
+              }
+              if (isWithin6M) {
+                historicalSales.push({
+                  price,
+                  grade: parsedGrade,
+                  recordedAt: (saleDate || new Date()).toISOString(),
+                  source: 'snkrdunk',
+                  conditionTier: condition,
+                });
               }
             } else {
               // If not sold, it's an Ask price. Save only if we haven't seen a Sold price AND haven't saved a lower Ask price yet.
@@ -147,6 +194,7 @@ export async function fetchSnkrdunkPrice(query: string, setName?: string): Promi
         return {
           price: headlinePrice || 0,
           ...(Object.keys(gradedPrices).length > 0 ? { gradedPrices } : {}),
+          ...(historicalSales.length > 0 ? { historicalSales } : {}),
           url: rawQuery,
           evidence: {
             externalUrl: rawQuery,

@@ -41,7 +41,7 @@ export interface CollectrChartProps {
   className?: string;
 }
 
-type TimeRange = '1W' | '1M' | '3M';
+type TimeRange = '1W' | '1M' | '3M' | '6M';
 type ChartType = 'RAW' | 'GRADED';
 
 const SOURCE_COLORS: Record<string, string> = {
@@ -183,6 +183,7 @@ export function CollectrChart({ priceHistory, gradeInfos, marketUrls = {}, sourc
       '1W': 7,
       '1M': 30,
       '3M': 90,
+      '6M': 180,
     };
 
     const daysAgo = ranges[timeRange];
@@ -294,7 +295,7 @@ export function CollectrChart({ priceHistory, gradeInfos, marketUrls = {}, sourc
       <div className="relative z-10 flex items-center justify-between w-full">
         {/* Time Range Toggles (Top Left) */}
         <div className="flex bg-[#222222] rounded-full p-1 border border-white/5">
-          {(['1W', '1M', '3M'] as TimeRange[]).map((tr) => {
+          {(['1W', '1M', '3M', '6M'] as TimeRange[]).map((tr) => {
               const isActive = timeRange === tr;
               return (
                   <button
