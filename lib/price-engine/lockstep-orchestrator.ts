@@ -340,9 +340,9 @@ export async function processCardLockstep(
     );
   }
 
-  // F. ALT (alt.xyz) Graded Multi-Year Sales Comps (One Piece & Pokemon)
+  // F. ALT (alt.xyz) Graded Multi-Year Sales Comps (One Piece, Pokemon & DBFW)
   const altMapping = mappings.find((m) => m.source === 'alt');
-  const shouldQueryAlt = altMapping?.externalId || (isVariant || /manga|special|secret|sr|sec|holo/i.test(card.rarity || card.name) || card.game_slug === 'pokemon');
+  const shouldQueryAlt = altMapping?.externalId || (isVariant || /manga|special|secret|sr|sec|holo|scr|spr/i.test(card.rarity || card.name) || card.game_slug === 'pokemon');
   if (shouldQueryAlt) {
     scraperTasks.push(
       (async () => {
