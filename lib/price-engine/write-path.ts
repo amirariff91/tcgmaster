@@ -129,11 +129,12 @@ export function selectHeadlineFromSourcePrices(
 
   const candidates = Object.entries(sourcePrices).flatMap(([source, price]) => {
     if (!isPriceSource(source) || !Number.isFinite(price.usd) || price.usd <= 0) return [];
-    if (!HEADLINE_KIND_PREFERENCE.includes(price.kind)) return [];
+    const resolvedKind = price.kind || SOURCE_KIND[source] || 'market';
+    if (!HEADLINE_KIND_PREFERENCE.includes(resolvedKind)) return [];
     // If we have fresh prices, ignore stale quotes (>30 days old)
-    if (hasFresh && price.recorded_at < thirtyDaysAgo) return [];
+    if (hasFresh && price.recorded_at && price.recorded_at < thirtyDaysAgo) return [];
 
-    return [{ source, usd: price.usd, kind: price.kind, recorded_at: price.recorded_at }];
+    return [{ source, usd: price.usd, kind: resolvedKind, recorded_at: price.recorded_at || '' }];
   });
 
   for (const kind of HEADLINE_KIND_PREFERENCE) {

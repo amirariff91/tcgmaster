@@ -51,4 +51,11 @@ describe('assertIdentity', () => {
       { externalTitle: 'Monkey D. Luffy OP01-001', externalUrl: 'https://example.test/OP01-002', matchedBy: 'cached-url' },
     )).toEqual({ ok: true });
   });
+
+  it('accepts a direct product-id match when card name matches title without number', () => {
+    expect(assertIdentity(
+      { number: '054', name: 'Azurill' },
+      { externalTitle: 'Azurill', externalId: '709207', matchedBy: 'product-id' },
+    )).toEqual({ ok: true });
+  });
 });

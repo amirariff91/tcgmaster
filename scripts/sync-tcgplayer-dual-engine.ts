@@ -218,7 +218,7 @@ export async function syncDualEngineSales(
         INSERT INTO card_price_current (
           card_id, headline_cents, headline_source, headline_kind, headline_currency, headline_grade, source_prices, computed_at
         )
-        VALUES ($1, $2, 'tcgplayer', 'market', 'USD', 'raw', jsonb_build_object('tcgplayer', jsonb_build_object('usd', $3::numeric)), NOW())
+        VALUES ($1, $2, 'tcgplayer', 'market', 'USD', 'raw', jsonb_build_object('tcgplayer', jsonb_build_object('usd', $3::numeric, 'native', $3::numeric, 'currency', 'USD', 'kind', 'market', 'recorded_at', NOW()::text)), NOW())
         ON CONFLICT (card_id)
         DO UPDATE SET headline_cents = EXCLUDED.headline_cents,
                       headline_source = EXCLUDED.headline_source,
@@ -228,7 +228,7 @@ export async function syncDualEngineSales(
                       source_prices = jsonb_set(
                         COALESCE(card_price_current.source_prices, '{}'::jsonb),
                         '{tcgplayer}',
-                        jsonb_build_object('usd', $3::numeric)::jsonb
+                        jsonb_build_object('usd', $3::numeric, 'native', $3::numeric, 'currency', 'USD', 'kind', 'market', 'recorded_at', NOW()::text)::jsonb
                       ),
                       computed_at = NOW()
         `,

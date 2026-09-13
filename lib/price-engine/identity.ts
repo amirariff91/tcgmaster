@@ -49,7 +49,18 @@ export function assertIdentity(
     ? urlMatchesNumber(evidence.externalUrl, baseNumber)
     : false;
 
-  if (!titleMatches && !urlMatches) {
+  // Direct product-id match: e.g. TCGPlayer verified product pages where product title is card name without number
+  const cleanExpectedName = (expected.name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  const cleanExtTitle = evidence.externalTitle.trim().toLowerCase().replace(/\s+/g, ' ');
+  const isDirectProductMatch = evidence.matchedBy === 'product-id' && Boolean(
+    cleanExpectedName && (
+      cleanExtTitle === cleanExpectedName
+      || cleanExtTitle.includes(cleanExpectedName)
+      || cleanExpectedName.includes(cleanExtTitle)
+    )
+  );
+
+  if (!titleMatches && !urlMatches && !isDirectProductMatch) {
     return {
       ok: false,
       reason: 'number-mismatch',
