@@ -283,45 +283,9 @@ export async function processCardLockstep(
     );
   }
 
-  // E. TCG Republic (Japanese One Piece & Japanese Pokemon)
-  const isJapaneseCard = card.slug.endsWith('-ja');
-  if (isJapaneseCard && (card.game_slug === 'one-piece' || card.game_slug === 'pokemon')) {
-    scraperTasks.push(
-      (async () => {
-        try {
-          const res = await withTimeout(fetchTcgRepublicPrice(card.number, card.name), 15000, 'tcgrepublic');
-          if (res && res.price > 0) {
-            observations.push({
-              source: 'tcgrepublic',
-              grade: normalizeGrade('raw'),
-              priceUsd: res.price,
-              priceNative: res.price,
-              currency: SOURCE_CURRENCY.tcgrepublic,
-              evidence: res.evidence,
-            });
-            successfulSources.push('tcgrepublic');
+  // E. TCG Republic: DEACTIVATED per user request (poor data quality & distorted prices)
+  // To re-enable in future: wrap with strict variant validation before adding to observations.
 
-            if (res.evidence.externalUrl) {
-              await upsertMapping(db, {
-                cardId: card.id,
-                source: 'tcgrepublic',
-                externalId: null,
-                externalUrl: res.evidence.externalUrl,
-                externalTitle: res.evidence.externalTitle,
-                externalSet: null,
-                confidence: 'confirmed',
-                matchedBy: 'url',
-                evidence: res.evidence,
-                verifiedAt: new Date().toISOString(),
-              });
-            }
-          }
-        } catch (err: any) {
-          // Non-blocking fallback
-        }
-      })()
-    );
-  }
 
   // F. TCGPlayer English/Global daily & historical sync
   const tcgMapping = mappings.find((m) => m.source === 'tcgplayer');

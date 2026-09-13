@@ -424,7 +424,7 @@ export default async function CardDetailPage({ params }: PageProps) {
 
   const priceHistoryData = (cardData?.price_history || [])
     .filter((h): h is CardDataPriceHistory & { grade: string; source: string } => (
-      h.source !== 'ppt-api' && h.source !== null && h.grade !== null
+      h.source !== 'ppt-api' && h.source !== 'tcgrepublic' && h.source !== null && h.grade !== null
     ))
     .map(h => ({
       ...h,
@@ -493,7 +493,7 @@ export default async function CardDetailPage({ params }: PageProps) {
 
   const latestPricesList = Object.entries(sourcePrices)
     .flatMap(([source, data]) => {
-      if (!data || typeof data.usd !== 'number' || !Number.isFinite(data.usd)) return [];
+      if (!data || source === 'tcgrepublic' || typeof data.usd !== 'number' || !Number.isFinite(data.usd)) return [];
       return [{
         source,
         price: data.usd,

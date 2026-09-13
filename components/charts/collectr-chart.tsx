@@ -147,9 +147,10 @@ export function CollectrChart({ priceHistory, gradeInfos, marketUrls = {}, sourc
   }, [activeTab]);
 
   const filteredByGrade = React.useMemo(() => {
-    if (activeGrade === 'raw') return priceHistory.filter(h => h.grade === 'raw');
+    const cleanHistory = priceHistory.filter(h => h.source?.toLowerCase() !== 'tcgrepublic');
+    if (activeGrade === 'raw') return cleanHistory.filter(h => h.grade === 'raw');
 
-    let filtered = priceHistory.filter(h => {
+    let filtered = cleanHistory.filter(h => {
        const hCompany = h.grading_company_id || 'psa';
        const normalizedDbGrade = h.grade?.replace(/^[a-zA-Z]+-?/, '') || '';
        const matchGrade = h.grade === activeGrade || normalizedDbGrade === activeGrade;
